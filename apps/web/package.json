@@ -11,6 +11,8 @@
     "@pass/env": "workspace:*",
     "@pass/ui": "workspace:*",
     "babel-plugin-react-compiler": "^1.0.0",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.6.0",
     "dotenv": "catalog:",
     "framer-motion": "^11.0.0",
     "lucide-react": "catalog:",
