@@ -2,6 +2,7 @@
 import { ViewIcon, ViewOffIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { AnimatePresence, motion } from "framer-motion";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
@@ -73,9 +74,7 @@ export default function SignupPage() {
         >
           {/* Mobile logo */}
           <motion.div variants={STAGGER} className="flex items-center gap-2.5 lg:hidden">
-            <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center">
-              <span className="text-primary-foreground font-black text-lg leading-none">P</span>
-            </div>
+            <Image src="/icon.png" alt="Pass" width={36} height={36} className="rounded-xl" />
             <span className="text-xl font-bold tracking-tight">Pass</span>
           </motion.div>
 

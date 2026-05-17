@@ -2,6 +2,7 @@
 import { AiBrain01Icon, ChartIcon, File01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import { motion } from "framer-motion";
+import Image from "next/image";
 
 const FEATURES: Array<{ icon: IconSvgElement; text: string }> = [
   { icon: File01Icon, text: "Past papers & marking guides" },
@@ -32,9 +33,7 @@ export function BrandPanel() {
         className="relative z-10"
       >
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg">
-            <span className="text-indigo-900 font-black text-xl leading-none">P</span>
-          </div>
+          <Image src="/icon.png" alt="Pass" width={40} height={40} className="rounded-xl shadow-lg" />
           <span className="text-white text-2xl font-bold tracking-tight">Pass</span>
         </div>
       </motion.div>

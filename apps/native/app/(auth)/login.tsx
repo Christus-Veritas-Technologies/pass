@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import { MotiView } from "moti";
 import { useState, useRef } from "react";
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -72,9 +73,10 @@ export default function LoginScreen() {
             {/* Logo */}
             <MotiView from={{ opacity: 0, translateY: -10 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 400 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: BRAND, alignItems: "center", justifyContent: "center" }}>
-                  <Text style={{ color: "#fff", fontWeight: "900", fontSize: 20, lineHeight: 24 }}>P</Text>
-                </View>
+                <Image
+                  source={require("../../assets/images/icon.png")}
+                  style={{ width: 38, height: 38, borderRadius: 10 }}
+                />
                 <Text style={{ fontSize: 22, fontWeight: "700", color: "#111827", letterSpacing: -0.5 }}>Pass</Text>
               </View>
             </MotiView>

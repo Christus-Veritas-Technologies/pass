@@ -2,6 +2,7 @@
 import { ArrowLeft01Icon, CheckmarkCircle01Icon, Mail01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { AnimatePresence, motion } from "framer-motion";
+import Image from "next/image";
 import Link from "next/link";
 import { type FormEvent, useState } from "react";
 import { FormField, AuthInput } from "@/components/auth/form-field";
@@ -77,9 +78,7 @@ export default function ForgotPasswordPage() {
                 </Link>
 
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-                    <span className="text-primary-foreground font-black text-lg leading-none">P</span>
-                  </div>
+                  <Image src="/icon.png" alt="Pass" width={40} height={40} className="rounded-xl" />
                   <span className="text-xl font-bold tracking-tight">Pass</span>
                 </div>
 

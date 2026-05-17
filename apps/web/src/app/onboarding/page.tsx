@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@pass/ui/components/button";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { apiUpdateProfile } from "@/lib/auth";
 
@@ -79,9 +80,7 @@ export default function OnboardingPage() {
 
         {/* Logo */}
         <div className="flex items-center gap-2.5 mb-10">
-          <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center">
-            <span className="text-primary-foreground font-black text-lg leading-none">P</span>
-          </div>
+          <Image src="/icon.png" alt="Pass" width={36} height={36} className="rounded-xl" />
           <span className="text-xl font-bold tracking-tight">Pass</span>
         </div>
 
