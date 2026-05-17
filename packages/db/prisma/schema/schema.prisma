@@ -1,10 +1,98 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../generated"
+  provider     = "prisma-client"
+  output       = "../generated"
   moduleFormat = "esm"
-  runtime = "bun"
+  runtime      = "bun"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum Plan {
+  FREE
+  STUDY
+  PASS
+}
+
+enum ResourceType {
+  PAST_PAPER
+  MARKING_GUIDE
+  SYLLABUS
+}
+
+enum SessionMode {
+  GUIDE
+  FREE
+}
+
+// ─── Models ───────────────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  school       String?
+  grade        String?
+  plan         Plan     @default(FREE)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sessions      PaperSession[]
+  projects      Project[]
+  monthlyUsages MonthlyUsage[]
+}
+
+model Resource {
+  id        String       @id @default(cuid())
+  title     String
+  subject   String
+  grade     String
+  year      Int
+  type      ResourceType
+  fileUrl   String
+  createdAt DateTime     @default(now())
+
+  sessions PaperSession[]
+}
+
+model PaperSession {
+  id                String      @id @default(cuid())
+  userId            String
+  resourceId        String
+  mode              SessionMode
+  questionsAnswered Int         @default(0)
+  completedAt       DateTime?
+  createdAt         DateTime    @default(now())
+
+  user     User     @relation(fields: [userId], references: [id])
+  resource Resource @relation(fields: [resourceId], references: [id])
+}
+
+model Project {
+  id        String   @id @default(cuid())
+  userId    String
+  grade     String
+  subject   String
+  topic     String
+  content   String
+  pdfUrl    String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model MonthlyUsage {
+  id            String @id @default(cuid())
+  userId        String
+  month         String
+  papersUsed    Int    @default(0)
+  projectsUsed  Int    @default(0)
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, month])
 }
