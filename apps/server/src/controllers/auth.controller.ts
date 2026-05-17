@@ -57,8 +57,8 @@ async function createSession(userId: string) {
   return { accessToken, refreshToken, session };
 }
 
-function safeUser(user: { id: string; email: string; name: string; plan: string }) {
-  return { id: user.id, email: user.email, name: user.name, plan: user.plan };
+function safeUser(user: { id: string; email: string; name: string; plan: string; grade: string | null }) {
+  return { id: user.id, email: user.email, name: user.name, plan: user.plan, grade: user.grade };
 }
 
 // ─── Email / password ────────────────────────────────────────────────────────
