@@ -1,27 +1,17 @@
 # ── EAS Build Archive Ignore ──────────────────────────────────────────────────
-# This file reduces the 191MB archive by excluding monorepo workspaces and
-# build artifacts that are not needed to compile the native app.
-# EAS reinstalls all dependencies on their servers, so node_modules, build
-# outputs, and non-native app source are safe to exclude.
-
-# ── Non-native apps ────────────────────────────────────────────────────────────
-apps/web/
-apps/server/
-
-# ── Packages not used by the native app ───────────────────────────────────────
-# @pass/db (Prisma) and @pass/ui are only consumed by the web/server apps.
-# Excluding them entirely keeps their dependencies — and crucially Prisma's
-# `postinstall` (`prisma generate`), which fails in CI without a database —
-# out of the workspace-wide `bun install` that EAS runs. The native app only
-# depends on @pass/env and @pass/config, which remain in the archive.
-packages/db/
-packages/ui/
+# EAS reinstalls all dependencies on their servers, so node_modules and build
+# artifacts are safe to exclude. All workspace package.json files MUST be
+# present in the archive so bun install resolves the same lockfile as locally.
 
 # ── Workspace node_modules (reinstalled on EAS) ─────────────────────────────
 node_modules/
 apps/native/node_modules/
+apps/web/node_modules/
+apps/server/node_modules/
 packages/env/node_modules/
 packages/config/node_modules/
+packages/db/node_modules/
+packages/ui/node_modules/
 
 # ── Build caches & outputs ─────────────────────────────────────────────────────
 .turbo/
