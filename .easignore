@@ -16,14 +16,14 @@ bun.lock
 apps/web/
 apps/server/
 
-# ── DB package (not imported by native) ────────────────────────────────────────
-packages/db/generated/
-packages/db/node_modules/
-packages/db/prisma/migrations/
-
-# ── UI package (native uses its own components, not @pass/ui) ──────────────────
-packages/ui/node_modules/
-packages/ui/.turbo/
+# ── Packages not used by the native app ───────────────────────────────────────
+# @pass/db (Prisma) and @pass/ui are only consumed by the web/server apps.
+# Excluding them entirely keeps their dependencies — and crucially Prisma's
+# `postinstall` (`prisma generate`), which fails in CI without a database —
+# out of the workspace-wide `bun install` that EAS runs. The native app only
+# depends on @pass/env and @pass/config, which remain in the archive.
+packages/db/
+packages/ui/
 
 # ── Workspace node_modules (reinstalled on EAS) ─────────────────────────────
 node_modules/
