@@ -84,3 +84,12 @@ export function clearTokens() {
   localStorage.removeItem("pass_access_token");
   localStorage.removeItem("pass_refresh_token");
 }
+
+export function getAccessToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("pass_access_token");
+}
+
+export function isLoggedIn(): boolean {
+  return !!getAccessToken();
+}

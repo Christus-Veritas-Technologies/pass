@@ -230,8 +230,6 @@ async function findOrCreateGoogleUser(googleUser: { id: string; email: string; n
 // ─── Forgot / reset password ─────────────────────────────────────────────────
 
 export async function forgotPassword(c: Context) {
-  if (!isEmailConfigured()) return c.json({ error: "Email not configured" }, 503);
-
   const body = await c.req.json().catch(() => null);
   const parsed = forgotPasswordSchema.safeParse(body);
   if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
@@ -248,7 +246,13 @@ export async function forgotPassword(c: Context) {
   const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
   await prisma.passwordResetToken.create({ data: { userId: user.id, token, expiresAt } });
-  await sendPasswordResetEmail(user.email, token);
+
+  if (isEmailConfigured()) {
+    await sendPasswordResetEmail(user.email, token);
+  } else {
+    const resetUrl = `${env.APP_URL ?? "http://localhost:3000"}/reset-password?token=${token}`;
+    console.log(`[pass] Password reset link for ${user.email}: ${resetUrl}`);
+  }
 
   return c.json({ success: true });
 }

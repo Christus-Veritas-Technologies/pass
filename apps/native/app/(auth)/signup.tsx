@@ -1,4 +1,5 @@
-import { Ionicons } from "@expo/vector-icons";
+import { ViewIcon, ViewOffIcon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
 import { router } from "expo-router";
 import { MotiView } from "moti";
 import { useRef, useState } from "react";
@@ -156,7 +157,7 @@ export default function SignupScreen() {
                     style={{ position: "absolute", right: 14, top: 14 }}
                     hitSlop={8}
                   >
-                    <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#9CA3AF" />
+                    <HugeiconsIcon icon={showPassword ? ViewOffIcon : ViewIcon} size={20} color="#9CA3AF" />
                   </Pressable>
                 </View>
                 {errors.password && <Text style={{ fontSize: 12, color: "#EF4444", marginTop: 6 }}>{errors.password}</Text>}
