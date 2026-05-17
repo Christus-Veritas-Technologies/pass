@@ -17,6 +17,7 @@ const buttonVariants = cva(
         ghost: "bg-transparent",
         destructive: "bg-red-500",
         white: "bg-white border border-gray-200",
+        success: "bg-emerald-600",
       },
       size: {
         default: "h-[52px]",
@@ -39,6 +40,7 @@ const textVariants = cva("text-[15px] font-semibold", {
       ghost: "text-[#4F46E5]",
       destructive: "text-white",
       white: "text-gray-800",
+      success: "text-white",
     },
   },
   defaultVariants: { variant: "default" },
@@ -72,7 +74,7 @@ export function Button({
       {...props}
     >
       {loading ? (
-        <ActivityIndicator color={variant === "default" || variant === "destructive" ? "#fff" : "#4F46E5"} />
+        <ActivityIndicator color={variant === "default" || variant === "destructive" || variant === "success" ? "#fff" : "#4F46E5"} />
       ) : typeof children === "string" ? (
         // @ts-expect-error — className works via uniwind
         <Text className={textVariants({ variant, className: textClassName })}>{children}</Text>

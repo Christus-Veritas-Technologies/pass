@@ -19,6 +19,7 @@ import {
   type ViewToken,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Button } from "@/components/ui/button";
 
 const BRAND = "#4F46E5";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -179,20 +180,9 @@ export default function LaunchScreen() {
       >
         <ProgressDots active={activeIndex} count={SLIDES.length} />
 
-        <Pressable
-          onPress={handleNext}
-          style={{
-            height: 54,
-            borderRadius: 14,
-            backgroundColor: BRAND,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Text style={{ fontSize: 16, fontWeight: "700", color: "#FFFFFF" }}>
-            {activeIndex === SLIDES.length - 1 ? "Get Started" : "Next"}
-          </Text>
-        </Pressable>
+        <Button onPress={handleNext} className="rounded-[14px]">
+          {activeIndex === SLIDES.length - 1 ? "Get Started" : "Next"}
+        </Button>
       </View>
     </SafeAreaView>
   );

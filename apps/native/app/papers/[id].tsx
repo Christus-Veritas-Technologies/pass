@@ -17,6 +17,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Button } from "@/components/ui/button";
 import { env } from "@pass/env/native";
 
 const BRAND = "#4F46E5";
@@ -200,12 +201,9 @@ export default function PaperSessionScreen() {
           <Text style={{ fontSize: 15, color: "#6B7280", textAlign: "center" }}>
             You answered {answeredCount} of {totalQ} questions.
           </Text>
-          <Pressable
-            onPress={() => router.back()}
-            style={{ marginTop: 8, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12, backgroundColor: BRAND }}
-          >
-            <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFFFFF" }}>Back to resources</Text>
-          </Pressable>
+          <Button onPress={() => router.back()} className="mt-2 rounded-[12px]">
+            Back to resources
+          </Button>
         </View>
       </SafeAreaView>
     );
@@ -279,17 +277,9 @@ export default function PaperSessionScreen() {
               ))}
             </View>
 
-            <Pressable
-              onPress={handleStart}
-              disabled={starting}
-              style={{ height: 52, borderRadius: 12, backgroundColor: BRAND, alignItems: "center", justifyContent: "center", opacity: starting ? 0.6 : 1 }}
-            >
-              {starting ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <Text style={{ fontSize: 16, fontWeight: "700", color: "#FFFFFF" }}>Start session</Text>
-              )}
-            </Pressable>
+            <Button onPress={handleStart} loading={starting} className="rounded-[12px]">
+              Start session
+            </Button>
           </View>
         )}
 
@@ -363,49 +353,33 @@ export default function PaperSessionScreen() {
                     backgroundColor: "#FFFFFF",
                   }}
                 />
-                <Pressable
+                <Button
                   onPress={handleSubmit}
                   disabled={streaming || !answers[currentQ.questionNumber]?.trim()}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 8,
-                    height: 48,
-                    borderRadius: 12,
-                    backgroundColor: BRAND,
-                    opacity: streaming || !answers[currentQ.questionNumber]?.trim() ? 0.5 : 1,
-                  }}
+                  size="sm"
+                  className="rounded-[12px]"
                 >
-                  <HugeiconsIcon icon={SparklesIcon} size={18} color="#FFFFFF" />
-                  <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFFFFF" }}>
+                  <HugeiconsIcon icon={SparklesIcon} size={16} color="#FFFFFF" />
+                  <Text style={{ fontSize: 14, fontWeight: "600", color: "#FFFFFF", marginLeft: 6 }}>
                     {streaming ? "Getting feedback…" : "Submit Answer"}
                   </Text>
-                </Pressable>
+                </Button>
               </View>
             )}
 
             {/* Free: get answer button */}
             {mode === "FREE" && !completed.has(currentQ.questionNumber) && (
-              <Pressable
+              <Button
                 onPress={handleSubmit}
                 disabled={streaming}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                  height: 48,
-                  borderRadius: 12,
-                  backgroundColor: BRAND,
-                  opacity: streaming ? 0.5 : 1,
-                }}
+                size="sm"
+                className="rounded-[12px]"
               >
-                <HugeiconsIcon icon={SparklesIcon} size={18} color="#FFFFFF" />
-                <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFFFFF" }}>
+                <HugeiconsIcon icon={SparklesIcon} size={16} color="#FFFFFF" />
+                <Text style={{ fontSize: 14, fontWeight: "600", color: "#FFFFFF", marginLeft: 6 }}>
                   {streaming ? "Loading answer…" : "Get Answer"}
                 </Text>
-              </Pressable>
+              </Button>
             )}
 
             {/* AI response */}
@@ -428,27 +402,32 @@ export default function PaperSessionScreen() {
             {completed.has(currentQ.questionNumber) && (
               <View style={{ flexDirection: "row", gap: 10 }}>
                 {currentIndex > 0 && (
-                  <Pressable
+                  <Button
                     onPress={() => setCurrentIndex((i) => i - 1)}
-                    style={{ flex: 1, height: 48, borderRadius: 12, borderWidth: 1, borderColor: "#E5E7EB", alignItems: "center", justifyContent: "center" }}
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 rounded-[12px]"
                   >
-                    <Text style={{ fontSize: 14, fontWeight: "600", color: "#374151" }}>Previous</Text>
-                  </Pressable>
+                    Previous
+                  </Button>
                 )}
                 {currentIndex < questions.length - 1 ? (
-                  <Pressable
+                  <Button
                     onPress={() => setCurrentIndex((i) => i + 1)}
-                    style={{ flex: 1, height: 48, borderRadius: 12, backgroundColor: BRAND, alignItems: "center", justifyContent: "center" }}
+                    size="sm"
+                    className="flex-1 rounded-[12px]"
                   >
-                    <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFFFFF" }}>Next</Text>
-                  </Pressable>
+                    Next
+                  </Button>
                 ) : allDone ? (
-                  <Pressable
+                  <Button
                     onPress={handleComplete}
-                    style={{ flex: 1, height: 48, borderRadius: 12, backgroundColor: "#059669", alignItems: "center", justifyContent: "center" }}
+                    variant="success"
+                    size="sm"
+                    className="flex-1 rounded-[12px]"
                   >
-                    <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFFFFF" }}>Complete session</Text>
-                  </Pressable>
+                    Complete session
+                  </Button>
                 ) : null}
               </View>
             )}
