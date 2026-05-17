@@ -5,6 +5,7 @@ import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Button } from "@pass/ui/components/button";
 import { cn } from "@/lib/utils";
 import { apiUpdateProfile } from "@/lib/auth";
 
@@ -120,13 +121,14 @@ export default function OnboardingPage() {
                     ))}
                   </motion.div>
 
-                  <motion.button
-                    variants={stagger}
-                    onClick={() => setStep(1)}
-                    className="mt-10 w-full h-12 rounded-xl bg-primary text-primary-foreground font-semibold text-[15px] hover:opacity-90 active:opacity-80 transition-opacity"
-                  >
-                    Get started
-                  </motion.button>
+                  <motion.div variants={stagger} className="mt-10">
+                    <Button
+                      onClick={() => setStep(1)}
+                      className="w-full h-12 rounded-xl text-[15px]"
+                    >
+                      Get started
+                    </Button>
+                  </motion.div>
                 </motion.div>
               </motion.div>
             )}
@@ -159,38 +161,40 @@ export default function OnboardingPage() {
                         </p>
                         <div className="grid grid-cols-2 gap-2.5">
                           {section.grades.map((grade) => (
-                            <button
+                            <Button
                               key={grade}
                               onClick={() => setSelected(grade)}
+                              variant={selected === grade ? "default" : "outline"}
                               className={cn(
-                                "h-14 rounded-xl border-[1.5px] font-semibold text-[15px] transition-all duration-150",
+                                "h-14 w-full rounded-xl border-[1.5px] font-semibold text-[15px] transition-all duration-150",
                                 selected === grade
-                                  ? "bg-primary border-primary text-primary-foreground shadow-sm"
-                                  : "border-border bg-background text-foreground hover:border-primary/40 hover:bg-primary/5",
+                                  ? "border-primary shadow-sm"
+                                  : "border-border hover:border-primary/40 hover:bg-primary/5",
                               )}
                             >
                               {grade}
-                            </button>
+                            </Button>
                           ))}
                         </div>
                       </div>
                     ))}
                   </motion.div>
 
-                  <motion.button
-                    variants={stagger}
-                    onClick={handleFinish}
-                    disabled={!selected || loading}
-                    className="mt-10 w-full h-12 rounded-xl bg-primary text-primary-foreground font-semibold text-[15px] hover:opacity-90 active:opacity-80 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  >
-                    {loading ? (
-                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                      </svg>
-                    ) : null}
-                    Start studying
-                  </motion.button>
+                  <motion.div variants={stagger} className="mt-10">
+                    <Button
+                      onClick={handleFinish}
+                      disabled={!selected || loading}
+                      className="w-full h-12 rounded-xl text-[15px] gap-2"
+                    >
+                      {loading ? (
+                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                        </svg>
+                      ) : null}
+                      Start studying
+                    </Button>
+                  </motion.div>
                 </motion.div>
               </motion.div>
             )}

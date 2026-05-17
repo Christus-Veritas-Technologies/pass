@@ -9,6 +9,7 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useEffect, useState } from "react";
 import { Badge } from "@pass/ui/components/badge";
+import { Button } from "@pass/ui/components/button";
 import { Card, CardContent } from "@pass/ui/components/card";
 import { Skeleton } from "@pass/ui/components/skeleton";
 import { cn } from "@/lib/utils";
@@ -112,18 +113,17 @@ export default function ResourcesPage() {
         {/* Type tabs */}
         <div className="flex rounded-lg border border-border overflow-hidden">
           {TYPES.map((t) => (
-            <button
+            <Button
               key={t}
               onClick={() => setType(t)}
+              variant={type === t ? "default" : "ghost"}
               className={cn(
-                "px-3 py-1.5 text-xs font-medium transition-colors",
-                type === t
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-background text-muted-foreground hover:bg-muted",
+                "px-3 py-1.5 text-xs font-medium rounded-none",
+                type !== t && "text-muted-foreground",
               )}
             >
               {TYPE_LABELS[t]}
-            </button>
+            </Button>
           ))}
         </div>
 

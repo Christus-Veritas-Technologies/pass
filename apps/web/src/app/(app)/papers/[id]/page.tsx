@@ -9,6 +9,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import Link from "next/link";
 import { use, useEffect, useRef, useState } from "react";
 import { Badge } from "@pass/ui/components/badge";
+import { Button } from "@pass/ui/components/button";
 import { Card, CardContent } from "@pass/ui/components/card";
 import { Progress } from "@pass/ui/components/progress";
 import { Skeleton } from "@pass/ui/components/skeleton";
@@ -248,11 +249,12 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
             </div>
             <div className="grid grid-cols-2 gap-3">
               {(["GUIDE", "FREE"] as const).map((m) => (
-                <button
+                <Button
                   key={m}
                   onClick={() => setMode(m)}
+                  variant="outline"
                   className={cn(
-                    "rounded-xl border-2 p-4 text-left transition-colors",
+                    "h-auto rounded-xl border-2 p-4 flex-col items-start",
                     mode === m ? "border-primary bg-primary/5" : "border-border hover:border-primary/40",
                   )}
                 >
@@ -262,16 +264,16 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
                       ? "Write your answer and get AI feedback on how you did."
                       : "Skip the attempt — see the full worked solution immediately."}
                   </p>
-                </button>
+                </Button>
               ))}
             </div>
-            <button
+            <Button
               onClick={handleStart}
               disabled={starting}
-              className="w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+              className="w-full rounded-xl"
             >
               {starting ? "Starting…" : "Start session"}
-            </button>
+            </Button>
           </CardContent>
         </Card>
       )}
@@ -285,14 +287,15 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
               const isDone = completed.has(q.questionNumber);
               const isActive = i === currentIndex;
               return (
-                <button
+                <Button
                   key={q.id}
                   onClick={() => setCurrentIndex(i)}
+                  variant="ghost"
                   className={cn(
-                    "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors",
+                    "w-full justify-start gap-2.5 rounded-lg px-3 py-2 text-sm",
                     isActive && "bg-primary/10 text-primary font-medium",
                     isDone && !isActive && "text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400",
-                    !isActive && !isDone && "text-muted-foreground hover:bg-muted",
+                    !isActive && !isDone && "text-muted-foreground",
                   )}
                 >
                   {isDone ? (
@@ -304,7 +307,7 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
                   )}
                   <span className="truncate">Q{q.questionNumber}</span>
                   <span className="ml-auto shrink-0 text-[10px] opacity-60">{q.marks}m</span>
-                </button>
+                </Button>
               );
             })}
           </div>
@@ -336,27 +339,27 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
                   rows={5}
                   className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
                 />
-                <button
+                <Button
                   onClick={handleSubmit}
                   disabled={streaming || !answers[currentQ.questionNumber]?.trim()}
-                  className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+                  className="rounded-xl gap-2"
                 >
                   <HugeiconsIcon icon={SparklesIcon} className="h-4 w-4" />
                   {streaming ? "Getting feedback…" : "Submit Answer"}
-                </button>
+                </Button>
               </div>
             )}
 
             {/* Free: get answer button */}
             {mode === "FREE" && !completed.has(currentQ.questionNumber) && (
-              <button
+              <Button
                 onClick={handleSubmit}
                 disabled={streaming}
-                className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+                className="rounded-xl gap-2"
               >
                 <HugeiconsIcon icon={SparklesIcon} className="h-4 w-4" />
                 {streaming ? "Loading answer…" : "Get Answer"}
-              </button>
+              </Button>
             )}
 
             {/* AI response */}
@@ -382,19 +385,19 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
             {completed.has(currentQ.questionNumber) && (
               <div className="flex items-center gap-3">
                 {currentIndex < questions.length - 1 ? (
-                  <button
+                  <Button
                     onClick={() => setCurrentIndex((i) => i + 1)}
-                    className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+                    className="rounded-xl"
                   >
                     Next question
-                  </button>
+                  </Button>
                 ) : allDone ? (
-                  <button
+                  <Button
                     onClick={handleComplete}
-                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors"
+                    className="rounded-xl bg-emerald-600 hover:bg-emerald-700"
                   >
                     Complete session
-                  </button>
+                  </Button>
                 ) : null}
               </div>
             )}

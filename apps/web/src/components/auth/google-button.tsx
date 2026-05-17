@@ -2,6 +2,7 @@
 import { Loading03Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useState } from "react";
+import { Button } from "@pass/ui/components/button";
 import { getGoogleAuthUrl } from "@/lib/auth";
 
 export function GoogleButton({ label = "Continue with Google" }: { label?: string }) {
@@ -13,11 +14,12 @@ export function GoogleButton({ label = "Continue with Google" }: { label?: strin
   }
 
   return (
-    <button
+    <Button
       type="button"
       onClick={handleClick}
       disabled={loading}
-      className="h-12 w-full rounded-xl border border-input bg-background hover:bg-muted/60 active:scale-[0.98] transition-all duration-150 flex items-center justify-center gap-3 text-sm font-medium text-foreground disabled:opacity-60 disabled:cursor-not-allowed"
+      variant="outline"
+      className="h-12 w-full rounded-xl border-input bg-background hover:bg-muted/60 text-sm font-medium text-foreground gap-3"
     >
       {loading ? (
         <HugeiconsIcon icon={Loading03Icon} className="w-4 h-4 animate-spin text-muted-foreground" />
@@ -42,6 +44,6 @@ export function GoogleButton({ label = "Continue with Google" }: { label?: strin
         </svg>
       )}
       {label}
-    </button>
+    </Button>
   );
 }
