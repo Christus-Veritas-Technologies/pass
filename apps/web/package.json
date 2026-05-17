@@ -1,0 +1,32 @@
+{
+  "name": "web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --port 3001",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@pass/env": "workspace:*",
+    "@pass/ui": "workspace:*",
+    "babel-plugin-react-compiler": "^1.0.0",
+    "dotenv": "catalog:",
+    "lucide-react": "catalog:",
+    "next": "^16.2.0",
+    "next-themes": "catalog:",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "sonner": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@pass/config": "workspace:*",
+    "@tailwindcss/postcss": "^4.1.18",
+    "@types/node": "^20",
+    "@types/react": "^19.2.10",
+    "@types/react-dom": "catalog:",
+    "tailwindcss": "^4.1.18",
+    "typescript": "^6"
+  }
+}
