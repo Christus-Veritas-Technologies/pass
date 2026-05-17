@@ -1,8 +1,16 @@
 # ── EAS Build Archive Ignore ──────────────────────────────────────────────────
 # This file reduces the 191MB archive by excluding monorepo workspaces and
 # build artifacts that are not needed to compile the native app.
-# EAS reinstalls all dependencies from bun.lock on their servers, so
-# node_modules, build outputs, and non-native app source are safe to exclude.
+# EAS reinstalls all dependencies on their servers, so node_modules, build
+# outputs, and non-native app source are safe to exclude.
+
+# ── Lockfile ────────────────────────────────────────────────────────────────────
+# Excluded so EAS runs a plain `bun install` instead of `bun install
+# --frozen-lockfile`. EAS Build images ship bun 1.3.8, which cannot read the
+# newer lockfile format our local bun (1.3.11) writes — a frozen install fails
+# with "lockfile had changes, but lockfile is frozen". Without the lockfile in
+# the archive, EAS resolves dependencies fresh from package.json.
+bun.lock
 
 # ── Non-native apps ────────────────────────────────────────────────────────────
 apps/web/
