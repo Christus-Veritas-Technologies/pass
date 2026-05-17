@@ -61,7 +61,7 @@ export default function SignupScreen() {
     try {
       const data = await apiSignup(name.trim(), email.trim().toLowerCase(), password);
       await storeTokens(data);
-      router.replace("/(drawer)/(tabs)/home");
+      router.replace({ pathname: "/(onboarding)", params: { name: data.user.name } });
     } catch (err: unknown) {
       setErrors({ form: err instanceof Error ? err.message : "Sign up failed" });
     } finally {

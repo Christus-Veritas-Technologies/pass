@@ -43,7 +43,11 @@ export default function LoginScreen() {
     try {
       const data = await apiLogin(email.trim().toLowerCase(), password);
       await storeTokens(data);
-      router.replace("/(drawer)/(tabs)/home");
+      if (!data.user.grade) {
+        router.replace({ pathname: "/(onboarding)", params: { name: data.user.name } });
+      } else {
+        router.replace("/(drawer)/(tabs)/home");
+      }
     } catch (err: unknown) {
       setErrors({ form: err instanceof Error ? err.message : "Login failed" });
     } finally {
