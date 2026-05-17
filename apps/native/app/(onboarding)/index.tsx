@@ -1,4 +1,5 @@
-import { Ionicons } from "@expo/vector-icons";
+import { BarChart01Icon, CheckmarkCircle01Icon, File01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { MotiView } from "moti";
 import { Text, View } from "react-native";
@@ -8,9 +9,9 @@ import { Button } from "@/components/ui/button";
 const BRAND = "#4F46E5";
 
 const FEATURES = [
-  { icon: "newspaper-outline" as const, text: "Past papers matched to your grade" },
-  { icon: "checkmark-circle-outline" as const, text: "AI marking against the ZIMSEC scheme" },
-  { icon: "bar-chart-outline" as const, text: "Track your progress question by question" },
+  { icon: File01Icon, text: "Past papers matched to your grade" },
+  { icon: CheckmarkCircle01Icon, text: "AI marking against the ZIMSEC scheme" },
+  { icon: BarChart01Icon, text: "Track your progress question by question" },
 ];
 
 function ProgressDots({ step }: { step: number }) {
@@ -70,7 +71,7 @@ export default function OnboardingWelcome() {
               style={{ flexDirection: "row", alignItems: "center", gap: 14 }}
             >
               <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: "#EEF2FF", alignItems: "center", justifyContent: "center" }}>
-                <Ionicons name={f.icon} size={20} color={BRAND} />
+                <HugeiconsIcon icon={f.icon} size={20} color={BRAND} />
               </View>
               <Text style={{ flex: 1, fontSize: 15, color: "#374151", lineHeight: 22 }}>{f.text}</Text>
             </MotiView>
