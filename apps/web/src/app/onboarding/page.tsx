@@ -1,5 +1,7 @@
 "use client";
 
+import { ChartIcon, CheckmarkCircle01Icon, File01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -13,10 +15,10 @@ const GRADE_SECTIONS = [
   { label: "A-Level", grades: ["Form 5", "Form 6"] },
 ] as const;
 
-const FEATURES = [
-  { icon: "📄", text: "Past papers matched to your grade" },
-  { icon: "✅", text: "AI marking against the ZIMSEC scheme" },
-  { icon: "📊", text: "Track your progress question by question" },
+const FEATURES: Array<{ icon: IconSvgElement; text: string }> = [
+  { icon: File01Icon, text: "Past papers matched to your grade" },
+  { icon: CheckmarkCircle01Icon, text: "AI marking against the ZIMSEC scheme" },
+  { icon: ChartIcon, text: "Track your progress question by question" },
 ];
 
 const slide = {
@@ -110,8 +112,8 @@ export default function OnboardingPage() {
                   <motion.div variants={stagger} className="mt-8 space-y-4">
                     {FEATURES.map((f) => (
                       <div key={f.text} className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-base shrink-0">
-                          {f.icon}
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                          <HugeiconsIcon icon={f.icon} className="w-[18px] h-[18px] text-primary" />
                         </div>
                         <p className="text-sm text-foreground/80 leading-snug">{f.text}</p>
                       </div>

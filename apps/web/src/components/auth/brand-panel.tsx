@@ -1,5 +1,13 @@
 "use client";
+import { AiBrain01Icon, ChartIcon, File01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import { motion } from "framer-motion";
+
+const FEATURES: Array<{ icon: IconSvgElement; text: string }> = [
+  { icon: File01Icon, text: "Past papers & marking guides" },
+  { icon: AiBrain01Icon, text: "AI-guided study sessions" },
+  { icon: ChartIcon, text: "Progress tracking & streaks" },
+];
 
 export function BrandPanel() {
   return (
@@ -50,11 +58,7 @@ export function BrandPanel() {
         </div>
 
         <div className="flex flex-col gap-3">
-          {[
-            { icon: "📄", text: "Past papers & marking guides" },
-            { icon: "🧠", text: "AI-guided study sessions" },
-            { icon: "📊", text: "Progress tracking & streaks" },
-          ].map((item, i) => (
+          {FEATURES.map((item, i) => (
             <motion.div
               key={item.text}
               initial={{ opacity: 0, x: -16 }}
@@ -62,7 +66,7 @@ export function BrandPanel() {
               transition={{ delay: 0.35 + i * 0.08 }}
               className="flex items-center gap-3"
             >
-              <span className="text-lg">{item.icon}</span>
+              <HugeiconsIcon icon={item.icon} className="w-[18px] h-[18px] text-indigo-200" />
               <span className="text-indigo-200 text-sm">{item.text}</span>
             </motion.div>
           ))}

@@ -1,6 +1,7 @@
 "use client";
+import { ViewIcon, ViewOffIcon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
@@ -110,7 +111,10 @@ export default function LoginPage() {
                     tabIndex={-1}
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    <HugeiconsIcon
+                      icon={showPassword ? ViewOffIcon : ViewIcon}
+                      className="w-4 h-4"
+                    />
                   </button>
                 </div>
               </FormField>

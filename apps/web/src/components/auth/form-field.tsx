@@ -1,6 +1,7 @@
 "use client";
+import { AlertCircleIcon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircle } from "lucide-react";
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
@@ -62,7 +63,7 @@ export function FormField({ label, error, children, htmlFor }: FormFieldProps) {
             transition={{ duration: 0.18 }}
             className="flex items-center gap-1.5 text-xs text-destructive overflow-hidden"
           >
-            <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+            <HugeiconsIcon icon={AlertCircleIcon} className="w-3.5 h-3.5 flex-shrink-0" />
             {error}
           </motion.p>
         )}

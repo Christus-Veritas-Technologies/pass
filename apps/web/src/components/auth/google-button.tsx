@@ -1,5 +1,6 @@
 "use client";
-import { Loader2 } from "lucide-react";
+import { Loading03Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { useState } from "react";
 import { getGoogleAuthUrl } from "@/lib/auth";
 
@@ -19,7 +20,7 @@ export function GoogleButton({ label = "Continue with Google" }: { label?: strin
       className="h-12 w-full rounded-xl border border-input bg-background hover:bg-muted/60 active:scale-[0.98] transition-all duration-150 flex items-center justify-center gap-3 text-sm font-medium text-foreground disabled:opacity-60 disabled:cursor-not-allowed"
     >
       {loading ? (
-        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+        <HugeiconsIcon icon={Loading03Icon} className="w-4 h-4 animate-spin text-muted-foreground" />
       ) : (
         <svg viewBox="0 0 24 24" className="w-4 h-4 flex-shrink-0" aria-hidden>
           <path

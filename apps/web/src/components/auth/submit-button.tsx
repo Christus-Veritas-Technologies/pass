@@ -1,5 +1,6 @@
 "use client";
-import { Loader2 } from "lucide-react";
+import { Loading03Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { cn } from "@/lib/utils";
 
 interface SubmitButtonProps extends React.ComponentProps<"button"> {
@@ -20,7 +21,7 @@ export function SubmitButton({ loading, children, className, disabled, ...props 
       )}
       {...props}
     >
-      {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+      {loading && <HugeiconsIcon icon={Loading03Icon} className="w-4 h-4 animate-spin" />}
       {children}
     </button>
   );

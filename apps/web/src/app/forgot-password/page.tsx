@@ -1,6 +1,7 @@
 "use client";
+import { ArrowLeft01Icon, CheckmarkCircle01Icon, Mail01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, CheckCircle2, Mail } from "lucide-react";
 import Link from "next/link";
 import { type FormEvent, useState } from "react";
 import { FormField, AuthInput } from "@/components/auth/form-field";
@@ -47,7 +48,7 @@ export default function ForgotPasswordPage() {
             >
               <div className="flex justify-center">
                 <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                  <CheckCircle2 className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+                  <HugeiconsIcon icon={CheckmarkCircle01Icon} className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
                 </div>
               </div>
               <div className="space-y-2">
@@ -71,7 +72,7 @@ export default function ForgotPasswordPage() {
                   href="/login"
                   className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  <ArrowLeft className="w-4 h-4" />
+                  <HugeiconsIcon icon={ArrowLeft01Icon} className="w-4 h-4" />
                   Back to sign in
                 </Link>
 
@@ -85,7 +86,7 @@ export default function ForgotPasswordPage() {
                 <div className="space-y-1">
                   <div className="flex items-center gap-2.5">
                     <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <Mail className="w-4 h-4 text-primary" />
+                      <HugeiconsIcon icon={Mail01Icon} className="w-4 h-4 text-primary" />
                     </div>
                     <h1 className="text-xl font-bold">Reset your password</h1>
                   </div>
