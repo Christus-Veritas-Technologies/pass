@@ -17,6 +17,7 @@ export interface AuthUser {
   id: string;
   email: string;
   name: string;
+  grade: string | null;
   plan: string;
 }
 
@@ -50,6 +51,27 @@ export function apiGoogleNative(idToken: string) {
   return request<{ user: AuthUser } & AuthTokens & { isNew: boolean }>("/auth/google/native", {
     method: "POST",
     body: JSON.stringify({ idToken }),
+  });
+}
+
+async function authedRequest<T>(path: string, init: RequestInit): Promise<T> {
+  const accessToken = await SecureStore.getItemAsync("pass_access_token");
+  const res = await fetch(`${API}${path}`, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+    },
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error ?? "Something went wrong");
+  return json as T;
+}
+
+export function apiUpdateProfile(data: { grade?: string; school?: string; name?: string }) {
+  return authedRequest<{ user: AuthUser }>("/users/me", {
+    method: "PATCH",
+    body: JSON.stringify(data),
   });
 }
 

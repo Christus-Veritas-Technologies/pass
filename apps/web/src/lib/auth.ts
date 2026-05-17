@@ -4,6 +4,7 @@ export interface AuthUser {
   id: string;
   email: string;
   name: string;
+  grade: string | null;
   plan: string;
 }
 
@@ -52,6 +53,26 @@ export function apiResetPassword(token: string, password: string) {
 
 export function getGoogleAuthUrl() {
   return `${API}/auth/google`;
+}
+
+function authedRequest<T>(path: string, init: RequestInit): Promise<T> {
+  const accessToken = typeof window !== "undefined"
+    ? localStorage.getItem("pass_access_token")
+    : null;
+  return request<T>(path, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+    },
+  });
+}
+
+export function apiUpdateProfile(data: { grade?: string; school?: string; name?: string }) {
+  return authedRequest<{ user: AuthUser }>("/users/me", {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
 }
 
 export function storeTokens(tokens: AuthTokens) {
