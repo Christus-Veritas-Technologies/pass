@@ -10,7 +10,17 @@ export async function getMe(c: Context) {
   const userId = c.get("userId") as string;
   const user = await prisma.user.findUnique({ where: { id: userId }, select: USER_SELECT });
   if (!user) return c.json({ error: "User not found" }, 404);
-  return c.json({ user });
+
+  // Mock usage stats — replace with real queries once DB is connected
+  const stats = {
+    papersAttempted: 12,
+    questionsAnswered: 148,
+    currentStreak: 5,
+    weeklyGoal: 20,
+    weeklyProgress: 14,
+  };
+
+  return c.json({ user, stats });
 }
 
 const updateMeSchema = z.object({
