@@ -13,7 +13,10 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#4F46E5"
-      }
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "ios": {
       "bundleIdentifier": "com.pass.app",
@@ -60,9 +63,8 @@
     },
     "extra": {
       "eas": {
-        "projectId": "46232f0a-cdbc-4ef5-8103-bfcfbfdfbf32"
+        "projectId": "31966f37-762e-44f9-9da4-2aa43d262227"
       }
-    },
-    "owner": "johnprime"
+    }
   }
 }
