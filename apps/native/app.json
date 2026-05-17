@@ -1,17 +1,59 @@
 {
   "expo": {
+    "name": "Pass",
+    "slug": "pass",
     "scheme": "pass",
+    "version": "1.0.0",
+    "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "orientation": "default",
+    "newArchEnabled": true,
+    "android": {
+      "package": "com.pass.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#4F46E5"
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "com.pass.app",
+      "supportsTablet": true
+    },
     "web": {
       "bundler": "metro"
     },
-    "name": "pass",
-    "slug": "pass",
-    "plugins": ["expo-font"],
+    "plugins": [
+      "expo-font",
+      "expo-image",
+      "expo-sharing",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FFFFFF"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#4F46E5",
+          "sounds": []
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Pass to access your photos for your profile picture."
+        }
+      ],
+      "expo-document-picker"
+    ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "46232f0a-cdbc-4ef5-8103-bfcfbfdfbf32"
+      }
+    },
+    "owner": "johnprime"
   }
 }
