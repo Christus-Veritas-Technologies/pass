@@ -1,44 +1,49 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
-import { useThemeColor } from "heroui-native";
 
-export default function TabLayout() {
-  const themeColorForeground = useThemeColor("foreground");
-  const themeColorBackground = useThemeColor("background");
-
+export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        headerStyle: {
-          backgroundColor: themeColorBackground,
-        },
-        headerTintColor: themeColorForeground,
-        headerTitleStyle: {
-          color: themeColorForeground,
-          fontWeight: "600",
-        },
-        tabBarStyle: {
-          backgroundColor: themeColorBackground,
-        },
+        tabBarActiveTintColor: "#4F46E5",
+        tabBarInactiveTintColor: "#9CA3AF",
+        tabBarStyle: { borderTopWidth: 1, borderTopColor: "#F3F4F6" },
       }}
     >
       <Tabs.Screen
-        name="index"
+        name="home"
         options={{
           title: "Home",
-          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
-            <Ionicons name="home" size={size} color={color} />
-          ),
+          tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
-        name="two"
+        name="papers"
         options={{
-          title: "Explore",
-          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
-            <Ionicons name="compass" size={size} color={color} />
-          ),
+          title: "Papers",
+          tabBarIcon: ({ color, size }) => <Ionicons name="book-outline" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="resources"
+        options={{
+          title: "Resources",
+          tabBarIcon: ({ color, size }) => <Ionicons name="folder-outline" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="projects"
+        options={{
+          title: "Projects",
+          tabBarIcon: ({ color, size }) => <Ionicons name="bulb-outline" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: "Profile",
+          tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" size={size} color={color} />,
         }}
       />
     </Tabs>
