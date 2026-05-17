@@ -13,6 +13,9 @@ export const env = createEnv({
     JWT_SECRET: z.string().min(32),
     JWT_REFRESH_SECRET: z.string().min(32),
 
+    // Anthropic — optional (AI features disabled when absent)
+    ANTHROPIC_API_KEY: z.string().optional(),
+
     // Google OAuth — optional (feature disabled when absent)
     GOOGLE_CLIENT_ID: z.string().optional(),
     GOOGLE_CLIENT_SECRET: z.string().optional(),
