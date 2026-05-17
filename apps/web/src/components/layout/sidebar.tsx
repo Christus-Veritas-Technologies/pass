@@ -1,11 +1,10 @@
 "use client";
 
 import {
+  BookOpen01Icon,
   Folder01Icon,
   Home01Icon,
   PriceTag01Icon,
-  TaskDaily01Icon,
-  BookOpen01Icon,
   User01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -17,7 +16,6 @@ import { cn } from "@/lib/utils";
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: Home01Icon },
   { href: "/resources", label: "Resources", icon: BookOpen01Icon },
-  { href: "/papers", label: "Papers", icon: TaskDaily01Icon },
   { href: "/projects", label: "Projects", icon: Folder01Icon },
   { href: "/pricing", label: "Pricing", icon: PriceTag01Icon },
   { href: "/profile", label: "Profile", icon: User01Icon },
