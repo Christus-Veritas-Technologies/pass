@@ -1,7 +1,7 @@
 import {
   BookOpen01Icon,
   CheckmarkCircle01Icon,
-  Fire01Icon,
+  FireIcon,
   TaskDaily01Icon,
   TrendUp01Icon,
 } from "@hugeicons/core-free-icons";
@@ -103,7 +103,7 @@ export default function HomeScreen() {
           {[
             { icon: TaskDaily01Icon, label: "Papers", value: String(STATS.papersAttempted) },
             { icon: CheckmarkCircle01Icon, label: "Questions", value: String(STATS.questionsAnswered) },
-            { icon: Fire01Icon, label: "Streak", value: `${STATS.currentStreak}d` },
+            { icon: FireIcon, label: "Streak", value: `${STATS.currentStreak}d` },
           ].map(({ icon, label, value }) => (
             <View
               key={label}

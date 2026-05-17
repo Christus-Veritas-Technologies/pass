@@ -1,7 +1,7 @@
 import {
   BookOpen01Icon,
   CheckmarkCircle01Icon,
-  Fire01Icon,
+  FireIcon,
   TaskDaily01Icon,
   TrendUp01Icon,
 } from "@hugeicons/core-free-icons";
@@ -108,7 +108,7 @@ export default function DashboardPage() {
         <Card className="rounded-xl">
           <CardContent className="pt-5">
             <div className="flex items-center gap-2 text-muted-foreground">
-              <HugeiconsIcon icon={Fire01Icon} className="h-4 w-4" />
+              <HugeiconsIcon icon={FireIcon} className="h-4 w-4" />
               <span className="text-xs font-medium">Streak</span>
             </div>
             <p className="mt-2 text-2xl font-bold">{STATS.currentStreak} days</p>
