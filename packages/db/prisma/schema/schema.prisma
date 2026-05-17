@@ -31,19 +31,45 @@ enum SessionMode {
 // ─── Models ───────────────────────────────────────────────────────────────────
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
+  id           String  @id @default(cuid())
+  email        String  @unique
   name         String
-  passwordHash String
+  passwordHash String? // null for Google-only accounts
+  googleId     String? @unique
   school       String?
   grade        String?
-  plan         Plan     @default(FREE)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  plan         Plan    @default(FREE)
 
-  sessions      PaperSession[]
-  projects      Project[]
-  monthlyUsages MonthlyUsage[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  authSessions        Session[]
+  passwordResetTokens PasswordResetToken[]
+  paperSessions       PaperSession[]
+  projects            Project[]
+  monthlyUsages       MonthlyUsage[]
+}
+
+// Stores one row per active refresh token. Deleting a row = revoking that session.
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  refreshToken String   @unique
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Resource {
@@ -56,7 +82,7 @@ model Resource {
   fileUrl   String
   createdAt DateTime     @default(now())
 
-  sessions PaperSession[]
+  paperSessions PaperSession[]
 }
 
 model PaperSession {
@@ -86,11 +112,11 @@ model Project {
 }
 
 model MonthlyUsage {
-  id            String @id @default(cuid())
-  userId        String
-  month         String
-  papersUsed    Int    @default(0)
-  projectsUsed  Int    @default(0)
+  id           String @id @default(cuid())
+  userId       String
+  month        String
+  papersUsed   Int    @default(0)
+  projectsUsed Int    @default(0)
 
   user User @relation(fields: [userId], references: [id])
 
