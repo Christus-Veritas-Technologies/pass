@@ -3,7 +3,7 @@
 import {
   BookOpen01Icon,
   Calendar01Icon,
-  ChevronRight01Icon,
+  ArrowRight01Icon,
   Search01Icon,
   TaskDaily01Icon,
 } from "@hugeicons/core-free-icons";
@@ -181,7 +181,7 @@ export default function PapersPage() {
                       <div className={cn(
                         "flex items-center gap-0.5 text-xs font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100"
                       )}>
-                        Start <HugeiconsIcon icon={ChevronRight01Icon} className="h-3.5 w-3.5" />
+                        Start <HugeiconsIcon icon={ArrowRight01Icon} className="h-3.5 w-3.5" />
                       </div>
                     </div>
                   </CardContent>

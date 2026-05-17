@@ -4,8 +4,8 @@ import {
   BookOpen01Icon,
   Folder01Icon,
   Home01Icon,
-  PriceTag01Icon,
-  User01Icon,
+  Tag01Icon,
+  UserIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import Image from "next/image";
@@ -18,8 +18,8 @@ const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: Home01Icon },
   { href: "/resources", label: "Resources", icon: BookOpen01Icon },
   { href: "/projects", label: "Projects", icon: Folder01Icon },
-  { href: "/pricing", label: "Pricing", icon: PriceTag01Icon },
-  { href: "/profile", label: "Profile", icon: User01Icon },
+  { href: "/pricing", label: "Pricing", icon: Tag01Icon },
+  { href: "/profile", label: "Profile", icon: UserIcon },
 ] as const;
 
 interface SidebarProps {

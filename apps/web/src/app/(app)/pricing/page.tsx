@@ -1,6 +1,6 @@
 import {
   CheckmarkCircle01Icon,
-  Crown01Icon,
+  CrownIcon,
   SparklesIcon,
   ZapIcon,
 } from "@hugeicons/core-free-icons";
@@ -66,7 +66,7 @@ const PLANS = [
     price: "$12",
     period: "per month",
     tagline: "Everything, unlimited",
-    icon: Crown01Icon,
+    icon: CrownIcon,
     color: "text-amber-500",
     badge: "Best value",
     cta: "Upgrade to Pass",

@@ -5,7 +5,7 @@ import {
   CheckmarkCircle01Icon,
   Edit01Icon,
   Logout01Icon,
-  User01Icon,
+  UserIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useRouter } from "next/navigation";
@@ -92,7 +92,7 @@ export default function ProfilePage() {
         grade: grade || undefined,
         school: school.trim() || undefined,
       });
-      setUser(res.user);
+      setUser(res.user as UserProfile);
       setSaveOk(true);
       setTimeout(() => { setEditing(false); setSaveOk(false); }, 1000);
     } catch (err: unknown) {
@@ -145,7 +145,7 @@ export default function ProfilePage() {
             <form onSubmit={handleSave} className="space-y-4">
               <div className="flex items-center gap-4 mb-5">
                 <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                  <HugeiconsIcon icon={User01Icon} className="h-8 w-8 text-primary" />
+                  <HugeiconsIcon icon={UserIcon} className="h-8 w-8 text-primary" />
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Editing profile</p>
@@ -210,7 +210,7 @@ export default function ProfilePage() {
           ) : (
             <div className="flex items-start gap-4">
               <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                <HugeiconsIcon icon={User01Icon} className="h-8 w-8 text-primary" />
+                <HugeiconsIcon icon={UserIcon} className="h-8 w-8 text-primary" />
               </div>
               <div className="space-y-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">

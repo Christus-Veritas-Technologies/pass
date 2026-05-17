@@ -3,7 +3,7 @@ import {
   CheckmarkCircle01Icon,
   FireIcon,
   TaskDaily01Icon,
-  TrendUp01Icon,
+  ChartIncreaseIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import Link from "next/link";
@@ -118,7 +118,7 @@ export default function DashboardPage() {
         <Card className="rounded-xl">
           <CardContent className="pt-5">
             <div className="flex items-center gap-2 text-muted-foreground">
-              <HugeiconsIcon icon={TrendUp01Icon} className="h-4 w-4" />
+              <HugeiconsIcon icon={ChartIncreaseIcon} className="h-4 w-4" />
               <span className="text-xs font-medium">Weekly goal</span>
             </div>
             <p className="mt-2 text-2xl font-bold">
@@ -191,12 +191,14 @@ export default function DashboardPage() {
       <div>
         <h2 className="mb-4 text-base font-semibold">Quick actions</h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {[
-            { label: "Start a paper", href: "/papers", icon: TaskDaily01Icon },
-            { label: "Browse resources", href: "/resources", icon: BookOpen01Icon },
-            { label: "View projects", href: "/projects", icon: TrendUp01Icon },
-            { label: "My profile", href: "/profile", icon: CheckmarkCircle01Icon },
-          ].map(({ label, href, icon }) => (
+          {(
+            [
+              { label: "Start a paper", href: "/papers" as const, icon: TaskDaily01Icon },
+              { label: "Browse resources", href: "/resources" as const, icon: BookOpen01Icon },
+              { label: "View projects", href: "/projects" as const, icon: ChartIncreaseIcon },
+              { label: "My profile", href: "/profile" as const, icon: CheckmarkCircle01Icon },
+            ] as const
+          ).map(({ label, href, icon }) => (
             <Link
               key={href}
               href={href}
