@@ -37,7 +37,12 @@ export default function LoginPage() {
     try {
       const data = await apiLogin(email, password);
       storeTokens(data);
-      router.replace("/dashboard");
+      localStorage.setItem("pass_user_name", data.user.name);
+      if (!data.user.grade) {
+        router.replace("/onboarding");
+      } else {
+        router.replace("/dashboard");
+      }
     } catch (err: unknown) {
       setErrors({ form: err instanceof Error ? err.message : "Login failed" });
     } finally {

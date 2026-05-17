@@ -50,7 +50,8 @@ export default function SignupPage() {
     try {
       const data = await apiSignup(name.trim(), email, password);
       storeTokens(data);
-      router.replace("/dashboard");
+      localStorage.setItem("pass_user_name", data.user.name);
+      router.replace("/onboarding");
     } catch (err: unknown) {
       setErrors({ form: err instanceof Error ? err.message : "Sign up failed" });
     } finally {
