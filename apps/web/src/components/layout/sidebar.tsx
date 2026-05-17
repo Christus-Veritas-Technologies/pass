@@ -8,6 +8,7 @@ import {
   User01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Separator } from "@pass/ui/components/separator";
@@ -32,9 +33,7 @@ export function Sidebar({ onClose }: SidebarProps) {
     <div className="flex h-full flex-col">
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-5 py-5">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-          <span className="text-sm font-black leading-none text-primary-foreground">P</span>
-        </div>
+        <Image src="/icon.png" alt="Pass" width={32} height={32} className="rounded-lg" />
         <span className="text-base font-bold tracking-tight">Pass</span>
       </div>
 

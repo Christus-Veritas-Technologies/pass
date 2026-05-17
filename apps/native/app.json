@@ -7,15 +7,18 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "icon": "./assets/images/icon.png",
     "android": {
       "package": "com.pass.app",
       "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#4F46E5"
       }
     },
     "ios": {
       "bundleIdentifier": "com.pass.app",
-      "supportsTablet": true
+      "supportsTablet": true,
+      "icon": "./assets/images/icon.png"
     },
     "web": {
       "bundler": "metro"
