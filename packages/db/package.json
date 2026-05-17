@@ -13,7 +13,7 @@
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "postinstall": "prisma generate",
+    "postinstall": "node ./scripts/postinstall.mjs",
     "db:studio": "prisma studio"
   },
   "dependencies": {
