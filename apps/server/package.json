@@ -12,6 +12,9 @@
   "dependencies": {
     "@pass/db": "workspace:*",
     "@pass/env": "workspace:*",
+    "@ai-sdk/anthropic": "^1.2.0",
+    "@mastra/core": "^0.10.0",
+    "ai": "^4.3.0",
     "dotenv": "catalog:",
     "hono": "^4.8.2",
     "jose": "^5.10.0",
