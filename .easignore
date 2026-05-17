@@ -1,0 +1,37 @@
+# ── EAS Build Archive Ignore ──────────────────────────────────────────────────
+# This file reduces the 191MB archive by excluding monorepo workspaces and
+# build artifacts that are not needed to compile the native app.
+# EAS reinstalls all dependencies from bun.lock on their servers, so
+# node_modules, build outputs, and non-native app source are safe to exclude.
+
+# ── Non-native apps ────────────────────────────────────────────────────────────
+apps/web/
+apps/server/
+
+# ── DB package (not imported by native) ────────────────────────────────────────
+packages/db/generated/
+packages/db/node_modules/
+packages/db/prisma/migrations/
+
+# ── UI package (native uses its own components, not @pass/ui) ──────────────────
+packages/ui/node_modules/
+packages/ui/.turbo/
+
+# ── Workspace node_modules (reinstalled on EAS) ─────────────────────────────
+node_modules/
+apps/native/node_modules/
+packages/env/node_modules/
+packages/config/node_modules/
+
+# ── Build caches & outputs ─────────────────────────────────────────────────────
+.turbo/
+.next/
+dist/
+build/
+*.tsbuildinfo
+.cache/
+
+# ── Dev / editor artifacts ──────────────────────────────────────────────────────
+.DS_Store
+*.log
+.claude/
