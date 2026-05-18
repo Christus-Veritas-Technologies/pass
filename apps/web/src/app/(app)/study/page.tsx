@@ -12,7 +12,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Badge } from "@pass/ui/components/badge";
-import { Button, buttonVariants } from "@pass/ui/components/button";
+import { buttonVariants } from "@pass/ui/components/button";
 import { Card, CardContent } from "@pass/ui/components/card";
 import { Skeleton } from "@pass/ui/components/skeleton";
 import {
@@ -60,14 +60,42 @@ function StatsSkeleton() {
       {Array.from({ length: 3 }).map((_, i) => (
         <Card key={i} className="rounded-xl">
           <CardContent className="pt-5 space-y-2">
-            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-8 w-8 rounded-lg" />
             <Skeleton className="h-8 w-16" />
+            <Skeleton className="h-3 w-20" />
           </CardContent>
         </Card>
       ))}
     </div>
   );
 }
+
+const STAT_CARDS = [
+  {
+    icon: TaskDaily01Icon,
+    label: "Papers done",
+    subLabel: (d: StudyStats) => `of ${d.sessionsStarted} started`,
+    value: (d: StudyStats) => d.sessionsCompleted,
+    iconColor: "text-violet-600",
+    iconBg: "bg-violet-50",
+  },
+  {
+    icon: TrendingUpDownIcon,
+    label: "Completion rate",
+    subLabel: () => "sessions finished",
+    value: (d: StudyStats) => `${d.passRate}%`,
+    iconColor: "text-emerald-600",
+    iconBg: "bg-emerald-50",
+  },
+  {
+    icon: CheckmarkCircle01Icon,
+    label: "Questions answered",
+    subLabel: () => "across all sessions",
+    value: (d: StudyStats) => d.totalQuestionsAnswered,
+    iconColor: "text-blue-600",
+    iconBg: "bg-blue-50",
+  },
+];
 
 export default function StudyPage() {
   const router = useRouter();
@@ -80,7 +108,7 @@ export default function StudyPage() {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
       .then((r) => r.json())
-      .then(setData)
+      .then((d) => setData(d?.sessions !== undefined ? d : null))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
@@ -88,7 +116,7 @@ export default function StudyPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-8 animate-fade-up">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Study</h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -106,46 +134,31 @@ export default function StudyPage() {
         <StatsSkeleton />
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-          <Card className="rounded-xl transition-[transform,box-shadow] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-0.5 hover:shadow-sm animate-fade-up stagger-1">
-            <CardContent className="pt-5 pb-4">
-              <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                <HugeiconsIcon icon={TaskDaily01Icon} className="h-3.5 w-3.5" />
-                <span className="text-xs font-medium">Papers done</span>
-              </div>
-              <p className="text-2xl font-bold tracking-tight">{data?.sessionsCompleted ?? 0}</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                of {data?.sessionsStarted ?? 0} started
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-xl transition-[transform,box-shadow] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-0.5 hover:shadow-sm animate-fade-up stagger-2">
-            <CardContent className="pt-5 pb-4">
-              <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                <HugeiconsIcon icon={TrendingUpDownIcon} className="h-3.5 w-3.5" />
-                <span className="text-xs font-medium">Completion rate</span>
-              </div>
-              <p className="text-2xl font-bold tracking-tight">{data?.passRate ?? 0}%</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">sessions finished</p>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-xl col-span-2 sm:col-span-1 transition-[transform,box-shadow] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-0.5 hover:shadow-sm animate-fade-up stagger-3">
-            <CardContent className="pt-5 pb-4">
-              <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                <HugeiconsIcon icon={CheckmarkCircle01Icon} className="h-3.5 w-3.5" />
-                <span className="text-xs font-medium">Questions answered</span>
-              </div>
-              <p className="text-2xl font-bold tracking-tight">{data?.totalQuestionsAnswered ?? 0}</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">across all sessions</p>
-            </CardContent>
-          </Card>
+          {STAT_CARDS.map(({ icon, label, subLabel, value, iconColor, iconBg }, i) => (
+            <Card key={label} className={`rounded-xl transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-sm animate-fade-up stagger-${i + 1} ${i === 2 ? "col-span-2 sm:col-span-1" : ""}`}>
+              <CardContent className="pt-5 pb-4">
+                <div className={`mb-3 flex h-8 w-8 items-center justify-center rounded-lg ${iconBg}`}>
+                  <HugeiconsIcon icon={icon} className={`h-4 w-4 ${iconColor}`} />
+                </div>
+                <p className="text-2xl font-bold tracking-tight">{data ? value(data) : 0}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">{label}</p>
+                {data && (
+                  <p className="mt-0.5 text-xs text-muted-foreground/70">{subLabel(data)}</p>
+                )}
+              </CardContent>
+            </Card>
+          ))}
         </div>
       )}
 
       {/* Recent sessions table */}
       <div>
-        <h2 className="text-base font-semibold mb-4">Recent sessions</h2>
+        <h2 className="text-base font-semibold mb-4 flex items-center gap-2">
+          <span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-primary/10">
+            <HugeiconsIcon icon={GraduationScrollIcon} className="h-3 w-3 text-primary" />
+          </span>
+          Recent sessions
+        </h2>
         {loading ? (
           <Card className="rounded-xl">
             <CardContent className="py-4 space-y-3">
@@ -159,14 +172,14 @@ export default function StudyPage() {
               ))}
             </CardContent>
           </Card>
-        ) : !data?.sessions.length ? (
+        ) : !data?.sessions?.length ? (
           <Card className="rounded-xl">
             <CardContent className="py-16 flex flex-col items-center text-center gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-                <HugeiconsIcon icon={GraduationScrollIcon} className="h-7 w-7 text-primary/40" />
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-violet-50">
+                <HugeiconsIcon icon={GraduationScrollIcon} className="h-7 w-7 text-violet-400" />
               </div>
               <div>
-                <p className="text-sm font-medium">No sessions yet</p>
+                <p className="text-sm font-semibold">No sessions yet</p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   Start your first practice session to track your progress.
                 </p>
@@ -178,31 +191,36 @@ export default function StudyPage() {
           <Card className="rounded-xl overflow-hidden">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Paper</TableHead>
-                  <TableHead>Subject</TableHead>
-                  <TableHead>Mode</TableHead>
-                  <TableHead className="text-right">Questions</TableHead>
-                  <TableHead className="text-right">When</TableHead>
+                <TableRow className="bg-muted/30">
+                  <TableHead className="font-semibold text-foreground">Paper</TableHead>
+                  <TableHead className="font-semibold text-foreground">Subject</TableHead>
+                  <TableHead className="font-semibold text-foreground">Mode</TableHead>
+                  <TableHead className="text-right font-semibold text-foreground">Questions</TableHead>
+                  <TableHead className="text-right font-semibold text-foreground">When</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {data.sessions.map((s) => (
                   <TableRow
                     key={s.id}
-                    className="cursor-pointer transition-colors duration-100 active:bg-muted/80"
+                    className="cursor-pointer transition-colors duration-100 hover:bg-muted/40"
                     onClick={() => router.push(`/papers/${s.paperId}`)}
                   >
                     <TableCell className="font-medium max-w-[240px]">
                       <span className="line-clamp-1">{s.paperTitle}</span>
                     </TableCell>
-                    <TableCell className="text-muted-foreground text-xs">{s.subject}</TableCell>
                     <TableCell>
-                      <Badge variant={s.mode === "GUIDE" ? "default" : "outline"} className="text-xs">
+                      <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium">{s.subject}</span>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={s.mode === "GUIDE" ? "default" : "outline"}
+                        className={`text-xs ${s.mode === "GUIDE" ? "bg-violet-100 text-violet-700 border-violet-200 hover:bg-violet-100" : ""}`}
+                      >
                         {s.mode === "GUIDE" ? "Guide" : "Free"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right text-sm">{s.questionsAnswered}</TableCell>
+                    <TableCell className="text-right text-sm font-medium">{s.questionsAnswered}</TableCell>
                     <TableCell className="text-right text-xs text-muted-foreground">
                       {timeAgo(s.completedAt)}
                     </TableCell>
