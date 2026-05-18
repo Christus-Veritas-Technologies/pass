@@ -47,6 +47,8 @@ export function apiForgotPassword(email: string) {
   });
 }
 
+export const SESSION_EXPIRED = "SESSION_EXPIRED";
+
 export function apiGoogleNative(idToken: string) {
   return request<{ user: AuthUser } & AuthTokens & { isNew: boolean }>("/auth/google/native", {
     method: "POST",
@@ -56,6 +58,7 @@ export function apiGoogleNative(idToken: string) {
 
 async function authedRequest<T>(path: string, init: RequestInit): Promise<T> {
   const accessToken = await SecureStore.getItemAsync("pass_access_token");
+
   const res = await fetch(`${API}${path}`, {
     ...init,
     headers: {
@@ -63,9 +66,47 @@ async function authedRequest<T>(path: string, init: RequestInit): Promise<T> {
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     },
   });
+
+  if (res.ok) return res.json() as Promise<T>;
+
+  // On 401, attempt token refresh once then retry
+  if (res.status === 401) {
+    const refreshToken = await SecureStore.getItemAsync("pass_refresh_token");
+
+    if (refreshToken) {
+      try {
+        const refreshRes = await fetch(`${API}/auth/refresh`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refreshToken }),
+        });
+
+        if (refreshRes.ok) {
+          const { accessToken: newAccess, refreshToken: newRefresh } = await refreshRes.json();
+          await storeTokens({ accessToken: newAccess, refreshToken: newRefresh });
+
+          const retry = await fetch(`${API}${path}`, {
+            ...init,
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${newAccess}`,
+            },
+          });
+          if (retry.ok) return retry.json() as Promise<T>;
+          const retryJson = await retry.json();
+          throw new Error(retryJson.error ?? "Something went wrong");
+        }
+      } catch {
+        // Refresh failed — clear tokens
+      }
+    }
+
+    await clearTokens();
+    throw new Error("SESSION_EXPIRED");
+  }
+
   const json = await res.json();
-  if (!res.ok) throw new Error(json.error ?? "Something went wrong");
-  return json as T;
+  throw new Error(json.error ?? "Something went wrong");
 }
 
 export function apiUpdateProfile(data: { grade?: string; school?: string; name?: string }) {
