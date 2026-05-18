@@ -261,11 +261,18 @@ export default function ProjectsPage() {
             </>
           ) : projects.length === 0 ? (
             <div className="flex flex-col items-center py-12 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted mb-3">
-                <HugeiconsIcon icon={Folder01Icon} className="h-5 w-5 text-muted-foreground" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 mb-3">
+                <HugeiconsIcon icon={Folder01Icon} className="h-5 w-5 text-primary/40" />
               </div>
               <p className="text-sm font-medium">No projects yet</p>
-              <p className="mt-1 text-xs text-muted-foreground">Generate your first study guide above.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Generate your first AI study guide.</p>
+              <button
+                onClick={() => { setShowForm(true); setSelected(null); setStreamedContent(""); }}
+                className="mt-3 flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary/90"
+              >
+                <HugeiconsIcon icon={SparklesIcon} className="h-3.5 w-3.5" />
+                Generate guide
+              </button>
             </div>
           ) : (
             projects.map((p) => (

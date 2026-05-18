@@ -1,3 +1,5 @@
+"use client";
+
 import {
   BookOpen01Icon,
   CheckmarkCircle01Icon,
@@ -7,132 +9,159 @@ import {
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { Badge } from "@pass/ui/components/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@pass/ui/components/card";
+import { Button } from "@pass/ui/components/button";
+import { Card, CardContent } from "@pass/ui/components/card";
 import { Progress } from "@pass/ui/components/progress";
+import { Skeleton } from "@pass/ui/components/skeleton";
+import { getAccessToken } from "@/lib/auth";
 
-// Mock data — mirrors what the API will return
-const STATS = {
-  papersAttempted: 12,
-  questionsAnswered: 148,
-  currentStreak: 5,
-  weeklyGoal: 20,
-  weeklyProgress: 14,
-};
+const API = process.env.NEXT_PUBLIC_SERVER_URL;
 
-const RECENT_SESSIONS = [
-  {
-    id: "session_1",
-    paperTitle: "Mathematics Paper 1 2023",
-    subject: "Mathematics",
-    score: 75,
-    questionsTotal: 20,
-    completedAt: "2 days ago",
-  },
-  {
-    id: "session_2",
-    paperTitle: "English Language Paper 2 2022",
-    subject: "English Language",
-    score: 60,
-    questionsTotal: 15,
-    completedAt: "4 days ago",
-  },
-  {
-    id: "session_3",
-    paperTitle: "Combined Science Paper 1 2023",
-    subject: "Combined Science",
-    score: 88,
-    questionsTotal: 25,
-    completedAt: "6 days ago",
-  },
-];
+interface Stats {
+  papersAttempted: number;
+  questionsAnswered: number;
+  currentStreak: number;
+  weeklyGoal: number;
+  weeklyProgress: number;
+}
 
-const FEATURED_RESOURCES = [
-  {
-    id: "res_1",
-    title: "Mathematics Revision Notes",
-    subject: "Mathematics",
-    type: "notes",
-  },
-  {
-    id: "res_2",
-    title: "English Essay Writing Guide",
-    subject: "English Language",
-    type: "guide",
-  },
-  {
-    id: "res_3",
-    title: "Chemistry Periodic Table Flashcards",
-    subject: "Chemistry",
-    type: "flashcards",
-  },
-];
+interface RecentSession {
+  id: string;
+  paperTitle: string;
+  subject: string;
+  questionsAnswered: number;
+  completedAt: string;
+}
 
-function scoreColor(score: number) {
-  if (score >= 80) return "success";
-  if (score >= 60) return "warning";
-  return "destructive";
+interface FeaturedResource {
+  id: string;
+  title: string;
+  subject: string;
+  type: string;
+}
+
+function timeAgo(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const days = Math.floor(diff / 86400000);
+  if (days === 0) return "today";
+  if (days === 1) return "yesterday";
+  return `${days} days ago`;
+}
+
+function StatsSkeleton() {
+  return (
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <Card key={i} className="rounded-xl">
+          <CardContent className="pt-5 space-y-2">
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-7 w-12" />
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
 }
 
 export default function DashboardPage() {
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [sessions, setSessions] = useState<RecentSession[]>([]);
+  const [resources, setResources] = useState<FeaturedResource[]>([]);
+  const [userName, setUserName] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const token = getAccessToken();
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+    Promise.allSettled([
+      fetch(`${API}/users/me`, { headers }),
+      fetch(`${API}/papers/sessions/recent`, { headers }),
+      fetch(`${API}/resources/featured`),
+    ]).then(async ([meRes, sessionsRes, resourcesRes]) => {
+      if (meRes.status === "fulfilled" && meRes.value.ok) {
+        const data = await meRes.value.json();
+        setStats(data.stats);
+        setUserName(data.user?.name?.split(" ")[0] ?? "");
+      }
+      if (sessionsRes.status === "fulfilled" && sessionsRes.value.ok) {
+        const data = await sessionsRes.value.json();
+        setSessions(data.sessions ?? []);
+      }
+      if (resourcesRes.status === "fulfilled" && resourcesRes.value.ok) {
+        const data = await resourcesRes.value.json();
+        setResources(data.resources ?? []);
+      }
+      setLoading(false);
+    });
+  }, []);
+
   return (
     <div className="mx-auto max-w-4xl space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+        <h1 className="text-2xl font-bold tracking-tight">
+          {userName ? `Hi, ${userName}` : "Dashboard"}
+        </h1>
         <p className="mt-1 text-sm text-muted-foreground">Welcome back — keep the streak going.</p>
       </div>
 
       {/* Stats grid */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Card className="rounded-xl">
-          <CardContent className="pt-5">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <HugeiconsIcon icon={TaskDaily01Icon} className="h-4 w-4" />
-              <span className="text-xs font-medium">Papers</span>
-            </div>
-            <p className="mt-2 text-2xl font-bold">{STATS.papersAttempted}</p>
-          </CardContent>
-        </Card>
+      {loading ? (
+        <StatsSkeleton />
+      ) : (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <Card className="rounded-xl">
+            <CardContent className="pt-5">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <HugeiconsIcon icon={TaskDaily01Icon} className="h-4 w-4" />
+                <span className="text-xs font-medium">Papers</span>
+              </div>
+              <p className="mt-2 text-2xl font-bold">{stats?.papersAttempted ?? 0}</p>
+            </CardContent>
+          </Card>
 
-        <Card className="rounded-xl">
-          <CardContent className="pt-5">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <HugeiconsIcon icon={CheckmarkCircle01Icon} className="h-4 w-4" />
-              <span className="text-xs font-medium">Questions</span>
-            </div>
-            <p className="mt-2 text-2xl font-bold">{STATS.questionsAnswered}</p>
-          </CardContent>
-        </Card>
+          <Card className="rounded-xl">
+            <CardContent className="pt-5">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <HugeiconsIcon icon={CheckmarkCircle01Icon} className="h-4 w-4" />
+                <span className="text-xs font-medium">Questions</span>
+              </div>
+              <p className="mt-2 text-2xl font-bold">{stats?.questionsAnswered ?? 0}</p>
+            </CardContent>
+          </Card>
 
-        <Card className="rounded-xl">
-          <CardContent className="pt-5">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <HugeiconsIcon icon={FireIcon} className="h-4 w-4" />
-              <span className="text-xs font-medium">Streak</span>
-            </div>
-            <p className="mt-2 text-2xl font-bold">{STATS.currentStreak} days</p>
-          </CardContent>
-        </Card>
+          <Card className="rounded-xl">
+            <CardContent className="pt-5">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <HugeiconsIcon icon={FireIcon} className="h-4 w-4" />
+                <span className="text-xs font-medium">Streak</span>
+              </div>
+              <p className="mt-2 text-2xl font-bold">{stats?.currentStreak ?? 0} days</p>
+            </CardContent>
+          </Card>
 
-        <Card className="rounded-xl">
-          <CardContent className="pt-5">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <HugeiconsIcon icon={ChartIncreaseIcon} className="h-4 w-4" />
-              <span className="text-xs font-medium">Weekly goal</span>
-            </div>
-            <p className="mt-2 text-2xl font-bold">
-              {STATS.weeklyProgress}
-              <span className="text-sm font-normal text-muted-foreground">/{STATS.weeklyGoal}</span>
-            </p>
-            <Progress
-              value={STATS.weeklyProgress}
-              max={STATS.weeklyGoal}
-              className="mt-2 h-1.5"
-            />
-          </CardContent>
-        </Card>
-      </div>
+          <Card className="rounded-xl">
+            <CardContent className="pt-5">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <HugeiconsIcon icon={ChartIncreaseIcon} className="h-4 w-4" />
+                <span className="text-xs font-medium">Weekly goal</span>
+              </div>
+              <p className="mt-2 text-2xl font-bold">
+                {stats?.weeklyProgress ?? 0}
+                <span className="text-sm font-normal text-muted-foreground">/{stats?.weeklyGoal ?? 5}</span>
+              </p>
+              <Progress
+                value={stats?.weeklyProgress ?? 0}
+                max={stats?.weeklyGoal ?? 5}
+                className="mt-2 h-1.5"
+              />
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Recent papers */}
       <div>
@@ -142,23 +171,54 @@ export default function DashboardPage() {
             View all
           </Link>
         </div>
-        <div className="space-y-3">
-          {RECENT_SESSIONS.map((s) => (
-            <Card key={s.id} className="rounded-xl">
-              <CardContent className="py-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{s.paperTitle}</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {s.subject} · {s.questionsTotal} questions · {s.completedAt}
-                    </p>
+        {loading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Card key={i} className="rounded-xl">
+                <CardContent className="py-4 flex items-center justify-between gap-4">
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-2/3" />
+                    <Skeleton className="h-3 w-1/3" />
                   </div>
-                  <Badge variant={scoreColor(s.score)}>{s.score}%</Badge>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                  <Skeleton className="h-6 w-10 rounded-full" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : sessions.length === 0 ? (
+          <Card className="rounded-xl">
+            <CardContent className="py-10 flex flex-col items-center text-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                <HugeiconsIcon icon={TaskDaily01Icon} className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">No papers attempted yet</p>
+                <p className="mt-1 text-xs text-muted-foreground">Start a practice session to track your progress.</p>
+              </div>
+              <Button asChild size="sm" className="mt-1">
+                <Link href="/papers">Browse papers</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {sessions.slice(0, 5).map((s) => (
+              <Card key={s.id} className="rounded-xl">
+                <CardContent className="py-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{s.paperTitle}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {s.subject} · {timeAgo(s.completedAt)}
+                      </p>
+                    </div>
+                    <Badge variant="outline">{s.questionsAnswered}q</Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Featured resources */}
@@ -169,22 +229,40 @@ export default function DashboardPage() {
             View all
           </Link>
         </div>
-        <div className="grid gap-3 sm:grid-cols-3">
-          {FEATURED_RESOURCES.map((r) => (
-            <Card key={r.id} className="rounded-xl">
-              <CardContent className="py-4">
-                <div className="mb-2 flex items-center gap-2">
-                  <HugeiconsIcon icon={BookOpen01Icon} className="h-4 w-4 shrink-0 text-primary" />
-                  <Badge variant="outline" className="capitalize">
-                    {r.type}
-                  </Badge>
-                </div>
-                <p className="text-sm font-medium leading-snug">{r.title}</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">{r.subject}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        {loading ? (
+          <div className="grid gap-3 sm:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Card key={i} className="rounded-xl">
+                <CardContent className="py-4 space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : resources.length === 0 ? (
+          <Card className="rounded-xl">
+            <CardContent className="py-10 flex flex-col items-center text-center gap-2">
+              <HugeiconsIcon icon={BookOpen01Icon} className="h-8 w-8 text-muted-foreground/40" />
+              <p className="text-sm font-medium text-muted-foreground">No resources available yet</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-3">
+            {resources.map((r) => (
+              <Card key={r.id} className="rounded-xl">
+                <CardContent className="py-4">
+                  <div className="mb-2 flex items-center gap-2">
+                    <HugeiconsIcon icon={BookOpen01Icon} className="h-4 w-4 shrink-0 text-primary" />
+                    <Badge variant="outline" className="capitalize text-xs">{r.type}</Badge>
+                  </div>
+                  <p className="text-sm font-medium leading-snug">{r.title}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{r.subject}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Quick actions */}

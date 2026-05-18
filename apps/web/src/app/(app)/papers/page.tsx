@@ -145,11 +145,27 @@ export default function PapersPage() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted mb-4">
-            <HugeiconsIcon icon={BookOpen01Icon} className="h-6 w-6 text-muted-foreground" />
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 mb-4">
+            <HugeiconsIcon icon={BookOpen01Icon} className="h-6 w-6 text-primary/40" />
           </div>
-          <p className="text-sm font-medium">No papers found</p>
-          <p className="mt-1 text-xs text-muted-foreground">Try adjusting your filters or search term.</p>
+          <p className="text-sm font-medium">
+            {papers.length === 0 ? "No papers available" : "No papers match your filters"}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {papers.length === 0
+              ? "Check back soon — papers are added regularly."
+              : search.trim()
+              ? `No results for "${search}". Try a different search term.`
+              : "Try clearing your subject, grade, or year filters."}
+          </p>
+          {(subject !== "All" || grade !== "All" || year !== "All" || search) && (
+            <button
+              onClick={() => { setSubject("All"); setGrade("All"); setYear("All"); setSearch(""); }}
+              className="mt-4 text-xs text-primary hover:underline"
+            >
+              Clear all filters
+            </button>
+          )}
         </div>
       ) : (
         <>
