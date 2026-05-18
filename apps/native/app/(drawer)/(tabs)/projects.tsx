@@ -5,7 +5,7 @@ import {
   SparklesIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as SecureStore from "expo-secure-store";
 import { MotiView } from "moti";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -69,7 +69,7 @@ export default function ProjectsScreen() {
   const abortRef = useRef<AbortController | null>(null);
 
   async function getToken() {
-    try { return await AsyncStorage.getItem("pass_access_token"); } catch { return null; }
+    try { return await SecureStore.getItemAsync("pass_access_token"); } catch { return null; }
   }
 
   async function fetchProjects(isRefresh = false) {
