@@ -13,10 +13,11 @@ const router = new Hono();
 
 // Public list
 router.get("/", getPapers);
-router.get("/:id", getPaper);
 
-// Auth-required
+// Static routes before param routes to avoid /:id swallowing them
 router.get("/sessions/recent", requireAuth, getRecentSessions);
+
+router.get("/:id", getPaper);
 
 // Session endpoints — require auth
 router.post("/:id/session/start", requireAuth, startSession);
