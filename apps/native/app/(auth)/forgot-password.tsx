@@ -2,6 +2,7 @@ import { ArrowLeft01Icon, CheckmarkCircle01Icon, Mail01Icon } from "@hugeicons/c
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { router } from "expo-router";
 import { MotiView } from "moti";
+import { Easing } from "react-native-reanimated";
 import { useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -45,7 +46,7 @@ export default function ForgotPasswordScreen() {
         <MotiView
           from={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ type: "timing", duration: 350 }}
+          transition={{ type: "timing", duration: 250, easing: Easing.bezier(0.23, 1, 0.32, 1) }}
           style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 32 }}
         >
           <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: "#DCFCE7", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
@@ -77,7 +78,7 @@ export default function ForgotPasswordScreen() {
           <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: 24, paddingBottom: 40 }}>
 
             {/* Back button */}
-            <MotiView from={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ type: "timing", duration: 300 }}>
+            <MotiView from={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ type: "timing", duration: 250, easing: Easing.bezier(0.23, 1, 0.32, 1) }}>
               <Pressable
                 onPress={() => router.back()}
                 hitSlop={8}
@@ -88,7 +89,7 @@ export default function ForgotPasswordScreen() {
               </Pressable>
             </MotiView>
 
-            <MotiView from={{ opacity: 0, translateY: 12 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 400, delay: 80 }} style={{ marginTop: 40, gap: 8 }}>
+            <MotiView from={{ opacity: 0, translateY: 12 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 220, delay: 80, easing: Easing.bezier(0.23, 1, 0.32, 1) }} style={{ marginTop: 40, gap: 8 }}>
               <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: "#EEF2FF", alignItems: "center", justifyContent: "center", marginBottom: 4 }}>
                 <HugeiconsIcon icon={Mail01Icon} size={22} color={BRAND} />
               </View>
@@ -98,7 +99,7 @@ export default function ForgotPasswordScreen() {
               </Text>
             </MotiView>
 
-            <MotiView from={{ opacity: 0, translateY: 12 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 400, delay: 160 }} style={{ marginTop: 36, gap: 16 }}>
+            <MotiView from={{ opacity: 0, translateY: 12 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 220, delay: 160, easing: Easing.bezier(0.23, 1, 0.32, 1) }} style={{ marginTop: 36, gap: 16 }}>
               <Input
                 label="Email"
                 placeholder="you@example.com"
