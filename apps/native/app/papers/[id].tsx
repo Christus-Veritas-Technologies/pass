@@ -1,6 +1,8 @@
 import {
   ArrowLeft01Icon,
   CheckmarkCircle01Icon,
+  File01Icon,
+  Image01Icon,
   SparklesIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react-native";
@@ -9,7 +11,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Animated,
   Pressable,
   ScrollView,
   Text,
@@ -19,6 +20,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { env } from "@pass/env/native";
 import { Button } from "@/components/ui/button";
+import { PdfViewerModal } from "@/components/pdf-viewer";
 
 const BRAND = "#4F46E5";
 const API = env.EXPO_PUBLIC_SERVER_URL;
@@ -28,6 +30,12 @@ interface Question {
   questionNumber: number;
   text: string;
   marks: number;
+  section?: string | null;
+  topic?: string | null;
+  pdfPage?: number | null;
+  hasDiagram?: boolean;
+  diagramNote?: string | null;
+  guideSource?: "AI_GENERATED" | "OFFICIAL";
 }
 
 interface Paper {
@@ -36,6 +44,7 @@ interface Paper {
   subject: string;
   grade: string;
   year: number;
+  fileUrl?: string;
 }
 
 type Mode = "GUIDE" | "FREE";
@@ -69,7 +78,16 @@ export default function PaperSessionScreen() {
   const [completed, setCompleted] = useState<Set<number>>(new Set());
   const [sessionComplete, setSessionComplete] = useState(false);
 
+  const [pdfVisible, setPdfVisible] = useState(false);
+  const [pdfPage, setPdfPage] = useState(1);
+
   const scrollRef = useRef<ScrollView>(null);
+
+  const pdfUri = paper?.fileUrl ? `${API}${paper.fileUrl}` : "";
+  function openPdf(page = 1) {
+    setPdfPage(page);
+    setPdfVisible(true);
+  }
 
   useEffect(() => {
     fetch(`${API}/papers/${id}`)
@@ -226,7 +244,34 @@ export default function PaperSessionScreen() {
             </Text>
           )}
         </View>
+        {pdfUri !== "" && (
+          <Pressable
+            onPress={() => openPdf(1)}
+            hitSlop={8}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 5,
+              backgroundColor: "#EEF2FF",
+              borderRadius: 9,
+              paddingHorizontal: 10,
+              paddingVertical: 6,
+            }}
+          >
+            <HugeiconsIcon icon={File01Icon} size={14} color={BRAND} />
+            <Text style={{ fontSize: 12, fontWeight: "600", color: BRAND }}>Paper</Text>
+          </Pressable>
+        )}
       </View>
+
+      {/* Original-paper PDF viewer */}
+      <PdfViewerModal
+        visible={pdfVisible}
+        onClose={() => setPdfVisible(false)}
+        uri={pdfUri}
+        page={pdfPage}
+        title={paper?.title}
+      />
 
       {/* Progress bar */}
       {started && (
@@ -329,6 +374,29 @@ export default function PaperSessionScreen() {
                 </View>
               </View>
               <Text style={{ fontSize: 15, color: "#111827", lineHeight: 24 }}>{currentQ.text}</Text>
+
+              {/* Diagram-dependent question — link to the original PDF page */}
+              {currentQ.hasDiagram && (
+                <Pressable
+                  onPress={() => openPdf(currentQ.pdfPage ?? 1)}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 8,
+                    marginTop: 12,
+                    backgroundColor: "#FEF3C7",
+                    borderRadius: 10,
+                    padding: 10,
+                  }}
+                >
+                  <HugeiconsIcon icon={Image01Icon} size={16} color="#B45309" />
+                  <Text style={{ flex: 1, fontSize: 12, color: "#92400E", lineHeight: 17 }}>
+                    {currentQ.diagramNote
+                      ? `Refers to a figure: ${currentQ.diagramNote}. Tap to view the original paper.`
+                      : "This question refers to a figure. Tap to view the original paper."}
+                  </Text>
+                </Pressable>
+              )}
             </View>
 
             {/* Guide: answer input */}
@@ -391,6 +459,20 @@ export default function PaperSessionScreen() {
                     AI {mode === "GUIDE" ? "Feedback" : "Solution"}
                   </Text>
                   {streaming && <ActivityIndicator size="small" color={BRAND} style={{ marginLeft: 4 }} />}
+                  {mode === "GUIDE" && !streaming && (
+                    <Text
+                      style={{
+                        marginLeft: "auto",
+                        fontSize: 10,
+                        fontWeight: "600",
+                        color: currentQ.guideSource === "OFFICIAL" ? "#16A34A" : "#9CA3AF",
+                      }}
+                    >
+                      {currentQ.guideSource === "OFFICIAL"
+                        ? "Official marking scheme"
+                        : "AI-estimated marking"}
+                    </Text>
+                  )}
                 </View>
                 <Text style={{ fontSize: 14, color: "#1E293B", lineHeight: 22 }}>
                   {aiResponses[currentQ.questionNumber]}
