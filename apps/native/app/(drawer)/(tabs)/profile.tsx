@@ -10,6 +10,7 @@ import { HugeiconsIcon } from "@hugeicons/react-native";
 import * as SecureStore from "expo-secure-store";
 import { useRouter } from "expo-router";
 import { MotiView } from "moti";
+import { Easing } from "react-native-reanimated";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -156,7 +157,7 @@ export default function ProfileScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
           {/* Header */}
-          <MotiView from={{ opacity: 0, translateY: -8 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 350 }}>
+          <MotiView from={{ opacity: 0, translateY: -8 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 250, easing: Easing.bezier(0.23, 1, 0.32, 1) }}>
           <View style={{ backgroundColor: "#FFFFFF", paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24, alignItems: "center" }}>
             <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: "#EEF2FF", alignItems: "center", justifyContent: "center", marginBottom: 12 }}>
               <HugeiconsIcon icon={User01Icon} size={36} color={BRAND} />
@@ -182,7 +183,7 @@ export default function ProfileScreen() {
 
           {/* Stats */}
           {stats && (
-            <MotiView from={{ opacity: 0, translateY: 8 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 350, delay: 80 }}>
+            <MotiView from={{ opacity: 0, translateY: 8 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 220, delay: 60, easing: Easing.bezier(0.23, 1, 0.32, 1) }}>
             <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
               <Text style={{ fontSize: 13, fontWeight: "600", color: "#374151", marginBottom: 12 }}>Your stats</Text>
               <View style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
@@ -283,7 +284,7 @@ export default function ProfileScreen() {
               </View>
             </View>
           ) : (
-            <MotiView from={{ opacity: 0, translateY: 8 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 350, delay: 160 }}>
+            <MotiView from={{ opacity: 0, translateY: 8 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 220, delay: 120, easing: Easing.bezier(0.23, 1, 0.32, 1) }}>
             <View style={{ marginHorizontal: 20, marginTop: 20, gap: 10 }}>
               {/* Edit button */}
               <Pressable
