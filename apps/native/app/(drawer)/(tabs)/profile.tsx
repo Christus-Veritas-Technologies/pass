@@ -7,7 +7,7 @@ import {
   User01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as SecureStore from "expo-secure-store";
 import { useRouter } from "expo-router";
 import { MotiView } from "moti";
 import { useEffect, useState } from "react";
@@ -75,7 +75,7 @@ export default function ProfileScreen() {
   const [saveErr, setSaveErr] = useState("");
 
   async function getToken() {
-    try { return await AsyncStorage.getItem("pass_access_token"); } catch { return null; }
+    try { return await SecureStore.getItemAsync("pass_access_token"); } catch { return null; }
   }
 
   useEffect(() => {
@@ -134,7 +134,10 @@ export default function ProfileScreen() {
   }
 
   async function handleLogout() {
-    try { await AsyncStorage.multiRemove(["pass_access_token", "pass_refresh_token"]); } catch {}
+    try {
+      await SecureStore.deleteItemAsync("pass_access_token");
+      await SecureStore.deleteItemAsync("pass_refresh_token");
+    } catch {}
     router.replace("/(auth)/login" as never);
   }
 
