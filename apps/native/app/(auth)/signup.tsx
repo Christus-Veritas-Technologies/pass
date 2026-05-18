@@ -2,6 +2,7 @@ import { ViewIcon, ViewOffIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { router } from "expo-router";
 import { MotiView } from "moti";
+import { Easing } from "react-native-reanimated";
 import { useRef, useState } from "react";
 import {
   Image,
@@ -86,7 +87,7 @@ export default function SignupScreen() {
           <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: 32, paddingBottom: 40 }}>
 
             {/* Logo */}
-            <MotiView from={{ opacity: 0, translateY: -10 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 400 }}>
+            <MotiView from={{ opacity: 0, translateY: -10 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 250, easing: Easing.bezier(0.23, 1, 0.32, 1) }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                 <Image
                   source={require("../../assets/images/icon.png")}
@@ -97,13 +98,13 @@ export default function SignupScreen() {
             </MotiView>
 
             {/* Heading */}
-            <MotiView from={{ opacity: 0, translateY: 12 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 400, delay: 80 }} style={{ marginTop: 40 }}>
+            <MotiView from={{ opacity: 0, translateY: 12 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 220, delay: 80, easing: Easing.bezier(0.23, 1, 0.32, 1) }} style={{ marginTop: 40 }}>
               <Text style={{ fontSize: 26, fontWeight: "700", color: "#111827", letterSpacing: -0.5 }}>Create account</Text>
               <Text style={{ fontSize: 15, color: "#6B7280", marginTop: 4 }}>Start your exam prep journey</Text>
             </MotiView>
 
             {/* Form */}
-            <MotiView from={{ opacity: 0, translateY: 12 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 400, delay: 160 }} style={{ marginTop: 32, gap: 16 }}>
+            <MotiView from={{ opacity: 0, translateY: 12 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 220, delay: 160, easing: Easing.bezier(0.23, 1, 0.32, 1) }} style={{ marginTop: 32, gap: 16 }}>
               <Input
                 label="Full name"
                 placeholder="Tatenda Moyo"
@@ -170,7 +171,7 @@ export default function SignupScreen() {
                   <MotiView
                     from={{ opacity: 0, translateY: -4 }}
                     animate={{ opacity: 1, translateY: 0 }}
-                    transition={{ type: "timing", duration: 200 }}
+                    transition={{ type: "timing", duration: 200, easing: Easing.bezier(0.23, 1, 0.32, 1) }}
                     style={{ marginTop: 8, gap: 4 }}
                   >
                     <View style={{ flexDirection: "row", gap: 4 }}>
@@ -204,14 +205,14 @@ export default function SignupScreen() {
             </MotiView>
 
             {/* Divider */}
-            <MotiView from={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ type: "timing", duration: 400, delay: 240 }} style={{ marginTop: 24, flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <MotiView from={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ type: "timing", duration: 220, delay: 240, easing: Easing.bezier(0.23, 1, 0.32, 1) }} style={{ marginTop: 24, flexDirection: "row", alignItems: "center", gap: 12 }}>
               <View style={{ flex: 1, height: 1, backgroundColor: "#E5E7EB" }} />
               <Text style={{ fontSize: 13, color: "#9CA3AF" }}>or</Text>
               <View style={{ flex: 1, height: 1, backgroundColor: "#E5E7EB" }} />
             </MotiView>
 
             {/* Google button */}
-            <MotiView from={{ opacity: 0, translateY: 8 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 400, delay: 300 }} style={{ marginTop: 16 }}>
+            <MotiView from={{ opacity: 0, translateY: 8 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 220, delay: 300, easing: Easing.bezier(0.23, 1, 0.32, 1) }} style={{ marginTop: 16 }}>
               <Button
                 variant="white"
                 loading={googleLoading}
@@ -242,7 +243,7 @@ export default function SignupScreen() {
             </MotiView>
 
             {/* Login link */}
-            <MotiView from={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ type: "timing", duration: 400, delay: 360 }} style={{ marginTop: 28, alignItems: "center" }}>
+            <MotiView from={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ type: "timing", duration: 220, delay: 360, easing: Easing.bezier(0.23, 1, 0.32, 1) }} style={{ marginTop: 28, alignItems: "center" }}>
               <Pressable onPress={() => router.back()}>
                 <Text style={{ fontSize: 14, color: "#6B7280" }}>
                   Already have an account?{" "}
