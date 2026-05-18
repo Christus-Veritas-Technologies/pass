@@ -11,10 +11,25 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Badge } from "@pass/ui/components/badge";
+import { buttonVariants } from "@pass/ui/components/button";
 import { Card, CardContent } from "@pass/ui/components/card";
 import { Skeleton } from "@pass/ui/components/skeleton";
 import { Button } from "@pass/ui/components/button";
 import { cn } from "@/lib/utils";
+
+const SUBJECT_COLORS: Record<string, { bg: string; text: string }> = {
+  Mathematics: { bg: "bg-blue-50", text: "text-blue-700" },
+  "English Language": { bg: "bg-emerald-50", text: "text-emerald-700" },
+  "Combined Science": { bg: "bg-purple-50", text: "text-purple-700" },
+  Chemistry: { bg: "bg-orange-50", text: "text-orange-700" },
+  Biology: { bg: "bg-green-50", text: "text-green-700" },
+  History: { bg: "bg-amber-50", text: "text-amber-700" },
+  Geography: { bg: "bg-teal-50", text: "text-teal-700" },
+  "English Literature": { bg: "bg-pink-50", text: "text-pink-700" },
+  Shona: { bg: "bg-red-50", text: "text-red-700" },
+  Physics: { bg: "bg-indigo-50", text: "text-indigo-700" },
+  default: { bg: "bg-muted", text: "text-muted-foreground" },
+};
 
 const SUBJECTS = [
   "All", "Mathematics", "English Language", "Combined Science",
@@ -81,11 +96,17 @@ export default function PapersPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-6 animate-fade-up">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Past Papers</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Pick a paper for a guided or free practice session.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Past Papers</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Pick a paper for a guided or free practice session.
+          </p>
+        </div>
+        <Link href="/study/new" className={buttonVariants({ size: "sm" })}>
+          <HugeiconsIcon icon={TaskDaily01Icon} className="mr-2 h-3.5 w-3.5" />
+          Study now
+        </Link>
       </div>
 
       {/* Search */}
@@ -177,25 +198,27 @@ export default function PapersPage() {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((p) => (
               <Link key={p.id} href={`/papers/${p.id}`} className="group block">
-                <Card className="rounded-xl transition-[transform,box-shadow] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] group-hover:-translate-y-0.5 group-hover:shadow-md group-active:scale-[0.98] group-active:shadow-none">
-                  <CardContent className="py-4">
-                    <div className="mb-3 flex items-start gap-2">
-                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                        <HugeiconsIcon icon={TaskDaily01Icon} className="h-3.5 w-3.5 text-primary" />
-                      </div>
-                      <p className="text-sm font-medium leading-snug line-clamp-2">{p.title}</p>
-                    </div>
-
-                    <div className="flex flex-wrap gap-1.5 mb-3">
-                      <Badge variant="outline" className="text-xs">{p.subject}</Badge>
-                      <Badge variant="outline" className="text-xs">{p.grade}</Badge>
-                    </div>
-
-                    <div className="flex items-center justify-between">
+                <Card className="rounded-xl transition-[transform,box-shadow] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] group-hover:-translate-y-0.5 group-hover:shadow-md group-active:scale-[0.98] group-active:shadow-none h-full">
+                  <CardContent className="py-4 h-full flex flex-col">
+                    {/* Subject badge top */}
+                    <div className="mb-2.5 flex items-center justify-between gap-2">
+                      <span className={cn(
+                        "rounded-md px-2 py-0.5 text-xs font-semibold",
+                        (SUBJECT_COLORS[p.subject] ?? SUBJECT_COLORS.default).bg,
+                        (SUBJECT_COLORS[p.subject] ?? SUBJECT_COLORS.default).text,
+                      )}>
+                        {p.subject}
+                      </span>
                       <div className="flex items-center gap-1 text-xs text-muted-foreground">
                         <HugeiconsIcon icon={Calendar01Icon} className="h-3 w-3" />
                         {p.year}
                       </div>
+                    </div>
+
+                    <p className="text-sm font-semibold leading-snug line-clamp-2 flex-1">{p.title}</p>
+
+                    <div className="mt-3 flex items-center justify-between">
+                      <Badge variant="outline" className="text-xs">{p.grade}</Badge>
                       <span className={cn(
                         "flex items-center gap-0.5 text-xs font-medium text-primary",
                         "opacity-0 translate-x-0 transition-[opacity,transform] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)]",
