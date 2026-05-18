@@ -76,13 +76,15 @@ export default function PapersPage() {
     return true;
   });
 
+  const hasFilters = subject !== "All" || grade !== "All" || year !== "All" || !!search;
+
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6 animate-fade-up">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Past Papers</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Select a paper to start a guided or free practice session.
+          Pick a paper for a guided or free practice session.
         </p>
       </div>
 
@@ -97,12 +99,12 @@ export default function PapersPage() {
           placeholder="Search by title or subject…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-4 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+          className="w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-4 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-[box-shadow] duration-150"
         />
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-2.5">
         <select
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
@@ -127,10 +129,10 @@ export default function PapersPage() {
           {YEARS.map((y) => <option key={y}>{y}</option>)}
         </select>
 
-        {(subject !== "All" || grade !== "All" || year !== "All" || search) && (
+        {hasFilters && (
           <Button
             variant="ghost"
-            className="text-xs px-3 py-1.5 h-auto"
+            className="text-xs px-3 py-1.5 h-auto text-muted-foreground"
             onClick={() => { setSubject("All"); setGrade("All"); setYear("All"); setSearch(""); }}
           >
             Clear filters
@@ -140,46 +142,46 @@ export default function PapersPage() {
 
       {/* Results */}
       {loading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => <PaperSkeleton key={i} />)}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 mb-4">
-            <HugeiconsIcon icon={BookOpen01Icon} className="h-6 w-6 text-primary/40" />
+        <div className="flex flex-col items-center justify-center py-20 text-center animate-fade-up">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/8 mb-4">
+            <HugeiconsIcon icon={BookOpen01Icon} className="h-5 w-5 text-primary/40" />
           </div>
           <p className="text-sm font-medium">
-            {papers.length === 0 ? "No papers available" : "No papers match your filters"}
+            {papers.length === 0 ? "No papers yet" : "No matches"}
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-1 text-xs text-muted-foreground max-w-xs">
             {papers.length === 0
-              ? "Check back soon — papers are added regularly."
+              ? "Papers are added regularly — check back soon."
               : search.trim()
-              ? `No results for "${search}". Try a different search term.`
-              : "Try clearing your subject, grade, or year filters."}
+              ? `Nothing found for "${search}".`
+              : "Clear your filters to see all papers."}
           </p>
-          {(subject !== "All" || grade !== "All" || year !== "All" || search) && (
+          {hasFilters && (
             <button
               onClick={() => { setSubject("All"); setGrade("All"); setYear("All"); setSearch(""); }}
-              className="mt-4 text-xs text-primary hover:underline"
+              className="mt-4 text-xs text-primary hover:underline transition-colors duration-100"
             >
               Clear all filters
             </button>
           )}
         </div>
       ) : (
-        <div className="animate-in fade-in-0 duration-300">
-          <p className="text-xs text-muted-foreground mb-4">
+        <div className="animate-fade-up">
+          <p className="text-xs text-muted-foreground mb-3">
             {filtered.length} paper{filtered.length !== 1 ? "s" : ""}
           </p>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((p) => (
               <Link key={p.id} href={`/papers/${p.id}`} className="group block">
-                <Card className="rounded-xl transition-shadow group-hover:shadow-md">
+                <Card className="rounded-xl transition-[transform,box-shadow] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] group-hover:-translate-y-0.5 group-hover:shadow-md group-active:scale-[0.98] group-active:shadow-none">
                   <CardContent className="py-4">
                     <div className="mb-3 flex items-start gap-2">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                        <HugeiconsIcon icon={TaskDaily01Icon} className="h-4 w-4 text-primary" />
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                        <HugeiconsIcon icon={TaskDaily01Icon} className="h-3.5 w-3.5 text-primary" />
                       </div>
                       <p className="text-sm font-medium leading-snug line-clamp-2">{p.title}</p>
                     </div>
@@ -191,14 +193,16 @@ export default function PapersPage() {
 
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <HugeiconsIcon icon={Calendar01Icon} className="h-3.5 w-3.5" />
+                        <HugeiconsIcon icon={Calendar01Icon} className="h-3 w-3" />
                         {p.year}
                       </div>
-                      <div className={cn(
-                        "flex items-center gap-0.5 text-xs font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100"
+                      <span className={cn(
+                        "flex items-center gap-0.5 text-xs font-medium text-primary",
+                        "opacity-0 translate-x-0 transition-[opacity,transform] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)]",
+                        "group-hover:opacity-100 group-hover:translate-x-0.5",
                       )}>
-                        Start <HugeiconsIcon icon={ArrowRight01Icon} className="h-3.5 w-3.5" />
-                      </div>
+                        Study <HugeiconsIcon icon={ArrowRight01Icon} className="h-3 w-3" />
+                      </span>
                     </div>
                   </CardContent>
                 </Card>
