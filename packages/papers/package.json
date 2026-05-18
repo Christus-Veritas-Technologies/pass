@@ -2,5 +2,9 @@
   "name": "@pass/papers",
   "version": "1.0.0",
   "description": "ZIMSEC past exam papers — Grade 7, O-Level, A-Level",
-  "private": true
+  "private": true,
+  "scripts": {
+    "download": "bun run download-zimsec.ts",
+    "download:official": "bun run download-zimsec.ts"
+  }
 }
