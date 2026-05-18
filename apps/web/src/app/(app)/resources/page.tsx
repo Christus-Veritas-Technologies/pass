@@ -28,6 +28,12 @@ const TYPE_VARIANT: Record<string, "default" | "success" | "warning" | "outline"
   SYLLABUS: "warning",
 };
 
+const TYPE_ICON_STYLE: Record<string, { bg: string; text: string }> = {
+  PAST_PAPER: { bg: "bg-violet-50", text: "text-violet-600" },
+  MARKING_GUIDE: { bg: "bg-emerald-50", text: "text-emerald-600" },
+  SYLLABUS: { bg: "bg-amber-50", text: "text-amber-600" },
+};
+
 interface Resource {
   id: string;
   title: string;
@@ -191,19 +197,24 @@ export default function ResourcesPage() {
                 className="rounded-xl transition-[transform,box-shadow] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-0.5 hover:shadow-sm"
               >
                 <CardContent className="py-4">
-                  <div className="flex items-start justify-between gap-2 mb-2.5">
-                    <Badge variant={TYPE_VARIANT[r.type] ?? "outline"} className="shrink-0 text-xs">
-                      {TYPE_LABELS[r.type] ?? r.type}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground">{r.year}</span>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${(TYPE_ICON_STYLE[r.type] ?? TYPE_ICON_STYLE.PAST_PAPER).bg}`}>
+                      <HugeiconsIcon icon={BookOpen01Icon} className={`h-4 w-4 ${(TYPE_ICON_STYLE[r.type] ?? TYPE_ICON_STYLE.PAST_PAPER).text}`} />
+                    </div>
+                    <div className="flex-1 flex items-center justify-between">
+                      <Badge variant={TYPE_VARIANT[r.type] ?? "outline"} className="shrink-0 text-xs">
+                        {TYPE_LABELS[r.type] ?? r.type}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">{r.year}</span>
+                    </div>
                   </div>
-                  <p className="text-sm font-medium leading-snug mb-0.5 line-clamp-2">{r.title}</p>
+                  <p className="text-sm font-semibold leading-snug mb-0.5 line-clamp-2">{r.title}</p>
                   <p className="text-xs text-muted-foreground mb-3">{r.subject} · {r.grade}</p>
                   <a
                     href={r.fileUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-primary/8 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/15 active:scale-[0.97] transition-[transform,background-color] duration-100 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)]"
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold active:scale-[0.97] transition-[transform,background-color] duration-100 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] ${(TYPE_ICON_STYLE[r.type] ?? TYPE_ICON_STYLE.PAST_PAPER).bg} ${(TYPE_ICON_STYLE[r.type] ?? TYPE_ICON_STYLE.PAST_PAPER).text}`}
                   >
                     <HugeiconsIcon icon={Download01Icon} className="h-3 w-3" />
                     Download
