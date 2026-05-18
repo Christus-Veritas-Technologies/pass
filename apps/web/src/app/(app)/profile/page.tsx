@@ -3,9 +3,10 @@
 import {
   Cancel01Icon,
   CheckmarkCircle01Icon,
+  CrownIcon,
   Edit01Icon,
   Logout01Icon,
-  UserIcon,
+  User02Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useRouter } from "next/navigation";
@@ -22,6 +23,7 @@ const PLAN_BADGE: Record<string, "default" | "success" | "warning"> = {
   STUDY: "warning",
   PASS: "success",
 };
+const PLAN_LABEL: Record<string, string> = { FREE: "Free plan", STUDY: "Study plan", PASS: "Pass plan" };
 
 const API = process.env.NEXT_PUBLIC_SERVER_URL;
 
@@ -42,6 +44,10 @@ interface Stats {
   weeklyProgress: number;
 }
 
+function getInitials(name: string) {
+  return name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase();
+}
+
 export default function ProfilePage() {
   const router = useRouter();
   const [user, setUser]   = useState<UserProfile | null>(null);
@@ -49,7 +55,6 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
 
-  // Edit form state
   const [name, setName]     = useState("");
   const [grade, setGrade]   = useState("");
   const [school, setSchool] = useState("");
@@ -110,52 +115,59 @@ export default function ProfilePage() {
   if (loading) {
     return (
       <div className="mx-auto max-w-2xl space-y-6">
-        <Skeleton className="h-8 w-40 rounded" />
-        <Card className="rounded-xl">
-          <CardContent className="py-6 space-y-4">
-            <div className="flex items-center gap-4">
-              <Skeleton className="h-16 w-16 rounded-full" />
-              <div className="space-y-2">
-                <Skeleton className="h-5 w-32" />
-                <Skeleton className="h-4 w-48" />
-              </div>
+        <Card className="rounded-2xl overflow-hidden">
+          <div className="h-28 bg-gradient-to-br from-primary to-violet-600" />
+          <CardContent className="px-6 pb-6">
+            <div className="-mt-10 mb-4">
+              <Skeleton className="h-20 w-20 rounded-full border-4 border-background" />
             </div>
+            <Skeleton className="h-6 w-40 mb-2" />
+            <Skeleton className="h-4 w-52" />
           </CardContent>
         </Card>
       </div>
     );
   }
 
+  const initials = user?.name ? getInitials(user.name) : "?";
+
   return (
-    <div className="mx-auto max-w-2xl space-y-6 animate-fade-up">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Profile</h1>
-        {!editing && (
-          <Button variant="outline" size="sm" onClick={startEdit}>
-            <HugeiconsIcon icon={Edit01Icon} className="mr-2 h-3.5 w-3.5" />
-            Edit profile
-          </Button>
-        )}
-      </div>
+    <div className="mx-auto max-w-2xl space-y-5 animate-fade-up">
 
-      {/* Profile card */}
-      <Card className="rounded-xl">
-        <CardContent className="py-6">
+      {/* Profile hero card */}
+      <Card className="rounded-2xl overflow-hidden">
+        {/* Gradient banner */}
+        <div className="h-28 bg-gradient-to-br from-primary to-violet-600 relative">
+          {!editing && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={startEdit}
+              className="absolute right-4 top-4 text-white/80 hover:text-white hover:bg-white/20 h-8 px-3 text-xs font-medium"
+            >
+              <HugeiconsIcon icon={Edit01Icon} className="mr-1.5 h-3.5 w-3.5" />
+              Edit
+            </Button>
+          )}
+        </div>
+
+        <CardContent className="px-6 pb-6">
+          {/* Avatar overlap */}
+          <div className="-mt-10 mb-4 flex items-end justify-between">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-background bg-primary text-white text-2xl font-bold">
+              {initials}
+            </div>
+            <Badge variant={PLAN_BADGE[user?.plan ?? "FREE"] ?? "default"} className="mb-1">
+              {user?.plan !== "FREE" && <HugeiconsIcon icon={CrownIcon} className="mr-1 h-3 w-3" />}
+              {PLAN_LABEL[user?.plan ?? "FREE"] ?? "Free plan"}
+            </Badge>
+          </div>
+
           {editing ? (
-            <form onSubmit={handleSave} className="space-y-4">
-              <div className="flex items-center gap-4 mb-5">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                  <HugeiconsIcon icon={UserIcon} className="h-8 w-8 text-primary" />
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Editing profile</p>
-                  <p className="text-sm text-muted-foreground">{user?.email}</p>
-                </div>
-              </div>
-
+            <form onSubmit={handleSave} className="space-y-4 mt-2">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Full name</label>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Full name</label>
                   <input
                     type="text"
                     value={name}
@@ -164,9 +176,8 @@ export default function ProfilePage() {
                     required
                   />
                 </div>
-
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Grade</label>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Grade</label>
                   <select
                     value={grade}
                     onChange={(e) => setGrade(e.target.value)}
@@ -176,9 +187,8 @@ export default function ProfilePage() {
                     {GRADES.map((g) => <option key={g}>{g}</option>)}
                   </select>
                 </div>
-
                 <div className="space-y-1.5 sm:col-span-2">
-                  <label className="text-xs font-medium text-muted-foreground">School</label>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">School</label>
                   <input
                     type="text"
                     placeholder="Your school name"
@@ -193,7 +203,7 @@ export default function ProfilePage() {
               {saveOk && (
                 <div className="flex items-center gap-1.5 text-xs text-emerald-600">
                   <HugeiconsIcon icon={CheckmarkCircle01Icon} className="h-3.5 w-3.5" />
-                  Saved!
+                  Changes saved!
                 </div>
               )}
 
@@ -208,20 +218,20 @@ export default function ProfilePage() {
               </div>
             </form>
           ) : (
-            <div className="flex items-start gap-4">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                <HugeiconsIcon icon={UserIcon} className="h-8 w-8 text-primary" />
-              </div>
-              <div className="space-y-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-lg font-semibold">{user?.name ?? "—"}</p>
-                  <Badge variant={PLAN_BADGE[user?.plan ?? "FREE"] ?? "default"}>
-                    {user?.plan ?? "FREE"}
-                  </Badge>
-                </div>
-                <p className="text-sm text-muted-foreground">{user?.email}</p>
-                {user?.grade && <p className="text-sm text-muted-foreground">{user.grade}</p>}
-                {user?.school && <p className="text-sm text-muted-foreground">{user.school}</p>}
+            <div>
+              <h2 className="text-xl font-bold text-foreground">{user?.name ?? "—"}</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">{user?.email}</p>
+              <div className="flex flex-wrap gap-2 mt-3">
+                {user?.grade && (
+                  <span className="inline-flex items-center rounded-md bg-primary/8 px-2.5 py-1 text-xs font-semibold text-primary">
+                    {user.grade}
+                  </span>
+                )}
+                {user?.school && (
+                  <span className="inline-flex items-center rounded-md bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                    {user.school}
+                  </span>
+                )}
               </div>
             </div>
           )}
@@ -231,20 +241,20 @@ export default function ProfilePage() {
       {/* Stats */}
       {stats && !editing && (
         <Card className="rounded-xl">
-          <CardHeader className="pb-3 pt-5 px-5">
-            <CardTitle className="text-sm font-semibold">Your stats</CardTitle>
+          <CardHeader className="pb-2 pt-5 px-5">
+            <CardTitle className="text-sm font-semibold">Your progress</CardTitle>
           </CardHeader>
           <CardContent className="px-5 pb-5">
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               {[
-                { label: "Papers attempted", value: stats.papersAttempted },
-                { label: "Questions answered", value: stats.questionsAnswered },
-                { label: "Day streak", value: stats.currentStreak },
-                { label: "Weekly progress", value: `${stats.weeklyProgress}/${stats.weeklyGoal}` },
-              ].map(({ label, value }) => (
-                <div key={label} className="space-y-1">
-                  <p className="text-2xl font-bold">{value}</p>
-                  <p className="text-xs text-muted-foreground">{label}</p>
+                { label: "Papers done", value: stats.papersAttempted, color: "text-violet-600", bg: "bg-violet-50" },
+                { label: "Questions", value: stats.questionsAnswered, color: "text-emerald-600", bg: "bg-emerald-50" },
+                { label: "Day streak", value: `${stats.currentStreak}d`, color: "text-orange-500", bg: "bg-orange-50" },
+                { label: `Weekly (${stats.weeklyGoal} goal)`, value: stats.weeklyProgress, color: "text-blue-600", bg: "bg-blue-50" },
+              ].map(({ label, value, color, bg }) => (
+                <div key={label} className={`rounded-xl ${bg} px-3 py-3`}>
+                  <p className={`text-2xl font-bold ${color}`}>{value}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
                 </div>
               ))}
             </div>
@@ -255,18 +265,23 @@ export default function ProfilePage() {
       {/* Plan */}
       {!editing && (
         <Card className="rounded-xl">
-          <CardContent className="py-5 px-5 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium">Current plan</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {user?.plan === "FREE"
-                  ? "Upgrade for unlimited access to papers and projects."
-                  : "You have premium access. Thank you for supporting Pass!"}
-              </p>
+          <CardContent className="py-4 px-5 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50">
+                <HugeiconsIcon icon={CrownIcon} className="h-4.5 w-4.5 text-amber-500" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">{PLAN_LABEL[user?.plan ?? "FREE"] ?? "Free plan"}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {user?.plan === "FREE"
+                    ? "Upgrade for unlimited papers and projects."
+                    : "You have premium access — thank you!"}
+                </p>
+              </div>
             </div>
             {user?.plan === "FREE" && (
               <a href="/pricing">
-                <Button size="sm">Upgrade</Button>
+                <Button size="sm" className="shrink-0">Upgrade</Button>
               </a>
             )}
           </CardContent>
@@ -275,8 +290,12 @@ export default function ProfilePage() {
 
       {/* Logout */}
       {!editing && (
-        <div className="pt-2">
-          <Button variant="outline" className="text-destructive border-destructive/30 hover:bg-destructive/5" onClick={handleLogout}>
+        <div className="pt-1">
+          <Button
+            variant="outline"
+            className="text-destructive border-destructive/30 hover:bg-destructive/5 hover:text-destructive"
+            onClick={handleLogout}
+          >
             <HugeiconsIcon icon={Logout01Icon} className="mr-2 h-4 w-4" />
             Sign out
           </Button>
