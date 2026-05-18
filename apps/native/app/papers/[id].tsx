@@ -18,6 +18,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { env } from "@pass/env/native";
+import { Button } from "@/components/ui/button";
 
 const BRAND = "#4F46E5";
 const API = env.EXPO_PUBLIC_SERVER_URL;
