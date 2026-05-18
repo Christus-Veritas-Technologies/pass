@@ -10,10 +10,12 @@
     "start": "bun run dist/index.mjs"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^1.2.0",
+    "@aws-sdk/client-s3": "^3.1048.0",
+    "@aws-sdk/s3-request-presigner": "^3.1048.0",
+    "@mastra/core": "^0.10.0",
     "@pass/db": "workspace:*",
     "@pass/env": "workspace:*",
-    "@ai-sdk/anthropic": "^1.2.0",
-    "@mastra/core": "^0.10.0",
     "ai": "^4.3.0",
     "dotenv": "catalog:",
     "hono": "^4.8.2",
