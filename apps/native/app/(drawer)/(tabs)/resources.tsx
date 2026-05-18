@@ -5,6 +5,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { MotiView } from "moti";
+import { Easing } from "react-native-reanimated";
 import { useEffect, useState } from "react";
 import {
   FlatList,
@@ -255,7 +256,7 @@ export default function ResourcesScreen() {
             <MotiView
               from={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ type: "timing", duration: 300 }}
+              transition={{ type: "timing", duration: 250, easing: Easing.bezier(0.23, 1, 0.32, 1) }}
               style={{ alignItems: "center", paddingTop: 60, gap: 12 }}
             >
               <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: "#EEF2FF", alignItems: "center", justifyContent: "center" }}>
