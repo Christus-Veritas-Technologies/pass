@@ -9,6 +9,7 @@ import { HugeiconsIcon } from "@hugeicons/react-native";
 import * as SecureStore from "expo-secure-store";
 import { useRouter } from "expo-router";
 import { MotiView } from "moti";
+import { Easing } from "react-native-reanimated";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -214,7 +215,7 @@ export default function StudyNewScreen() {
           <MotiView
             from={{ opacity: 0, translateY: 20 }}
             animate={{ opacity: 1, translateY: 0 }}
-            transition={{ type: "timing", duration: 200 }}
+            transition={{ type: "timing", duration: 200, easing: Easing.bezier(0.23, 1, 0.32, 1) }}
             style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: 20, paddingBottom: 34, backgroundColor: "#FFFFFF", borderTopWidth: 1, borderTopColor: "#F3F4F6" }}
           >
             <Pressable
@@ -252,7 +253,7 @@ export default function StudyNewScreen() {
           <MotiView
             from={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ type: "timing", duration: 300 }}
+            transition={{ type: "timing", duration: 250, easing: Easing.bezier(0.23, 1, 0.32, 1) }}
             style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 20 }}
           >
             <View style={{ width: 80, height: 80, alignItems: "center", justifyContent: "center" }}>
@@ -287,7 +288,7 @@ export default function StudyNewScreen() {
           <MotiView
             from={{ opacity: 0, translateY: 12 }}
             animate={{ opacity: 1, translateY: 0 }}
-            transition={{ type: "timing", duration: 350 }}
+            transition={{ type: "timing", duration: 250, easing: Easing.bezier(0.23, 1, 0.32, 1) }}
             style={{ flex: 1 }}
           >
             <Text style={{ fontSize: 20, fontWeight: "700", color: "#111827", letterSpacing: -0.5 }}>Ready to study</Text>
