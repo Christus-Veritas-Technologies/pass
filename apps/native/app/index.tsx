@@ -20,7 +20,6 @@ import {
   type ViewToken,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Button } from "@/components/ui/button";
 
 const BRAND = "#4F46E5";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");

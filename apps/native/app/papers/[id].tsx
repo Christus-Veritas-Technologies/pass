@@ -17,7 +17,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Button } from "@/components/ui/button";
 import { env } from "@pass/env/native";
 
 const BRAND = "#4F46E5";
