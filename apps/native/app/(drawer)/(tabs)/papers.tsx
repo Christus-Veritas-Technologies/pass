@@ -7,6 +7,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { useRouter } from "expo-router";
+import { MotiView } from "moti";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -234,24 +235,20 @@ export default function PapersScreen() {
             />
           }
           ListEmptyComponent={
-            <View style={{ alignItems: "center", paddingTop: 60, gap: 12 }}>
-              <View
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 28,
-                  backgroundColor: "#F3F4F6",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <HugeiconsIcon icon={BookOpen01Icon} size={24} color="#9CA3AF" />
+            <MotiView
+              from={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ type: "timing", duration: 300 }}
+              style={{ alignItems: "center", paddingTop: 60, gap: 12 }}
+            >
+              <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: "#EEF2FF", alignItems: "center", justifyContent: "center" }}>
+                <HugeiconsIcon icon={BookOpen01Icon} size={28} color="#A5B4FC" />
               </View>
-              <Text style={{ fontSize: 14, fontWeight: "500", color: "#374151" }}>No papers found</Text>
-              <Text style={{ fontSize: 13, color: "#9CA3AF", textAlign: "center" }}>
-                Try adjusting your filters.
+              <Text style={{ fontSize: 15, fontWeight: "600", color: "#374151" }}>No papers found</Text>
+              <Text style={{ fontSize: 13, color: "#9CA3AF", textAlign: "center", paddingHorizontal: 24 }}>
+                {search.trim() ? `No results for "${search}"` : "Try adjusting your subject or grade filters."}
               </Text>
-            </View>
+            </MotiView>
           }
         />
       )}

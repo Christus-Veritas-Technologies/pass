@@ -13,8 +13,10 @@ const router = new Hono();
 
 // Public list
 router.get("/", getPapers);
-router.get("/sessions/recent", getRecentSessions);
 router.get("/:id", getPaper);
+
+// Auth-required
+router.get("/sessions/recent", requireAuth, getRecentSessions);
 
 // Session endpoints — require auth
 router.post("/:id/session/start", requireAuth, startSession);
