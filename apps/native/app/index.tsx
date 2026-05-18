@@ -9,6 +9,7 @@ import { HugeiconsIcon } from "@hugeicons/react-native";
 import * as SecureStore from "expo-secure-store";
 import { router } from "expo-router";
 import { MotiView } from "moti";
+import { Easing } from "react-native-reanimated";
 import { useEffect, useRef, useState } from "react";
 import {
   Dimensions,
@@ -59,7 +60,7 @@ function ProgressDots({ active, count }: { active: number; count: number }) {
             width: i === active ? 22 : 7,
             backgroundColor: i === active ? BRAND : "#D1D5DB",
           }}
-          transition={{ type: "timing", duration: 200 }}
+          transition={{ type: "timing", duration: 200, easing: Easing.bezier(0.23, 1, 0.32, 1) }}
           style={{ height: 7, borderRadius: 4 }}
         />
       ))}
@@ -133,7 +134,7 @@ export default function LaunchScreen() {
             <MotiView
               from={{ opacity: 0, translateY: 20 }}
               animate={{ opacity: 1, translateY: 0 }}
-              transition={{ type: "timing", duration: 400 }}
+              transition={{ type: "timing", duration: 250, easing: Easing.bezier(0.23, 1, 0.32, 1) }}
             >
               <View
                 style={{
