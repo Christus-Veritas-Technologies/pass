@@ -3,8 +3,42 @@ import { streamSSE } from "hono/streaming";
 import type { Context } from "hono";
 
 import prisma from "@pass/db";
-import { anthropic, CLAUDE_MODEL } from "../lib/anthropic";
+import { anthropic, CLAUDE_GRADING_MODEL, CLAUDE_TUTOR_MODEL } from "../lib/anthropic";
+import { effectiveGuide } from "../lib/grading";
 import { PLAN_LIMITS, currentMonthKey } from "../lib/planLimits";
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+type QuestionRow = {
+  id: string;
+  questionNumber: number;
+  text: string;
+  marks: number;
+  section: string | null;
+  topic: string | null;
+  subParts: unknown;
+  pdfPage: number | null;
+  hasDiagram: boolean;
+  diagramNote: string | null;
+  guideSource: "AI_GENERATED" | "OFFICIAL";
+};
+
+/** Shape a stored PaperQuestion for the client (marking rubric is never sent). */
+function mapQuestion(q: QuestionRow) {
+  return {
+    id: q.id,
+    questionNumber: q.questionNumber,
+    text: q.text,
+    marks: q.marks,
+    section: q.section,
+    topic: q.topic,
+    subParts: q.subParts,
+    pdfPage: q.pdfPage,
+    hasDiagram: q.hasDiagram,
+    diagramNote: q.diagramNote,
+    guideSource: q.guideSource,
+  };
+}
 
 // ─── Controllers ─────────────────────────────────────────────────────────────
 
@@ -18,20 +52,26 @@ export async function getPapers(c: Context) {
 
 export async function getPaper(c: Context) {
   const id = c.req.param("id");
-  const paper = await prisma.resource.findUnique({ where: { id } });
+  const paper = await prisma.resource.findUnique({
+    where: { id },
+    include: { questions: { orderBy: { questionNumber: "asc" } } },
+  });
   if (!paper) return c.json({ error: "Paper not found" }, 404);
 
-  // Questions are generated per-session via AI; return metadata only here
-  return c.json({ paper, questions: [] });
+  const { questions, ...meta } = paper;
+  return c.json({ paper: meta, questions: questions.map(mapQuestion) });
 }
 
 export async function startSession(c: Context) {
   const userId = c.get("userId") as string;
-  const paperId = c.req.param("id");
+  const paperId = c.req.param("id") as string;
   const body = await c.req.json().catch(() => ({}));
   const mode: "GUIDE" | "FREE" = body.mode === "FREE" ? "FREE" : "GUIDE";
 
-  const paper = await prisma.resource.findUnique({ where: { id: paperId } });
+  const paper = await prisma.resource.findUnique({
+    where: { id: paperId },
+    include: { questions: { orderBy: { questionNumber: "asc" } } },
+  });
   if (!paper) return c.json({ error: "Paper not found" }, 404);
 
   // Enforce monthly paper limit
@@ -61,12 +101,13 @@ export async function startSession(c: Context) {
     data: { userId, resourceId: paperId, mode },
   });
 
-  return c.json({ session, paper, questions: [] }, 201);
+  const { questions, ...meta } = paper;
+  return c.json({ session, paper: meta, questions: questions.map(mapQuestion) }, 201);
 }
 
 export async function submitAnswer(c: Context) {
   const userId = c.get("userId") as string;
-  const sessionId = c.req.param("sessionId");
+  const sessionId = c.req.param("sessionId") as string;
 
   const session = await prisma.paperSession.findUnique({
     where: { id: sessionId },
@@ -77,35 +118,56 @@ export async function submitAnswer(c: Context) {
   }
 
   const body = await c.req.json().catch(() => null);
-  if (!body?.questionText || body.questionNumber == null) {
-    return c.json({ error: "questionText and questionNumber are required" }, 400);
+  if (body?.questionNumber == null) {
+    return c.json({ error: "questionNumber is required" }, 400);
   }
 
-  const { questionText, questionNumber, userAnswer = "", mode } = body as {
-    questionText: string;
+  const { questionNumber, userAnswer = "", mode } = body as {
     questionNumber: number;
     userAnswer?: string;
     mode?: string;
   };
-
   const sessionMode = (mode ?? session.mode) as "GUIDE" | "FREE";
 
+  // Load the stored question + marking rubric SERVER-SIDE — the client no
+  // longer supplies question text or the marking guide.
+  const question = await prisma.paperQuestion.findUnique({
+    where: {
+      resourceId_questionNumber: { resourceId: session.resourceId, questionNumber },
+    },
+  });
+  // Fall back to client-supplied text only if the paper isn't ingested yet.
+  const questionText = question?.text ?? (body.questionText as string | undefined) ?? "";
+  if (!questionText) {
+    return c.json({ error: "Question not found for this paper" }, 404);
+  }
+
+  const guide = question ? effectiveGuide(question) : null;
+  const diagramHint = question?.hasDiagram
+    ? `\n\nNote: this question refers to a diagram/figure in the paper${question.diagramNote ? ` (${question.diagramNote})` : ""}. The student is looking at it — focus on the reasoning.`
+    : "";
+
   let prompt: string;
+  let model: string;
   if (sessionMode === "GUIDE") {
-    prompt = `You are a warm, encouraging ZIMSEC tutor helping a Zimbabwean student.
+    // Grading feedback — cheap, runs on Haiku, informed by the real rubric.
+    model = CLAUDE_GRADING_MODEL;
+    prompt = `You are a warm, encouraging ZIMSEC tutor marking a Zimbabwean student's answer.
 
-The question is: ${questionText}
-
+Question: ${questionText}${diagramHint}
+${guide ? `\nMarking rubric / accepted points:\n${guide}\n` : ""}
 The student answered: ${userAnswer || "(no answer provided)"}
 
-Give encouraging feedback in 2-3 sentences. If the answer is correct or mostly correct, congratulate them genuinely. If it is wrong or incomplete, gently explain what the right answer is and why — never be harsh or discouraging.`;
+Give encouraging feedback in 2-4 sentences. Mark against the rubric: if the answer is correct or mostly correct, congratulate them and note any missing points. If it is wrong or incomplete, gently explain the key points they missed and why — never be harsh.`;
   } else {
+    // Full worked solution — teaching, runs on Sonnet for quality.
+    model = CLAUDE_TUTOR_MODEL;
     prompt = `You are a knowledgeable ZIMSEC tutor helping a Zimbabwean student.
 
 Work through this ZIMSEC question:
 
-${questionText}
-
+${questionText}${diagramHint}
+${guide ? `\nUse this marking rubric as the source of truth for the answer:\n${guide}\n` : ""}
 Give the full, worked solution with a clear step-by-step explanation. Use simple language suitable for a Form 4 or Form 6 student.`;
   }
 
@@ -113,7 +175,7 @@ Give the full, worked solution with a clear step-by-step explanation. Use simple
   await prisma.questionAttempt.upsert({
     where: { sessionId_questionNumber: { sessionId, questionNumber } },
     create: { sessionId, questionNumber, questionText, userAnswer },
-    update: { userAnswer, updatedAt: new Date() },
+    update: { userAnswer, questionText, updatedAt: new Date() },
   });
 
   // Increment questionsAnswered if this is a new question
@@ -125,9 +187,9 @@ Give the full, worked solution with a clear step-by-step explanation. Use simple
   return streamSSE(c, async (stream) => {
     try {
       const result = streamText({
-        model: anthropic(CLAUDE_MODEL),
+        model: anthropic(model),
         prompt,
-        maxTokens: 512,
+        maxTokens: sessionMode === "GUIDE" ? 400 : 700,
       });
 
       let fullExplanation = "";
@@ -136,7 +198,6 @@ Give the full, worked solution with a clear step-by-step explanation. Use simple
         await stream.writeSSE({ data: chunk, event: "chunk" });
       }
 
-      // Persist the AI explanation after streaming
       await prisma.questionAttempt.update({
         where: { sessionId_questionNumber: { sessionId, questionNumber } },
         data: { explanation: fullExplanation },

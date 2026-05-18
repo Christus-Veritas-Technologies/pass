@@ -3,23 +3,15 @@ import type { Context } from "hono";
 import { z } from "zod";
 import prisma from "@pass/db";
 import { passAgent } from "../mastra";
+import { effectiveGuide, gradeAnswer, getSessionQuestion } from "../lib/grading";
 import { PLAN_LIMITS, currentMonthKey } from "../lib/planLimits";
 
 // ─── Schemas ─────────────────────────────────────────────────────────────────
 
-const evaluationSchema = z.object({
-  isCorrect: z.boolean(),
-  score: z.number(),
-  maxScore: z.number(),
-  feedback: z.string(),
-  pointsEarned: z.array(z.string()),
-  pointsMissed: z.array(z.string()),
-});
-
+// The client only identifies the question + sends the answer. Question text
+// and the marking rubric are loaded server-side from the stored PaperQuestion.
 const evaluateBodySchema = z.object({
   questionNumber: z.number().int().positive(),
-  questionText: z.string().min(1),
-  markingGuide: z.string().min(1),
   userAnswer: z.string().min(1),
 });
 
@@ -27,20 +19,19 @@ const evaluateBodySchema = z.object({
 
 export async function evaluateAnswer(c: Context) {
   const userId = c.get("userId") as string;
-  const sessionId = c.req.param("sessionId");
+  const sessionId = c.req.param("sessionId") as string;
 
-  const bodyRaw = await c.req.json();
-  const parsed = evaluateBodySchema.safeParse(bodyRaw);
+  const parsed = evaluateBodySchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ error: "Invalid request body" }, 400);
 
-  const { questionNumber, questionText, markingGuide, userAnswer } = parsed.data;
+  const { questionNumber, userAnswer } = parsed.data;
 
-  const session = await prisma.paperSession.findFirst({
-    where: { id: sessionId, userId },
-  });
-  if (!session) return c.json({ error: "Session not found" }, 404);
+  // Loads the session (scoped to this user) and the stored question + rubric.
+  const ctx = await getSessionQuestion(sessionId, userId, questionNumber);
+  if (!ctx) return c.json({ error: "Session or question not found" }, 404);
+  const { question } = ctx;
 
-  // Return cached evaluation if it exists
+  // Return cached evaluation if it exists — no new AI call.
   const existing = await prisma.questionAttempt.findUnique({
     where: { sessionId_questionNumber: { sessionId, questionNumber } },
   });
@@ -48,27 +39,8 @@ export async function evaluateAnswer(c: Context) {
     return c.json(existing.evaluation);
   }
 
-  // Generate evaluation using Pass agent (structured output)
-  const result = await passAgent.generate(
-    [
-      {
-        role: "user" as const,
-        content: `Evaluate this ZIMSEC exam answer and return structured JSON.
-
-Question: ${questionText}
-
-Marking Guide / Accepted Answers:
-${markingGuide}
-
-Student's Answer: ${userAnswer}
-
-Evaluate strictly according to the marking guide. Award marks only for points the student clearly addressed.`,
-      },
-    ],
-    { output: evaluationSchema },
-  );
-
-  const evaluation = (result as { object: z.infer<typeof evaluationSchema> }).object;
+  // Grade with Haiku against the server-side rubric.
+  const evaluation = await gradeAnswer(question, userAnswer);
 
   // Cache the result and track the attempt
   await prisma.questionAttempt.upsert({
@@ -76,7 +48,7 @@ Evaluate strictly according to the marking guide. Award marks only for points th
     create: {
       sessionId,
       questionNumber,
-      questionText,
+      questionText: question.text,
       userAnswer,
       evaluation: evaluation as object,
       correct: evaluation.isCorrect,
@@ -103,7 +75,7 @@ Evaluate strictly according to the marking guide. Award marks only for points th
 
 export async function explainAnswer(c: Context) {
   const userId = c.get("userId") as string;
-  const sessionId = c.req.param("sessionId");
+  const sessionId = c.req.param("sessionId") as string;
   const questionNumber = Number(c.req.param("questionNumber"));
 
   if (Number.isNaN(questionNumber)) {
@@ -120,6 +92,10 @@ export async function explainAnswer(c: Context) {
 
   if (!attempt) return c.json({ error: "Attempt not found" }, 404);
 
+  // Pull the stored marking rubric so the explanation is accurate.
+  const ctx = await getSessionQuestion(sessionId, userId, questionNumber);
+  const guide = ctx ? effectiveGuide(ctx.question) : null;
+
   let accumulated = "";
 
   return streamSSE(c, async (s) => {
@@ -131,7 +107,7 @@ export async function explainAnswer(c: Context) {
 Question: ${attempt.questionText}
 
 Student's Answer: ${attempt.userAnswer}
-
+${guide ? `\nMarking rubric / accepted points:\n${guide}\n` : ""}
 Please explain:
 1. What the correct answer is and the key points the marking guide expects
 2. Why those points are important — the underlying concept
