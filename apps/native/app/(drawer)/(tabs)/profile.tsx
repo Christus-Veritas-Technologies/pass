@@ -26,7 +26,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { env } from "@pass/env/native";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 
 const BRAND = "#4F46E5";
 const BRAND_LIGHT = "#6366F1";
@@ -54,6 +55,11 @@ interface Stats {
   weeklyProgress: number;
 }
 
+interface PlanUsage {
+  papers:   { used: number; limit: number };
+  projects: { used: number; limit: number };
+}
+
 const PLAN_LABEL: Record<string, string> = { FREE: "Free", STUDY: "Study", PASS: "Pass" };
 const PLAN_COLOR: Record<string, { bg: string; text: string }> = {
   FREE: { bg: "#F3F4F6", text: "#6B7280" },
@@ -74,6 +80,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [planUsage, setPlanUsage] = useState<PlanUsage | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
 
@@ -98,6 +105,7 @@ export default function ProfileScreen() {
         const data = await res.json();
         setUser(data.user ?? null);
         setStats(data.stats ?? null);
+        setPlanUsage(data.planUsage ?? null);
       } catch {}
       setLoading(false);
     })();
@@ -339,11 +347,70 @@ export default function ProfileScreen() {
               </MotiView>
             )}
 
+            {/* Plan & Usage */}
+            <MotiView
+              from={{ opacity: 0, translateY: 6 }}
+              animate={{ opacity: 1, translateY: 0 }}
+              transition={{ type: "timing", duration: 220, delay: 100, easing: Easing.bezier(0.23, 1, 0.32, 1) }}
+              style={{ marginHorizontal: 20, marginTop: 12 }}
+            >
+              <Card>
+                <CardHeader style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                  <CardTitle>Plan & Usage</CardTitle>
+                  <View style={{ backgroundColor: planStyle.bg, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, flexDirection: "row", alignItems: "center", gap: 4 }}>
+                    {user?.plan !== "FREE" && <HugeiconsIcon icon={Crown01Icon} size={10} color={planStyle.text} />}
+                    <Text style={{ fontSize: 11, fontWeight: "700", color: planStyle.text }}>
+                      {PLAN_LABEL[user?.plan ?? "FREE"] ?? "Free"}
+                    </Text>
+                  </View>
+                </CardHeader>
+                <CardContent style={{ gap: 16 }}>
+                  {planUsage ? (
+                    <>
+                      {[
+                        { label: "Papers this month", key: "papers" as const, color: BRAND },
+                        { label: "AI Projects this month", key: "projects" as const, color: "#7C3AED" },
+                      ].map(({ label, key, color }) => {
+                        const { used, limit } = planUsage[key];
+                        const pct = limit > 0 ? Math.min(100, (used / limit) * 100) : 0;
+                        const almostFull = pct >= 80;
+                        return (
+                          <View key={key}>
+                            <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
+                              <Text style={{ fontSize: 13, color: "#374151", fontWeight: "500" }}>{label}</Text>
+                              <Text style={{ fontSize: 13, fontWeight: "700", color: almostFull ? "#DC2626" : "#111827" }}>
+                                {used} / {limit}
+                              </Text>
+                            </View>
+                            <Progress
+                              value={pct}
+                              color={almostFull ? "#EF4444" : color}
+                              height={7}
+                            />
+                          </View>
+                        );
+                      })}
+                      {user?.plan === "FREE" && (
+                        <View style={{ backgroundColor: "#FEF3C7", borderRadius: 10, padding: 12, flexDirection: "row", alignItems: "center", gap: 10 }}>
+                          <HugeiconsIcon icon={Crown01Icon} size={16} color="#D97706" />
+                          <Text style={{ flex: 1, fontSize: 12, color: "#92400E", fontWeight: "500", lineHeight: 18 }}>
+                            Upgrade to Study or Pass for more papers and projects each month.
+                          </Text>
+                        </View>
+                      )}
+                    </>
+                  ) : (
+                    <Text style={{ fontSize: 13, color: "#9CA3AF" }}>Usage data unavailable</Text>
+                  )}
+                </CardContent>
+              </Card>
+            </MotiView>
+
             {/* Menu rows */}
             <MotiView
               from={{ opacity: 0, translateY: 6 }}
               animate={{ opacity: 1, translateY: 0 }}
-              transition={{ type: "timing", duration: 220, delay: 110, easing: Easing.bezier(0.23, 1, 0.32, 1) }}
+              transition={{ type: "timing", duration: 220, delay: 130, easing: Easing.bezier(0.23, 1, 0.32, 1) }}
               style={{ marginHorizontal: 20, marginTop: 20 }}
             >
             <Card>

@@ -1,6 +1,7 @@
 import type { Context } from "hono";
 import { z } from "zod";
 import prisma from "@pass/db";
+import { PLAN_LIMITS, type PlanKey } from "../lib/planLimits";
 
 const USER_SELECT = {
   id: true, email: true, name: true, grade: true, school: true, plan: true,
@@ -25,16 +26,30 @@ export async function getMe(c: Context) {
     where: { userId, createdAt: { gte: weekStart } },
   });
 
+  // Current month usage for plan limits
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+  const [monthPapers, monthProjects] = await Promise.all([
+    prisma.paperSession.count({ where: { userId, createdAt: { gte: monthStart } } }),
+    prisma.project.count({ where: { userId, createdAt: { gte: monthStart } } }),
+  ]);
+  const limits = PLAN_LIMITS[user.plan as PlanKey] ?? PLAN_LIMITS.FREE;
+  const planUsage = {
+    papers:   { used: monthPapers,   limit: limits.papers },
+    projects: { used: monthProjects, limit: limits.projects },
+  };
+
   const stats = {
     papersAttempted,
     questionsAnswered,
     projectsGenerated,
-    currentStreak: 0, // Streak calculation requires daily activity tracking — placeholder
+    currentStreak: 0,
     weeklyGoal: 5,
     weeklyProgress,
   };
 
-  return c.json({ user, stats });
+  return c.json({ user, stats, planUsage });
 }
 
 const updateMeSchema = z.object({
