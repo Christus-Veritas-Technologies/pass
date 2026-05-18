@@ -11,13 +11,27 @@ export async function getMe(c: Context) {
   const user = await prisma.user.findUnique({ where: { id: userId }, select: USER_SELECT });
   if (!user) return c.json({ error: "User not found" }, 404);
 
-  // Mock usage stats — replace with real queries once DB is connected
+  // Real stats from DB
+  const [papersAttempted, questionsAnswered, projectsGenerated] = await Promise.all([
+    prisma.paperSession.count({ where: { userId } }),
+    prisma.questionAttempt.count({ where: { session: { userId } } }),
+    prisma.project.count({ where: { userId } }),
+  ]);
+
+  // Weekly progress: sessions created in the last 7 days
+  const weekStart = new Date();
+  weekStart.setDate(weekStart.getDate() - 7);
+  const weeklyProgress = await prisma.paperSession.count({
+    where: { userId, createdAt: { gte: weekStart } },
+  });
+
   const stats = {
-    papersAttempted: 12,
-    questionsAnswered: 148,
-    currentStreak: 5,
-    weeklyGoal: 20,
-    weeklyProgress: 14,
+    papersAttempted,
+    questionsAnswered,
+    projectsGenerated,
+    currentStreak: 0, // Streak calculation requires daily activity tracking — placeholder
+    weeklyGoal: 5,
+    weeklyProgress,
   };
 
   return c.json({ user, stats });
