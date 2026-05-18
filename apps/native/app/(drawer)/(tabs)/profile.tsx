@@ -1,10 +1,10 @@
 import {
+  ArrowRight01Icon,
   Cancel01Icon,
   CheckmarkCircle01Icon,
   Crown01Icon,
   Edit01Icon,
   Logout01Icon,
-  User01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import * as SecureStore from "expo-secure-store";
@@ -26,8 +26,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { env } from "@pass/env/native";
 
 const BRAND = "#4F46E5";
+const BRAND_LIGHT = "#6366F1";
 const API = env.EXPO_PUBLIC_SERVER_URL;
 const GRADES = ["Form 1", "Form 2", "Form 3", "Form 4", "Form 5", "Form 6"];
+
+const HEADER_HEIGHT = 160;
+const AVATAR_SIZE = 88;
+const CONTENT_OVERLAP = 28;
 
 interface UserProfile {
   id: string;
@@ -46,30 +51,31 @@ interface Stats {
   weeklyProgress: number;
 }
 
-const PLAN_COLORS: Record<string, { bg: string; text: string }> = {
-  FREE:  { bg: "#F3F4F6", text: "#6B7280" },
-  STUDY: { bg: "#FFFBEB", text: "#D97706" },
-  PASS:  { bg: "#FEF3C7", text: "#92400E" },
+const PLAN_LABEL: Record<string, string> = { FREE: "Free", STUDY: "Study", PASS: "Pass" };
+const PLAN_COLOR: Record<string, { bg: string; text: string }> = {
+  FREE: { bg: "#F3F4F6", text: "#6B7280" },
+  STUDY: { bg: "#FEF3C7", text: "#D97706" },
+  PASS: { bg: "#EDE9FE", text: "#7C3AED" },
 };
 
-function StatCard({ label, value }: { label: string; value: string | number }) {
-  return (
-    <View style={{ flex: 1, backgroundColor: "#F9FAFB", borderRadius: 12, borderWidth: 1, borderColor: "#F3F4F6", padding: 14 }}>
-      <Text style={{ fontSize: 22, fontWeight: "700", color: "#111827" }}>{value}</Text>
-      <Text style={{ fontSize: 11, color: "#6B7280", marginTop: 3 }}>{label}</Text>
-    </View>
-  );
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 }
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const [user, setUser]     = useState<UserProfile | null>(null);
-  const [stats, setStats]   = useState<Stats | null>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
 
-  const [name, setName]     = useState("");
-  const [grade, setGrade]   = useState("");
+  const [name, setName] = useState("");
+  const [grade, setGrade] = useState("");
   const [school, setSchool] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveOk, setSaveOk] = useState(false);
@@ -144,212 +150,270 @@ export default function ProfileScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center" }} edges={["top"]}>
-        <ActivityIndicator size="large" color={BRAND} />
+      <SafeAreaView style={{ flex: 1, backgroundColor: BRAND, alignItems: "center", justifyContent: "center" }} edges={["top"]}>
+        <ActivityIndicator size="large" color="#FFFFFF" />
       </SafeAreaView>
     );
   }
 
-  const planColor = PLAN_COLORS[user?.plan ?? "FREE"] ?? PLAN_COLORS.FREE;
+  const initials = user?.name ? getInitials(user.name) : "?";
+  const planStyle = PLAN_COLOR[user?.plan ?? "FREE"] ?? PLAN_COLOR.FREE;
+
+  // ─── Edit mode ────────────────────────────────────────────────────────────────
+
+  if (editing) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#F9FAFB" }} edges={["top"]}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, backgroundColor: "#FFFFFF", borderBottomWidth: 1, borderBottomColor: "#F3F4F6" }}>
+            <Pressable
+              onPress={() => setEditing(false)}
+              style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: "#F3F4F6", alignItems: "center", justifyContent: "center" }}
+            >
+              <HugeiconsIcon icon={Cancel01Icon} size={18} color="#374151" />
+            </Pressable>
+            <Text style={{ fontSize: 17, fontWeight: "700", color: "#111827" }}>Edit Profile</Text>
+          </View>
+
+          <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
+            <View style={{ backgroundColor: "#FFFFFF", borderRadius: 14, padding: 18, gap: 14 }}>
+              <View>
+                <Text style={{ fontSize: 11, fontWeight: "600", color: "#6B7280", letterSpacing: 0.5, marginBottom: 6 }}>FULL NAME</Text>
+                <TextInput
+                  value={name}
+                  onChangeText={setName}
+                  style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, color: "#111827" }}
+                  placeholder="Your full name"
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
+
+              <View>
+                <Text style={{ fontSize: 11, fontWeight: "600", color: "#6B7280", letterSpacing: 0.5, marginBottom: 8 }}>GRADE</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                  {["", ...GRADES].map((g) => (
+                    <Pressable
+                      key={g || "none"}
+                      onPress={() => setGrade(g)}
+                      style={{
+                        paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
+                        borderWidth: 1,
+                        borderColor: grade === g ? BRAND : "#E5E7EB",
+                        backgroundColor: grade === g ? "#EEF2FF" : "#FFFFFF",
+                      }}
+                    >
+                      <Text style={{ fontSize: 13, fontWeight: "500", color: grade === g ? BRAND : "#6B7280" }}>
+                        {g || "None"}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              </View>
+
+              <View>
+                <Text style={{ fontSize: 11, fontWeight: "600", color: "#6B7280", letterSpacing: 0.5, marginBottom: 6 }}>SCHOOL</Text>
+                <TextInput
+                  value={school}
+                  onChangeText={setSchool}
+                  style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, color: "#111827" }}
+                  placeholder="Your school name"
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
+            </View>
+
+            {saveErr ? <Text style={{ fontSize: 12, color: "#DC2626", textAlign: "center" }}>{saveErr}</Text> : null}
+            {saveOk ? (
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                <HugeiconsIcon icon={CheckmarkCircle01Icon} size={16} color="#059669" />
+                <Text style={{ fontSize: 13, color: "#059669", fontWeight: "500" }}>Saved!</Text>
+              </View>
+            ) : null}
+
+            <Pressable
+              onPress={handleSave}
+              disabled={saving || !name.trim()}
+              style={{
+                backgroundColor: saving || !name.trim() ? "#A5B4FC" : BRAND,
+                borderRadius: 12, paddingVertical: 14, alignItems: "center",
+              }}
+            >
+              {saving ? <ActivityIndicator size="small" color="#FFFFFF" /> : (
+                <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFFFFF" }}>Save changes</Text>
+              )}
+            </Pressable>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    );
+  }
+
+  // ─── View mode ────────────────────────────────────────────────────────────────
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#F9FAFB" }} edges={["top"]}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
-          {/* Header */}
-          <MotiView from={{ opacity: 0, translateY: -8 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 250, easing: Easing.bezier(0.23, 1, 0.32, 1) }}>
-          <View style={{ backgroundColor: "#FFFFFF", paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24, alignItems: "center" }}>
-            <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: "#EEF2FF", alignItems: "center", justifyContent: "center", marginBottom: 12 }}>
-              <HugeiconsIcon icon={User01Icon} size={36} color={BRAND} />
-            </View>
-            <Text style={{ fontSize: 20, fontWeight: "700", color: "#111827" }}>{user?.name ?? "—"}</Text>
-            <Text style={{ fontSize: 13, color: "#6B7280", marginTop: 2 }}>{user?.email}</Text>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10 }}>
-              {user?.grade && (
-                <View style={{ backgroundColor: "#EEF2FF", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 }}>
-                  <Text style={{ fontSize: 12, fontWeight: "500", color: BRAND }}>{user.grade}</Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: BRAND }} edges={["top"]}>
+      <View style={{ flex: 1, position: "relative" }}>
+
+        {/* Purple header band */}
+        <View style={{ height: HEADER_HEIGHT, backgroundColor: BRAND }} />
+
+        {/* White content sheet */}
+        <View style={{
+          position: "absolute",
+          top: HEADER_HEIGHT - CONTENT_OVERLAP,
+          left: 0, right: 0, bottom: 0,
+          backgroundColor: "#FFFFFF",
+          borderTopLeftRadius: 28, borderTopRightRadius: 28,
+        }}>
+          <ScrollView contentContainerStyle={{ paddingTop: AVATAR_SIZE / 2 + 16, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+
+            {/* Name + plan */}
+            <MotiView
+              from={{ opacity: 0, translateY: 6 }}
+              animate={{ opacity: 1, translateY: 0 }}
+              transition={{ type: "timing", duration: 250, easing: Easing.bezier(0.23, 1, 0.32, 1) }}
+              style={{ alignItems: "center", paddingHorizontal: 24, marginBottom: 8 }}
+            >
+              <Text style={{ fontSize: 22, fontWeight: "800", color: "#111827", letterSpacing: -0.5 }}>
+                {user?.name ?? "—"}
+              </Text>
+              <Text style={{ fontSize: 13, color: "#6B7280", marginTop: 3 }}>{user?.email ?? ""}</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10 }}>
+                {user?.grade && (
+                  <View style={{ backgroundColor: "#EEF2FF", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 }}>
+                    <Text style={{ fontSize: 12, fontWeight: "600", color: BRAND }}>{user.grade}</Text>
+                  </View>
+                )}
+                <View style={{ backgroundColor: planStyle.bg, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  {user?.plan !== "FREE" && <HugeiconsIcon icon={Crown01Icon} size={11} color={planStyle.text} />}
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: planStyle.text }}>{PLAN_LABEL[user?.plan ?? "FREE"] ?? "Free"}</Text>
                 </View>
-              )}
-              <View style={{ backgroundColor: planColor.bg, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, flexDirection: "row", alignItems: "center", gap: 4 }}>
-                {user?.plan !== "FREE" && <HugeiconsIcon icon={Crown01Icon} size={12} color={planColor.text} />}
-                <Text style={{ fontSize: 12, fontWeight: "600", color: planColor.text }}>{user?.plan ?? "FREE"}</Text>
               </View>
-            </View>
-            {user?.school && (
-              <Text style={{ fontSize: 12, color: "#9CA3AF", marginTop: 6 }}>{user.school}</Text>
-            )}
-          </View>
-          </MotiView>
-
-          {/* Stats */}
-          {stats && (
-            <MotiView from={{ opacity: 0, translateY: 8 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 220, delay: 60, easing: Easing.bezier(0.23, 1, 0.32, 1) }}>
-            <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
-              <Text style={{ fontSize: 13, fontWeight: "600", color: "#374151", marginBottom: 12 }}>Your stats</Text>
-              <View style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
-                <StatCard label="Papers" value={stats.papersAttempted} />
-                <StatCard label="Questions" value={stats.questionsAnswered} />
-              </View>
-              <View style={{ flexDirection: "row", gap: 10 }}>
-                <StatCard label="Day streak" value={stats.currentStreak} />
-                <StatCard label={`Weekly (/${stats.weeklyGoal})`} value={stats.weeklyProgress} />
-              </View>
-            </View>
             </MotiView>
-          )}
 
-          {/* Actions */}
-          {editing ? (
-            <View style={{ marginHorizontal: 20, marginTop: 20, backgroundColor: "#FFFFFF", borderRadius: 14, padding: 18 }}>
-              <Text style={{ fontSize: 14, fontWeight: "600", color: "#111827", marginBottom: 16 }}>Edit Profile</Text>
-
-              <Text style={{ fontSize: 12, fontWeight: "500", color: "#6B7280", marginBottom: 6 }}>FULL NAME</Text>
-              <TextInput
-                value={name}
-                onChangeText={setName}
-                style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, color: "#111827", marginBottom: 14 }}
-              />
-
-              <Text style={{ fontSize: 12, fontWeight: "500", color: "#6B7280", marginBottom: 8 }}>GRADE</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 14 }}>
-                {["", ...GRADES].map((g) => (
-                  <Pressable
-                    key={g || "none"}
-                    onPress={() => setGrade(g)}
-                    style={{
-                      paddingHorizontal: 14,
-                      paddingVertical: 7,
-                      borderRadius: 20,
-                      borderWidth: 1,
-                      borderColor: grade === g ? BRAND : "#E5E7EB",
-                      backgroundColor: grade === g ? "#EEF2FF" : "#FFFFFF",
-                    }}
-                  >
-                    <Text style={{ fontSize: 13, fontWeight: "500", color: grade === g ? BRAND : "#6B7280" }}>
-                      {g || "None"}
-                    </Text>
-                  </Pressable>
-                ))}
-              </ScrollView>
-
-              <Text style={{ fontSize: 12, fontWeight: "500", color: "#6B7280", marginBottom: 6 }}>SCHOOL</Text>
-              <TextInput
-                placeholder="Your school name"
-                placeholderTextColor="#9CA3AF"
-                value={school}
-                onChangeText={setSchool}
-                style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, color: "#111827", marginBottom: 16 }}
-              />
-
-              {saveErr ? <Text style={{ fontSize: 12, color: "#DC2626", marginBottom: 10 }}>{saveErr}</Text> : null}
-              {saveOk ? (
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                  <HugeiconsIcon icon={CheckmarkCircle01Icon} size={16} color="#059669" />
-                  <Text style={{ fontSize: 13, color: "#059669", fontWeight: "500" }}>Saved!</Text>
+            {/* Info rows — email + school */}
+            <MotiView
+              from={{ opacity: 0, translateY: 6 }}
+              animate={{ opacity: 1, translateY: 0 }}
+              transition={{ type: "timing", duration: 220, delay: 50, easing: Easing.bezier(0.23, 1, 0.32, 1) }}
+              style={{ marginHorizontal: 20, marginTop: 12, backgroundColor: "#F9FAFB", borderRadius: 16, overflow: "hidden", borderWidth: 1, borderColor: "#F3F4F6" }}
+            >
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: "#F3F4F6" }}>
+                <Text style={{ fontSize: 13, color: "#9CA3AF", fontWeight: "500" }}>Mail</Text>
+                <Text style={{ fontSize: 13, color: "#374151", fontWeight: "500" }} numberOfLines={1}>{user?.email ?? "—"}</Text>
+              </View>
+              {user?.school ? (
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingVertical: 13 }}>
+                  <Text style={{ fontSize: 13, color: "#9CA3AF", fontWeight: "500" }}>School</Text>
+                  <Text style={{ fontSize: 13, color: "#374151", fontWeight: "500" }} numberOfLines={1}>{user.school}</Text>
                 </View>
               ) : null}
+            </MotiView>
 
-              <View style={{ flexDirection: "row", gap: 10 }}>
-                <Pressable
-                  onPress={handleSave}
-                  disabled={saving || !name.trim()}
-                  style={{
-                    flex: 1,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: saving || !name.trim() ? "#A5B4FC" : BRAND,
-                    borderRadius: 12,
-                    paddingVertical: 13,
-                  }}
-                >
-                  {saving ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFFFFF" }}>Save changes</Text>
-                  )}
-                </Pressable>
-                <Pressable
-                  onPress={() => setEditing(false)}
-                  style={{
-                    alignItems: "center",
-                    justifyContent: "center",
-                    borderWidth: 1,
-                    borderColor: "#E5E7EB",
-                    borderRadius: 12,
-                    paddingHorizontal: 16,
-                  }}
-                >
-                  <HugeiconsIcon icon={Cancel01Icon} size={18} color="#6B7280" />
-                </Pressable>
-              </View>
-            </View>
-          ) : (
-            <MotiView from={{ opacity: 0, translateY: 8 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 220, delay: 120, easing: Easing.bezier(0.23, 1, 0.32, 1) }}>
-            <View style={{ marginHorizontal: 20, marginTop: 20, gap: 10 }}>
-              {/* Edit button */}
+            {/* Stats */}
+            {stats && (
+              <MotiView
+                from={{ opacity: 0, translateY: 6 }}
+                animate={{ opacity: 1, translateY: 0 }}
+                transition={{ type: "timing", duration: 220, delay: 80, easing: Easing.bezier(0.23, 1, 0.32, 1) }}
+                style={{ marginHorizontal: 20, marginTop: 12 }}
+              >
+                <Text style={{ fontSize: 11, fontWeight: "600", color: "#9CA3AF", letterSpacing: 0.5, marginBottom: 10, paddingLeft: 2 }}>YOUR STATS</Text>
+                <View style={{ flexDirection: "row", gap: 10 }}>
+                  {[
+                    { label: "Papers", value: stats.papersAttempted },
+                    { label: "Questions", value: stats.questionsAnswered },
+                    { label: "Weekly", value: `${stats.weeklyProgress}/${stats.weeklyGoal}` },
+                  ].map(({ label, value }) => (
+                    <View key={label} style={{ flex: 1, backgroundColor: "#F9FAFB", borderRadius: 12, borderWidth: 1, borderColor: "#F3F4F6", padding: 12, alignItems: "center" }}>
+                      <Text style={{ fontSize: 20, fontWeight: "700", color: "#111827" }}>{value}</Text>
+                      <Text style={{ fontSize: 10, color: "#9CA3AF", marginTop: 2, fontWeight: "500" }}>{label}</Text>
+                    </View>
+                  ))}
+                </View>
+              </MotiView>
+            )}
+
+            {/* Menu rows */}
+            <MotiView
+              from={{ opacity: 0, translateY: 6 }}
+              animate={{ opacity: 1, translateY: 0 }}
+              transition={{ type: "timing", duration: 220, delay: 110, easing: Easing.bezier(0.23, 1, 0.32, 1) }}
+              style={{ marginHorizontal: 20, marginTop: 20, backgroundColor: "#FFFFFF", borderRadius: 16, borderWidth: 1, borderColor: "#F3F4F6", overflow: "hidden" }}
+            >
+              {/* Edit profile */}
               <Pressable
                 onPress={startEdit}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 10,
-                  backgroundColor: "#FFFFFF",
-                  borderRadius: 12,
-                  borderWidth: 1,
-                  borderColor: "#F3F4F6",
-                  padding: 16,
-                }}
+                style={({ pressed }) => ({
+                  flexDirection: "row", alignItems: "center", gap: 12,
+                  paddingHorizontal: 16, paddingVertical: 15,
+                  borderBottomWidth: 1, borderBottomColor: "#F3F4F6",
+                  backgroundColor: pressed ? "#F9FAFB" : "#FFFFFF",
+                })}
               >
-                <View style={{ width: 36, height: 36, borderRadius: 9, backgroundColor: "#EEF2FF", alignItems: "center", justifyContent: "center" }}>
-                  <HugeiconsIcon icon={Edit01Icon} size={18} color={BRAND} />
+                <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: "#EEF2FF", alignItems: "center", justifyContent: "center" }}>
+                  <HugeiconsIcon icon={Edit01Icon} size={16} color={BRAND} />
                 </View>
                 <Text style={{ flex: 1, fontSize: 14, fontWeight: "500", color: "#111827" }}>Edit profile</Text>
-                <HugeiconsIcon icon={Cancel01Icon} size={16} color="#9CA3AF" style={{ transform: [{ rotate: "45deg" }] }} />
+                <HugeiconsIcon icon={ArrowRight01Icon} size={16} color="#D1D5DB" />
               </Pressable>
 
-              {/* Plan */}
+              {/* Upgrade — only FREE plan */}
               {user?.plan === "FREE" && (
-                <View style={{ backgroundColor: "#FFFFFF", borderRadius: 12, borderWidth: 1, borderColor: "#F3F4F6", padding: 16 }}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                    <View style={{ width: 36, height: 36, borderRadius: 9, backgroundColor: "#FFFBEB", alignItems: "center", justifyContent: "center" }}>
-                      <HugeiconsIcon icon={Crown01Icon} size={18} color="#D97706" />
-                    </View>
-                    <View>
-                      <Text style={{ fontSize: 14, fontWeight: "600", color: "#111827" }}>Upgrade to Study or Pass</Text>
-                      <Text style={{ fontSize: 12, color: "#6B7280" }}>Unlock unlimited papers and projects</Text>
-                    </View>
+                <Pressable
+                  style={({ pressed }) => ({
+                    flexDirection: "row", alignItems: "center", gap: 12,
+                    paddingHorizontal: 16, paddingVertical: 15,
+                    borderBottomWidth: 1, borderBottomColor: "#F3F4F6",
+                    backgroundColor: pressed ? "#FFFBEB" : "#FFFFFF",
+                  })}
+                >
+                  <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: "#FEF3C7", alignItems: "center", justifyContent: "center" }}>
+                    <HugeiconsIcon icon={Crown01Icon} size={16} color="#D97706" />
                   </View>
-                  <View style={{ backgroundColor: BRAND, borderRadius: 10, paddingVertical: 11, alignItems: "center" }}>
-                    <Text style={{ fontSize: 14, fontWeight: "600", color: "#FFFFFF" }}>View plans</Text>
-                  </View>
-                </View>
+                  <Text style={{ flex: 1, fontSize: 14, fontWeight: "500", color: "#111827" }}>Upgrade plan</Text>
+                  <HugeiconsIcon icon={ArrowRight01Icon} size={16} color="#D1D5DB" />
+                </Pressable>
               )}
 
-              {/* Logout */}
+              {/* Sign out */}
               <Pressable
                 onPress={handleLogout}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 10,
-                  backgroundColor: "#FEF2F2",
-                  borderRadius: 12,
-                  borderWidth: 1,
-                  borderColor: "#FECACA",
-                  padding: 16,
-                  marginTop: 4,
-                }}
+                style={({ pressed }) => ({
+                  flexDirection: "row", alignItems: "center", gap: 12,
+                  paddingHorizontal: 16, paddingVertical: 15,
+                  backgroundColor: pressed ? "#FEF2F2" : "#FFFFFF",
+                })}
               >
-                <View style={{ width: 36, height: 36, borderRadius: 9, backgroundColor: "#FEE2E2", alignItems: "center", justifyContent: "center" }}>
-                  <HugeiconsIcon icon={Logout01Icon} size={18} color="#DC2626" />
+                <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: "#FEE2E2", alignItems: "center", justifyContent: "center" }}>
+                  <HugeiconsIcon icon={Logout01Icon} size={16} color="#DC2626" />
                 </View>
-                <Text style={{ fontSize: 14, fontWeight: "500", color: "#DC2626" }}>Sign out</Text>
+                <Text style={{ flex: 1, fontSize: 14, fontWeight: "500", color: "#DC2626" }}>Sign out</Text>
               </Pressable>
-            </View>
             </MotiView>
-          )}
-        </ScrollView>
-      </KeyboardAvoidingView>
+
+          </ScrollView>
+        </View>
+
+        {/* Avatar — positioned to straddle header/content boundary */}
+        <View style={{
+          position: "absolute",
+          top: HEADER_HEIGHT - CONTENT_OVERLAP - AVATAR_SIZE / 2,
+          left: 0, right: 0,
+          alignItems: "center",
+          zIndex: 10,
+        }}>
+          <View style={{
+            width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2,
+            backgroundColor: BRAND_LIGHT,
+            borderWidth: 4, borderColor: "#FFFFFF",
+            alignItems: "center", justifyContent: "center",
+          }}>
+            <Text style={{ fontSize: 28, fontWeight: "800", color: "#FFFFFF", letterSpacing: -1 }}>{initials}</Text>
+          </View>
+        </View>
+
+      </View>
     </SafeAreaView>
   );
 }
