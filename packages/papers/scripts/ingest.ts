@@ -13,6 +13,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { createHash } from "node:crypto";
 import { extractText, getDocumentProxy } from "unpdf";
 import prisma from "@pass/db";
 import { CACHE_DIR, PAPERS_ROOT, cacheKey, listPaperFiles } from "./paper-files";
@@ -30,6 +31,12 @@ function ensureCacheDir() {
   if (!existsSync(CACHE_DIR)) mkdirSync(CACHE_DIR, { recursive: true });
 }
 const textCachePath = (paperCode: string) => join(CACHE_DIR, `${cacheKey(paperCode)}.txt`);
+
+/** Generate a short unique custom_id for batch requests (≤64 chars). */
+function shortCustomId(paperCode: string): string {
+  const hash = createHash("sha256").update(paperCode).digest("hex").slice(0, 16);
+  return `paper-${hash}`;
+}
 
 // ─── AI structuring contract ───────────────────────────────────────────────────
 
@@ -196,6 +203,8 @@ async function cmdSubmit() {
   }
 
   const requests: Anthropic.Messages.Batches.BatchCreateParams.Request[] = [];
+  const idMapping: Record<string, string> = {}; // shortId → paperCode mapping
+
   for (const r of ready) {
     const userBlocks: Anthropic.ContentBlockParam[] = [];
 
@@ -216,8 +225,11 @@ async function cmdSubmit() {
       });
     }
 
+    const customId = shortCustomId(r.paperCode!);
+    idMapping[customId] = r.paperCode!;
+
     requests.push({
-      custom_id: cacheKey(r.paperCode!),
+      custom_id: customId,
       params: {
         model: STRUCTURING_MODEL,
         max_tokens: 16000,
@@ -231,7 +243,7 @@ async function cmdSubmit() {
 
   console.log(`Submitting batch of ${requests.length} papers to Anthropic…`);
   const batch = await anthropic.messages.batches.create({ requests });
-  writeFileSync(BATCH_FILE, JSON.stringify({ id: batch.id, createdAt: Date.now() }, null, 2));
+  writeFileSync(BATCH_FILE, JSON.stringify({ id: batch.id, createdAt: Date.now(), idMapping }, null, 2));
   console.log(`Batch created: ${batch.id}\nStatus: ${batch.processing_status}`);
   console.log(`Run \`bun run ingest:collect\` once it finishes (poll status with ingest:status).`);
 }
@@ -243,7 +255,7 @@ async function cmdCollect() {
     console.log("No batch.json found. Run `ingest:submit` first.");
     return;
   }
-  const { id } = JSON.parse(readFileSync(BATCH_FILE, "utf8")) as { id: string };
+  const { id, idMapping } = JSON.parse(readFileSync(BATCH_FILE, "utf8")) as { id: string; idMapping?: Record<string, string> };
   const batch = await anthropic.messages.batches.retrieve(id);
   console.log(`Batch ${id} — ${batch.processing_status}`);
   if (batch.processing_status !== "ended") {
@@ -254,7 +266,8 @@ async function cmdCollect() {
   let ingested = 0;
   let failed = 0;
   for await (const entry of await anthropic.messages.batches.results(id)) {
-    const paperCode = entry.custom_id.replace(/__/g, "/");
+    // Reverse the custom_id back to paperCode using the mapping
+    const paperCode = idMapping?.[entry.custom_id] ?? entry.custom_id.replace(/__/g, "/");
     const resource = await prisma.resource.findUnique({ where: { paperCode } });
     if (!resource) {
       console.warn(`  ? no Resource for ${paperCode}`);
