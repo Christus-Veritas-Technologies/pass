@@ -55,17 +55,64 @@ export function getGoogleAuthUrl() {
   return `${API}/auth/google`;
 }
 
-function authedRequest<T>(path: string, init: RequestInit): Promise<T> {
+async function authedRequest<T>(path: string, init: RequestInit): Promise<T> {
   const accessToken = typeof window !== "undefined"
     ? localStorage.getItem("pass_access_token")
     : null;
-  return request<T>(path, {
+
+  const res = await fetch(`${API}${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     },
   });
+
+  // Happy path
+  if (res.ok) return res.json() as Promise<T>;
+
+  // On 401, attempt token refresh once then retry
+  if (res.status === 401) {
+    const refreshToken = typeof window !== "undefined"
+      ? localStorage.getItem("pass_refresh_token")
+      : null;
+
+    if (refreshToken) {
+      try {
+        const refreshRes = await fetch(`${API}/auth/refresh`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refreshToken }),
+        });
+
+        if (refreshRes.ok) {
+          const { accessToken: newAccess, refreshToken: newRefresh } = await refreshRes.json();
+          storeTokens({ accessToken: newAccess, refreshToken: newRefresh });
+
+          // Retry original request with new token
+          const retry = await fetch(`${API}${path}`, {
+            ...init,
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${newAccess}`,
+            },
+          });
+          if (retry.ok) return retry.json() as Promise<T>;
+          const retryJson = await retry.json();
+          throw new Error(retryJson.error ?? "Something went wrong");
+        }
+      } catch {
+        // Refresh failed — force logout
+      }
+    }
+
+    clearTokens();
+    if (typeof window !== "undefined") window.location.href = "/login";
+    throw new Error("Session expired. Please sign in again.");
+  }
+
+  const json = await res.json();
+  throw new Error(json.error ?? "Something went wrong");
 }
 
 export function apiUpdateProfile(data: { grade?: string; school?: string; name?: string }) {
