@@ -138,17 +138,22 @@ export async function refresh(c: Context) {
 export async function googleInit(c: Context) {
   if (!isGoogleConfigured()) return c.json({ error: "Google OAuth not configured" }, 503);
 
-  const state = randomBytes(16).toString("hex");
-  // State stored in a short-lived httpOnly cookie to verify on callback
-  setCookie(c, "oauth_state", state, {
+  // returnTo lets native apps (pass://) or custom web pages receive tokens after OAuth
+  const { returnTo } = c.req.query() as { returnTo?: string };
+
+  const statePayload = randomBytes(16).toString("hex");
+  const stateData = returnTo ? `${statePayload}:${returnTo}` : statePayload;
+  const encodedState = Buffer.from(stateData).toString("base64url");
+
+  setCookie(c, "oauth_state", statePayload, {
     httpOnly: true,
     secure: env.NODE_ENV === "production",
     sameSite: "Lax",
-    maxAge: 600, // 10 min
+    maxAge: 600,
     path: "/",
   });
 
-  return c.redirect(buildGoogleAuthUrl(state));
+  return c.redirect(buildGoogleAuthUrl(encodedState));
 }
 
 export async function googleCallback(c: Context) {
@@ -165,22 +170,54 @@ export async function googleCallback(c: Context) {
   const storedState = getCookie(c, "oauth_state");
   deleteCookie(c, "oauth_state");
 
-  if (!code || !state || state !== storedState) {
+  if (!code || !state) {
+    return c.redirect(`${env.APP_URL}/login?error=invalid_state`);
+  }
+
+  // Decode state and extract optional returnTo
+  let stateToken: string;
+  let returnTo: string | undefined;
+  try {
+    const decoded = Buffer.from(state, "base64url").toString("utf8");
+    const colonIdx = decoded.indexOf(":");
+    if (colonIdx === -1) {
+      stateToken = decoded;
+    } else {
+      stateToken = decoded.slice(0, colonIdx);
+      returnTo = decoded.slice(colonIdx + 1);
+    }
+  } catch {
+    return c.redirect(`${env.APP_URL}/login?error=invalid_state`);
+  }
+
+  if (stateToken !== storedState) {
     return c.redirect(`${env.APP_URL}/login?error=invalid_state`);
   }
 
   try {
     const tokens = await exchangeCodeForTokens(code);
     const googleUser = await fetchGoogleUser(tokens.access_token);
-    const { user } = await findOrCreateGoogleUser(googleUser);
+    const { user, isNew } = await findOrCreateGoogleUser(googleUser);
     const { accessToken, refreshToken } = await createSession(user.id);
 
-    // Redirect to web app with tokens in fragment so they stay out of server logs
+    // Native app redirect: pass://auth/callback?accessToken=...&refreshToken=...
+    if (returnTo?.startsWith("pass://")) {
+      const url = new URL(returnTo);
+      url.searchParams.set("accessToken", accessToken);
+      url.searchParams.set("refreshToken", refreshToken);
+      url.searchParams.set("isNew", isNew ? "1" : "0");
+      return c.redirect(url.toString());
+    }
+
+    // Web app: tokens in URL fragment (stays out of server logs and referrer headers)
     return c.redirect(
       `${env.APP_URL}/auth/callback#access=${accessToken}&refresh=${encodeURIComponent(refreshToken)}`,
     );
   } catch (err) {
     console.error("Google callback error:", err);
+    if (returnTo?.startsWith("pass://")) {
+      return c.redirect(`${returnTo}?error=google_failed`);
+    }
     return c.redirect(`${env.APP_URL}/login?error=google_failed`);
   }
 }

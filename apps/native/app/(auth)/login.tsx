@@ -16,7 +16,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { apiLogin, storeTokens } from "@/lib/auth";
+import { apiLogin, signInWithGoogle, storeTokens } from "@/lib/auth";
 
 const BRAND = "#4F46E5";
 
@@ -25,6 +25,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string; form?: string }>({});
 
   const passwordRef = useRef<TextInput>(null);
@@ -163,9 +164,29 @@ export default function LoginScreen() {
 
             {/* Google button */}
             <MotiView from={{ opacity: 0, translateY: 8 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 400, delay: 300 }} style={{ marginTop: 16 }}>
-              <Button variant="white" onPress={() => {/* expo-auth-session will be wired up in a later PR */}}>
+              <Button
+                variant="white"
+                loading={googleLoading}
+                onPress={async () => {
+                  setGoogleLoading(true);
+                  setErrors({});
+                  try {
+                    const { user, isNew } = await signInWithGoogle();
+                    if (isNew || !user.grade) {
+                      router.replace({ pathname: "/(onboarding)", params: { name: user.name } });
+                    } else {
+                      router.replace("/(drawer)/(tabs)/home");
+                    }
+                  } catch (err: unknown) {
+                    if (err instanceof Error && err.message !== "Google sign-in was cancelled") {
+                      setErrors({ form: err.message });
+                    }
+                  } finally {
+                    setGoogleLoading(false);
+                  }
+                }}
+              >
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                  {/* Google G */}
                   <Text style={{ fontSize: 17, lineHeight: 20 }}>G</Text>
                   <Text style={{ fontSize: 15, fontWeight: "600", color: "#374151" }}>Continue with Google</Text>
                 </View>

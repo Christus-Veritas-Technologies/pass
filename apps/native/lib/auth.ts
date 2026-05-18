@@ -1,4 +1,5 @@
 import * as SecureStore from "expo-secure-store";
+import * as WebBrowser from "expo-web-browser";
 import { env } from "@pass/env/native";
 
 const API = env.EXPO_PUBLIC_SERVER_URL;
@@ -48,6 +49,33 @@ export function apiForgotPassword(email: string) {
 }
 
 export const SESSION_EXPIRED = "SESSION_EXPIRED";
+
+const GOOGLE_REDIRECT = "pass://auth/callback";
+
+export async function signInWithGoogle(): Promise<{ user: AuthUser; isNew: boolean }> {
+  const authUrl = `${API}/auth/google?returnTo=${encodeURIComponent(GOOGLE_REDIRECT)}`;
+
+  const result = await WebBrowser.openAuthSessionAsync(authUrl, GOOGLE_REDIRECT);
+
+  if (result.type !== "success") {
+    throw new Error("Google sign-in was cancelled");
+  }
+
+  const url = new URL(result.url);
+  const accessToken = url.searchParams.get("accessToken");
+  const refreshToken = url.searchParams.get("refreshToken");
+  const isNew = url.searchParams.get("isNew") === "1";
+  const error = url.searchParams.get("error");
+
+  if (error) throw new Error("Google sign-in failed");
+  if (!accessToken || !refreshToken) throw new Error("Invalid OAuth response");
+
+  await storeTokens({ accessToken, refreshToken });
+
+  // Fetch user profile with the new token
+  const { user } = await authedRequest<{ user: AuthUser }>("/users/me", { method: "GET" });
+  return { user, isNew };
+}
 
 export function apiGoogleNative(idToken: string) {
   return request<{ user: AuthUser } & AuthTokens & { isNew: boolean }>("/auth/google/native", {
