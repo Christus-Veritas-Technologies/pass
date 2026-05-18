@@ -180,9 +180,19 @@ export default function LaunchScreen() {
       >
         <ProgressDots active={activeIndex} count={SLIDES.length} />
 
-        <Button onPress={handleNext} className="rounded-[14px]">
-          {activeIndex === SLIDES.length - 1 ? "Get Started" : "Next"}
-        </Button>
+        <Pressable
+          onPress={handleNext}
+          style={({ pressed }) => ({
+            backgroundColor: pressed ? "#4338CA" : BRAND,
+            borderRadius: 14,
+            paddingVertical: 16,
+            alignItems: "center",
+          })}
+        >
+          <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "600" }}>
+            {activeIndex === SLIDES.length - 1 ? "Get Started" : "Next"}
+          </Text>
+        </Pressable>
       </View>
     </SafeAreaView>
   );

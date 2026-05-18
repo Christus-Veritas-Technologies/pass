@@ -3,6 +3,7 @@ import type { Context } from "hono";
 import { z } from "zod";
 import prisma from "@pass/db";
 import { passAgent } from "../mastra";
+import { PLAN_LIMITS, currentMonthKey } from "../lib/planLimits";
 
 // ─── Schemas ─────────────────────────────────────────────────────────────────
 
@@ -172,6 +173,29 @@ export async function generateProject(c: Context) {
   if (!parsed.success) return c.json({ error: "Invalid request body" }, 400);
 
   const { grade, subject, topic } = parsed.data;
+
+  // Enforce monthly project limit
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } });
+  if (user) {
+    const limits = PLAN_LIMITS[user.plan];
+    const month = currentMonthKey();
+    const usage = await prisma.monthlyUsage.findUnique({
+      where: { userId_month: { userId, month } },
+    });
+    if ((usage?.projectsUsed ?? 0) >= limits.projects) {
+      return c.json({
+        error: "Monthly project limit reached for your plan",
+        limitReached: true,
+        plan: user.plan,
+        limit: limits.projects,
+      }, 402);
+    }
+    await prisma.monthlyUsage.upsert({
+      where: { userId_month: { userId, month } },
+      create: { userId, month, papersUsed: 0, projectsUsed: 1 },
+      update: { projectsUsed: { increment: 1 } },
+    });
+  }
 
   // Create placeholder project row so the client has an ID immediately
   const project = await prisma.project.create({

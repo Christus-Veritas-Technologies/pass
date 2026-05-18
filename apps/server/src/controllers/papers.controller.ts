@@ -4,6 +4,7 @@ import type { Context } from "hono";
 
 import prisma from "@pass/db";
 import { anthropic, CLAUDE_MODEL } from "../lib/anthropic";
+import { PLAN_LIMITS, currentMonthKey } from "../lib/planLimits";
 
 // ─── Controllers ─────────────────────────────────────────────────────────────
 
@@ -32,6 +33,29 @@ export async function startSession(c: Context) {
 
   const paper = await prisma.resource.findUnique({ where: { id: paperId } });
   if (!paper) return c.json({ error: "Paper not found" }, 404);
+
+  // Enforce monthly paper limit
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } });
+  if (user) {
+    const limits = PLAN_LIMITS[user.plan];
+    const month = currentMonthKey();
+    const usage = await prisma.monthlyUsage.findUnique({
+      where: { userId_month: { userId, month } },
+    });
+    if ((usage?.papersUsed ?? 0) >= limits.papers) {
+      return c.json({
+        error: "Monthly paper limit reached for your plan",
+        limitReached: true,
+        plan: user.plan,
+        limit: limits.papers,
+      }, 402);
+    }
+    await prisma.monthlyUsage.upsert({
+      where: { userId_month: { userId, month } },
+      create: { userId, month, papersUsed: 1, projectsUsed: 0 },
+      update: { papersUsed: { increment: 1 } },
+    });
+  }
 
   const session = await prisma.paperSession.create({
     data: { userId, resourceId: paperId, mode },
