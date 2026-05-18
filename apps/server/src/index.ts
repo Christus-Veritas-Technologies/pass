@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import { env } from "@pass/env/server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
@@ -23,6 +24,28 @@ app.use(
 );
 
 app.get("/", (c) => c.text("OK"));
+
+// ─── Static past-paper PDFs ───────────────────────────────────────────────────
+// The 176 committed ZIMSEC PDFs live in packages/papers/papers. Resource.fileUrl
+// points here; react-native-pdf and the web viewer load these directly.
+// Absolute path resolved from this file so it survives any cwd.
+const PAPERS_DIR = join(import.meta.dir, "../../../packages/papers/papers");
+
+app.get("/static/papers/*", async (c) => {
+  const rel = decodeURIComponent(c.req.path.replace(/^\/static\/papers\//, ""));
+  // Reject path traversal
+  if (rel.includes("..") || rel.startsWith("/")) {
+    return c.text("Forbidden", 403);
+  }
+  const file = Bun.file(join(PAPERS_DIR, rel));
+  if (!(await file.exists())) return c.text("Not found", 404);
+  return new Response(file, {
+    headers: {
+      "Content-Type": "application/pdf",
+      "Cache-Control": "public, max-age=31536000, immutable",
+    },
+  });
+});
 
 app.route("/ai", aiRoutes);
 app.route("/auth", authRoutes);
