@@ -7,6 +7,7 @@ import authRoutes from "./routes/auth.routes";
 import papersRoutes from "./routes/papers.routes";
 import projectsRoutes from "./routes/projects.routes";
 import resourcesRoutes from "./routes/resources.routes";
+import studyRoutes from "./routes/study.routes";
 import usersRoutes from "./routes/users.routes";
 
 const app = new Hono();
@@ -27,6 +28,7 @@ app.route("/auth", authRoutes);
 app.route("/resources", resourcesRoutes);
 app.route("/papers", papersRoutes);
 app.route("/projects", projectsRoutes);
+app.route("/study", studyRoutes);
 app.route("/users", usersRoutes);
 
 export default app;
