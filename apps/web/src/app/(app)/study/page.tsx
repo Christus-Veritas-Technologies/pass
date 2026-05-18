@@ -86,7 +86,7 @@ export default function StudyPage() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-4xl space-y-8 animate-in fade-in-0 duration-300">
+    <div className="mx-auto max-w-4xl space-y-8 animate-fade-up">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -106,38 +106,38 @@ export default function StudyPage() {
         <StatsSkeleton />
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-          <Card className="rounded-xl">
-            <CardContent className="pt-5">
+          <Card className="rounded-xl transition-[transform,box-shadow] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-0.5 hover:shadow-sm animate-fade-up stagger-1">
+            <CardContent className="pt-5 pb-4">
               <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                <HugeiconsIcon icon={TaskDaily01Icon} className="h-4 w-4" />
+                <HugeiconsIcon icon={TaskDaily01Icon} className="h-3.5 w-3.5" />
                 <span className="text-xs font-medium">Papers done</span>
               </div>
-              <p className="text-3xl font-bold">{data?.sessionsCompleted ?? 0}</p>
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="text-2xl font-bold tracking-tight">{data?.sessionsCompleted ?? 0}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
                 of {data?.sessionsStarted ?? 0} started
               </p>
             </CardContent>
           </Card>
 
-          <Card className="rounded-xl">
-            <CardContent className="pt-5">
+          <Card className="rounded-xl transition-[transform,box-shadow] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-0.5 hover:shadow-sm animate-fade-up stagger-2">
+            <CardContent className="pt-5 pb-4">
               <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                <HugeiconsIcon icon={TrendingUpDownIcon} className="h-4 w-4" />
+                <HugeiconsIcon icon={TrendingUpDownIcon} className="h-3.5 w-3.5" />
                 <span className="text-xs font-medium">Completion rate</span>
               </div>
-              <p className="text-3xl font-bold">{data?.passRate ?? 0}%</p>
-              <p className="mt-1 text-xs text-muted-foreground">sessions completed</p>
+              <p className="text-2xl font-bold tracking-tight">{data?.passRate ?? 0}%</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">sessions finished</p>
             </CardContent>
           </Card>
 
-          <Card className="rounded-xl col-span-2 sm:col-span-1">
-            <CardContent className="pt-5">
+          <Card className="rounded-xl col-span-2 sm:col-span-1 transition-[transform,box-shadow] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-0.5 hover:shadow-sm animate-fade-up stagger-3">
+            <CardContent className="pt-5 pb-4">
               <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                <HugeiconsIcon icon={CheckmarkCircle01Icon} className="h-4 w-4" />
+                <HugeiconsIcon icon={CheckmarkCircle01Icon} className="h-3.5 w-3.5" />
                 <span className="text-xs font-medium">Questions answered</span>
               </div>
-              <p className="text-3xl font-bold">{data?.totalQuestionsAnswered ?? 0}</p>
-              <p className="mt-1 text-xs text-muted-foreground">across all sessions</p>
+              <p className="text-2xl font-bold tracking-tight">{data?.totalQuestionsAnswered ?? 0}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">across all sessions</p>
             </CardContent>
           </Card>
         </div>
@@ -190,7 +190,7 @@ export default function StudyPage() {
                 {data.sessions.map((s) => (
                   <TableRow
                     key={s.id}
-                    className="cursor-pointer"
+                    className="cursor-pointer transition-colors duration-100 active:bg-muted/80"
                     onClick={() => router.push(`/papers/${s.paperId}`)}
                   >
                     <TableCell className="font-medium max-w-[240px]">

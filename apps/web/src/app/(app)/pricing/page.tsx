@@ -86,7 +86,7 @@ const PLANS = [
 
 export default function PricingPage() {
   return (
-    <div className="mx-auto max-w-4xl space-y-10">
+    <div className="mx-auto max-w-4xl space-y-10 animate-fade-up">
       {/* Header */}
       <div className="text-center space-y-2">
         <h1 className="text-3xl font-bold tracking-tight">Simple, transparent pricing</h1>
@@ -101,7 +101,7 @@ export default function PricingPage() {
           <Card
             key={plan.id}
             className={cn(
-              "rounded-xl relative",
+              "rounded-xl relative transition-[transform,box-shadow] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-1 hover:shadow-md",
               plan.id === "STUDY" && "ring-2 ring-primary shadow-lg",
             )}
           >
