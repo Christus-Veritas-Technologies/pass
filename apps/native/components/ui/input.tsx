@@ -25,8 +25,10 @@ export const Input = React.forwardRef<TextInput, InputProps>(
     const borderWidth = focused || error ? 2 : 1;
 
     return (
+      // @ts-expect-error — className works via uniwind
       <View className={containerClassName}>
         {label && (
+          // @ts-expect-error — className works via uniwind
           <Text className="text-sm font-medium text-gray-700 mb-1.5">{label}</Text>
         )}
         <TextInput
@@ -57,6 +59,7 @@ export const Input = React.forwardRef<TextInput, InputProps>(
           {...props}
         />
         {error && (
+          // @ts-expect-error — className works via uniwind
           <Text className="text-xs text-red-500 mt-1.5">{error}</Text>
         )}
       </View>
