@@ -13,8 +13,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { apiForgotPassword } from "@/lib/auth";
 
 const BRAND = "#4F46E5";
