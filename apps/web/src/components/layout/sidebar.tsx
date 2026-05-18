@@ -3,6 +3,7 @@
 import {
   BookOpen01Icon,
   Folder01Icon,
+  GraduationScrollIcon,
   Home01Icon,
   Tag01Icon,
   UserIcon,
@@ -16,6 +17,7 @@ import { cn } from "@/lib/utils";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: Home01Icon },
+  { href: "/study", label: "Study", icon: GraduationScrollIcon },
   { href: "/resources", label: "Resources", icon: BookOpen01Icon },
   { href: "/projects", label: "Projects", icon: Folder01Icon },
   { href: "/pricing", label: "Pricing", icon: Tag01Icon },
