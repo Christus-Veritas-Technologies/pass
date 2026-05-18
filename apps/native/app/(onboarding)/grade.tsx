@@ -1,5 +1,6 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { MotiView } from "moti";
+import { Easing } from "react-native-reanimated";
 import { useState } from "react";
 import { Dimensions, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -22,7 +23,7 @@ function ProgressDots({ step }: { step: number }) {
         <MotiView
           key={i}
           animate={{ width: i === step ? 20 : 6, backgroundColor: i === step ? BRAND : "#D1D5DB" }}
-          transition={{ type: "timing", duration: 200 }}
+          transition={{ type: "timing", duration: 200, easing: Easing.bezier(0.23, 1, 0.32, 1) }}
           style={{ height: 6, borderRadius: 3 }}
         />
       ))}
@@ -53,7 +54,7 @@ export default function OnboardingGrade() {
       <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: 20, paddingBottom: 36 }}>
 
         {/* Progress */}
-        <MotiView from={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ type: "timing", duration: 300 }}>
+        <MotiView from={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ type: "timing", duration: 250, easing: Easing.bezier(0.23, 1, 0.32, 1) }}>
           <ProgressDots step={1} />
         </MotiView>
 
@@ -61,7 +62,7 @@ export default function OnboardingGrade() {
         <MotiView
           from={{ opacity: 0, translateY: 14 }}
           animate={{ opacity: 1, translateY: 0 }}
-          transition={{ type: "timing", duration: 400, delay: 60 }}
+          transition={{ type: "timing", duration: 220, delay: 60, easing: Easing.bezier(0.23, 1, 0.32, 1) }}
           style={{ marginTop: 40, marginBottom: 32 }}
         >
           <Text style={{ fontSize: 26, fontWeight: "700", color: "#111827", letterSpacing: -0.5 }}>
@@ -76,7 +77,7 @@ export default function OnboardingGrade() {
         <MotiView
           from={{ opacity: 0, translateY: 10 }}
           animate={{ opacity: 1, translateY: 0 }}
-          transition={{ type: "timing", duration: 400, delay: 140 }}
+          transition={{ type: "timing", duration: 220, delay: 140, easing: Easing.bezier(0.23, 1, 0.32, 1) }}
           style={{ gap: 20 }}
         >
           {GRADE_SECTIONS.map((section) => (
@@ -124,7 +125,7 @@ export default function OnboardingGrade() {
         <MotiView
           from={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ type: "timing", duration: 300, delay: 320 }}
+          transition={{ type: "timing", duration: 220, delay: 320, easing: Easing.bezier(0.23, 1, 0.32, 1) }}
         >
           <Button
             loading={loading}
