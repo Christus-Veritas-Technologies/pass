@@ -9,6 +9,7 @@ import { HugeiconsIcon } from "@hugeicons/react-native";
 import * as SecureStore from "expo-secure-store";
 import { useRouter } from "expo-router";
 import { MotiView } from "moti";
+import { Easing } from "react-native-reanimated";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -102,7 +103,7 @@ export default function StudyScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchStats(true)} tintColor={BRAND} />}
       >
         {/* Header */}
-        <MotiView from={{ opacity: 0, translateY: -8 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 350 }}>
+        <MotiView from={{ opacity: 0, translateY: -6 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 250, easing: Easing.bezier(0.23, 1, 0.32, 1) }}>
           <View style={{ paddingTop: 24, paddingBottom: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
             <View>
               <Text style={{ fontSize: 22, fontWeight: "700", color: "#111827", letterSpacing: -0.5 }}>Study</Text>
@@ -125,7 +126,7 @@ export default function StudyScreen() {
         ) : (
           <>
             {/* Stats */}
-            <MotiView from={{ opacity: 0, translateY: 8 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 350, delay: 60 }}>
+            <MotiView from={{ opacity: 0, translateY: 6, scale: 0.97 }} animate={{ opacity: 1, translateY: 0, scale: 1 }} transition={{ type: "timing", duration: 220, delay: 50, easing: Easing.bezier(0.23, 1, 0.32, 1) }}>
               <View style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
                 <StatCard
                   icon={TaskDaily01Icon}
@@ -151,7 +152,7 @@ export default function StudyScreen() {
             </MotiView>
 
             {/* Recent sessions */}
-            <MotiView from={{ opacity: 0, translateY: 8 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 350, delay: 120 }}>
+            <MotiView from={{ opacity: 0, translateY: 6, scale: 0.97 }} animate={{ opacity: 1, translateY: 0, scale: 1 }} transition={{ type: "timing", duration: 220, delay: 100, easing: Easing.bezier(0.23, 1, 0.32, 1) }}>
               <Text style={{ fontSize: 15, fontWeight: "600", color: "#111827", marginBottom: 12 }}>Recent sessions</Text>
 
               {!data?.sessions.length ? (
