@@ -18,7 +18,9 @@ import {
   Text,
   View,
 } from "react-native";
+import { Easing } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { AnimatedPressable } from "@/components/animated-pressable";
 import { env } from "@pass/env/native";
 
 const BRAND = "#4F46E5";
@@ -34,6 +36,7 @@ interface Stats {
 
 interface RecentSession {
   id: string;
+  paperId: string;
   paperTitle: string;
   subject: string;
   grade: string;
@@ -139,7 +142,7 @@ export default function HomeScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchAll(true)} tintColor={BRAND} />}
       >
         {/* Header */}
-        <MotiView from={{ opacity: 0, translateY: -8 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 350 }}>
+        <MotiView from={{ opacity: 0, translateY: -6 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 250, easing: Easing.bezier(0.23, 1, 0.32, 1) }}>
           <View style={{ paddingTop: 24, paddingBottom: 20 }}>
             <Text style={{ fontSize: 22, fontWeight: "700", color: "#111827", letterSpacing: -0.5 }}>
               {userName ? `Hi, ${userName}` : "Dashboard"}
@@ -149,7 +152,7 @@ export default function HomeScreen() {
         </MotiView>
 
         {/* Stats row */}
-        <MotiView from={{ opacity: 0, translateY: 8 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 350, delay: 60 }}>
+        <MotiView from={{ opacity: 0, translateY: 6, scale: 0.97 }} animate={{ opacity: 1, translateY: 0, scale: 1 }} transition={{ type: "timing", duration: 250, delay: 50, easing: Easing.bezier(0.23, 1, 0.32, 1) }}>
           <View style={{ flexDirection: "row", gap: 10, marginBottom: 24 }}>
             {[
               { icon: TaskDaily01Icon, label: "Papers", value: String(stats?.papersAttempted ?? 0) },
@@ -176,7 +179,7 @@ export default function HomeScreen() {
         </MotiView>
 
         {/* Weekly goal */}
-        <MotiView from={{ opacity: 0, translateY: 8 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 350, delay: 120 }}>
+        <MotiView from={{ opacity: 0, translateY: 6, scale: 0.97 }} animate={{ opacity: 1, translateY: 0, scale: 1 }} transition={{ type: "timing", duration: 250, delay: 100, easing: Easing.bezier(0.23, 1, 0.32, 1) }}>
           <View
             style={{
               backgroundColor: "#F9FAFB",
@@ -202,7 +205,7 @@ export default function HomeScreen() {
         </MotiView>
 
         {/* Recent papers */}
-        <MotiView from={{ opacity: 0, translateY: 8 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 350, delay: 180 }}>
+        <MotiView from={{ opacity: 0, translateY: 6, scale: 0.97 }} animate={{ opacity: 1, translateY: 0, scale: 1 }} transition={{ type: "timing", duration: 250, delay: 150, easing: Easing.bezier(0.23, 1, 0.32, 1) }}>
           <View style={{ marginBottom: 28 }}>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
               <Text style={{ fontSize: 15, fontWeight: "600", color: "#111827" }}>Recent papers</Text>
@@ -223,10 +226,11 @@ export default function HomeScreen() {
                 </Pressable>
               </View>
             ) : (
-              <View style={{ gap: 10 }}>
+              <View style={{ gap: 8 }}>
                 {sessions.slice(0, 5).map((s) => (
-                  <View
+                  <AnimatedPressable
                     key={s.id}
+                    onPress={() => router.push(`/papers/${s.paperId}` as never)}
                     style={{
                       flexDirection: "row",
                       alignItems: "center",
@@ -258,7 +262,7 @@ export default function HomeScreen() {
                         {s.questionsAnswered}q
                       </Text>
                     </View>
-                  </View>
+                  </AnimatedPressable>
                 ))}
               </View>
             )}
@@ -266,7 +270,7 @@ export default function HomeScreen() {
         </MotiView>
 
         {/* Featured resources */}
-        <MotiView from={{ opacity: 0, translateY: 8 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 350, delay: 240 }}>
+        <MotiView from={{ opacity: 0, translateY: 6, scale: 0.97 }} animate={{ opacity: 1, translateY: 0, scale: 1 }} transition={{ type: "timing", duration: 250, delay: 200, easing: Easing.bezier(0.23, 1, 0.32, 1) }}>
           <View>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
               <Text style={{ fontSize: 15, fontWeight: "600", color: "#111827" }}>Featured resources</Text>
