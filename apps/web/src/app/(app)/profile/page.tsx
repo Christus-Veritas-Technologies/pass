@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import { Badge } from "@pass/ui/components/badge";
 import { Button } from "@pass/ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@pass/ui/components/card";
+import { Progress } from "@pass/ui/components/progress";
 import { Skeleton } from "@pass/ui/components/skeleton";
 import { apiUpdateProfile, clearTokens, getAccessToken } from "@/lib/auth";
 
@@ -44,15 +45,21 @@ interface Stats {
   weeklyProgress: number;
 }
 
+interface PlanUsage {
+  papers:   { used: number; limit: number };
+  projects: { used: number; limit: number };
+}
+
 function getInitials(name: string) {
   return name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase();
 }
 
 export default function ProfilePage() {
   const router = useRouter();
-  const [user, setUser]   = useState<UserProfile | null>(null);
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser]         = useState<UserProfile | null>(null);
+  const [stats, setStats]       = useState<Stats | null>(null);
+  const [planUsage, setPlanUsage] = useState<PlanUsage | null>(null);
+  const [loading, setLoading]   = useState(true);
   const [editing, setEditing] = useState(false);
 
   const [name, setName]     = useState("");
@@ -71,6 +78,7 @@ export default function ProfilePage() {
       .then((d) => {
         setUser(d.user ?? null);
         setStats(d.stats ?? null);
+        setPlanUsage(d.planUsage ?? null);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -155,7 +163,11 @@ export default function ProfilePage() {
           {/* Avatar overlap */}
           <div className="-mt-10 mb-4 flex items-end justify-between">
             <div className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-background bg-primary text-white text-2xl font-bold">
-              {initials}
+              {initials !== "?" ? (
+                initials
+              ) : (
+                <HugeiconsIcon icon={User02Icon} className="h-9 w-9 text-white" />
+              )}
             </div>
             <Badge variant={PLAN_BADGE[user?.plan ?? "FREE"] ?? "default"} className="mb-1">
               {user?.plan !== "FREE" && <HugeiconsIcon icon={CrownIcon} className="mr-1 h-3 w-3" />}
@@ -262,27 +274,61 @@ export default function ProfilePage() {
         </Card>
       )}
 
-      {/* Plan */}
+      {/* Plan & Usage */}
       {!editing && (
         <Card className="rounded-xl">
-          <CardContent className="py-4 px-5 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50">
-                <HugeiconsIcon icon={CrownIcon} className="h-4.5 w-4.5 text-amber-500" />
+          <CardHeader className="pb-3 pt-5 px-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50">
+                  <HugeiconsIcon icon={CrownIcon} className="h-4 w-4 text-amber-500" />
+                </div>
+                <CardTitle className="text-sm font-semibold">Plan &amp; Usage</CardTitle>
               </div>
-              <div>
-                <p className="text-sm font-semibold">{PLAN_LABEL[user?.plan ?? "FREE"] ?? "Free plan"}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {user?.plan === "FREE"
-                    ? "Upgrade for unlimited papers and projects."
-                    : "You have premium access — thank you!"}
-                </p>
-              </div>
+              <Badge variant={PLAN_BADGE[user?.plan ?? "FREE"] ?? "default"} className="text-xs">
+                {PLAN_LABEL[user?.plan ?? "FREE"] ?? "Free plan"}
+              </Badge>
             </div>
+          </CardHeader>
+          <CardContent className="px-5 pb-5 space-y-4">
+            {planUsage ? (
+              <>
+                {[
+                  { label: "Papers this month",      key: "papers"   as const, color: "bg-primary" },
+                  { label: "AI Projects this month", key: "projects" as const, color: "bg-violet-500" },
+                ].map(({ label, key, color }) => {
+                  const { used, limit } = planUsage[key];
+                  const pct = limit > 0 ? Math.min(100, (used / limit) * 100) : 0;
+                  const almostFull = pct >= 80;
+                  return (
+                    <div key={key} className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">{label}</span>
+                        <span className={`font-semibold tabular-nums ${almostFull ? "text-destructive" : "text-foreground"}`}>
+                          {used} / {limit}
+                        </span>
+                      </div>
+                      <Progress
+                        value={used}
+                        max={limit}
+                        className={`h-1.5 ${almostFull ? "[&>div]:bg-destructive" : `[&>div]:${color}`}`}
+                      />
+                    </div>
+                  );
+                })}
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground">Usage data unavailable</p>
+            )}
             {user?.plan === "FREE" && (
-              <a href="/pricing">
-                <Button size="sm" className="shrink-0">Upgrade</Button>
-              </a>
+              <div className="mt-2 rounded-lg bg-amber-50 border border-amber-100 px-4 py-3 flex items-center justify-between gap-4">
+                <p className="text-xs text-amber-800 leading-relaxed">
+                  Upgrade to <strong>Study</strong> or <strong>Pass</strong> for more papers and projects each month.
+                </p>
+                <a href="/pricing">
+                  <Button size="sm" className="shrink-0 h-7 text-xs">Upgrade</Button>
+                </a>
+              </div>
             )}
           </CardContent>
         </Card>
