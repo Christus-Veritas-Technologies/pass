@@ -4,9 +4,9 @@ import {
   Search01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react-native";
+import { MotiView } from "moti";
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   FlatList,
   Pressable,
   RefreshControl,
@@ -16,6 +16,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { SkeletonCard } from "@/components/skeleton-block";
 import { env } from "@pass/env/native";
 
 const BRAND = "#4F46E5";
@@ -234,8 +235,8 @@ export default function ResourcesScreen() {
 
       {/* List */}
       {loading ? (
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator size="large" color={BRAND} />
+        <View style={{ padding: 16 }}>
+          {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
         </View>
       ) : (
         <FlatList
@@ -251,24 +252,20 @@ export default function ResourcesScreen() {
             />
           }
           ListEmptyComponent={
-            <View style={{ alignItems: "center", paddingTop: 60, gap: 12 }}>
-              <View
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 28,
-                  backgroundColor: "#F3F4F6",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <HugeiconsIcon icon={BookOpen01Icon} size={24} color="#9CA3AF" />
+            <MotiView
+              from={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ type: "timing", duration: 300 }}
+              style={{ alignItems: "center", paddingTop: 60, gap: 12 }}
+            >
+              <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: "#EEF2FF", alignItems: "center", justifyContent: "center" }}>
+                <HugeiconsIcon icon={BookOpen01Icon} size={28} color="#A5B4FC" />
               </View>
-              <Text style={{ fontSize: 14, fontWeight: "500", color: "#374151" }}>No resources found</Text>
-              <Text style={{ fontSize: 13, color: "#9CA3AF", textAlign: "center" }}>
-                Try adjusting your filters.
+              <Text style={{ fontSize: 15, fontWeight: "600", color: "#374151" }}>No resources found</Text>
+              <Text style={{ fontSize: 13, color: "#9CA3AF", textAlign: "center", paddingHorizontal: 24 }}>
+                {search.trim() ? `No results for "${search}"` : "Try adjusting your type or subject filters."}
               </Text>
-            </View>
+            </MotiView>
           }
         />
       )}

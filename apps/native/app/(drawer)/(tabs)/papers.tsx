@@ -10,7 +10,6 @@ import { useRouter } from "expo-router";
 import { MotiView } from "moti";
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   FlatList,
   Pressable,
   RefreshControl,
@@ -20,6 +19,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { SkeletonCard } from "@/components/skeleton-block";
 import { env } from "@pass/env/native";
 
 const BRAND = "#4F46E5";
@@ -218,8 +218,8 @@ export default function PapersScreen() {
 
       {/* List */}
       {loading ? (
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator size="large" color={BRAND} />
+        <View style={{ padding: 16 }}>
+          {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
         </View>
       ) : (
         <FlatList

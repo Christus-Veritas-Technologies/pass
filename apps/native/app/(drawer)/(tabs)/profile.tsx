@@ -9,6 +9,7 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
+import { MotiView } from "moti";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -152,6 +153,7 @@ export default function ProfileScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
           {/* Header */}
+          <MotiView from={{ opacity: 0, translateY: -8 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 350 }}>
           <View style={{ backgroundColor: "#FFFFFF", paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24, alignItems: "center" }}>
             <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: "#EEF2FF", alignItems: "center", justifyContent: "center", marginBottom: 12 }}>
               <HugeiconsIcon icon={User01Icon} size={36} color={BRAND} />
@@ -173,9 +175,11 @@ export default function ProfileScreen() {
               <Text style={{ fontSize: 12, color: "#9CA3AF", marginTop: 6 }}>{user.school}</Text>
             )}
           </View>
+          </MotiView>
 
           {/* Stats */}
           {stats && (
+            <MotiView from={{ opacity: 0, translateY: 8 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 350, delay: 80 }}>
             <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
               <Text style={{ fontSize: 13, fontWeight: "600", color: "#374151", marginBottom: 12 }}>Your stats</Text>
               <View style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
@@ -187,9 +191,10 @@ export default function ProfileScreen() {
                 <StatCard label={`Weekly (/${stats.weeklyGoal})`} value={stats.weeklyProgress} />
               </View>
             </View>
+            </MotiView>
           )}
 
-          {/* Edit profile */}
+          {/* Actions */}
           {editing ? (
             <View style={{ marginHorizontal: 20, marginTop: 20, backgroundColor: "#FFFFFF", borderRadius: 14, padding: 18 }}>
               <Text style={{ fontSize: 14, fontWeight: "600", color: "#111827", marginBottom: 16 }}>Edit Profile</Text>
@@ -275,6 +280,7 @@ export default function ProfileScreen() {
               </View>
             </View>
           ) : (
+            <MotiView from={{ opacity: 0, translateY: 8 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 350, delay: 160 }}>
             <View style={{ marginHorizontal: 20, marginTop: 20, gap: 10 }}>
               {/* Edit button */}
               <Pressable
@@ -336,6 +342,7 @@ export default function ProfileScreen() {
                 <Text style={{ fontSize: 14, fontWeight: "500", color: "#DC2626" }}>Sign out</Text>
               </Pressable>
             </View>
+            </MotiView>
           )}
         </ScrollView>
       </KeyboardAvoidingView>
