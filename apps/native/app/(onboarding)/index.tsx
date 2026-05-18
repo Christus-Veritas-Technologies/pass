@@ -2,6 +2,7 @@ import { BarChart01Icon, CheckmarkCircle01Icon, File01Icon } from "@hugeicons/co
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { MotiView } from "moti";
+import { Easing } from "react-native-reanimated";
 import { Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,7 @@ function ProgressDots({ step }: { step: number }) {
         <MotiView
           key={i}
           animate={{ width: i === step ? 20 : 6, backgroundColor: i === step ? BRAND : "#D1D5DB" }}
-          transition={{ type: "timing", duration: 200 }}
+          transition={{ type: "timing", duration: 200, easing: Easing.bezier(0.23, 1, 0.32, 1) }}
           style={{ height: 6, borderRadius: 3 }}
         />
       ))}
@@ -38,7 +39,7 @@ export default function OnboardingWelcome() {
       <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: 20, paddingBottom: 36 }}>
 
         {/* Progress */}
-        <MotiView from={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ type: "timing", duration: 300 }}>
+        <MotiView from={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ type: "timing", duration: 250, easing: Easing.bezier(0.23, 1, 0.32, 1) }}>
           <ProgressDots step={0} />
         </MotiView>
 
@@ -46,7 +47,7 @@ export default function OnboardingWelcome() {
         <MotiView
           from={{ opacity: 0, translateY: 16 }}
           animate={{ opacity: 1, translateY: 0 }}
-          transition={{ type: "timing", duration: 420, delay: 80 }}
+          transition={{ type: "timing", duration: 220, delay: 80, easing: Easing.bezier(0.23, 1, 0.32, 1) }}
           style={{ marginTop: 48 }}
         >
           <View style={{ width: 52, height: 52, borderRadius: 14, backgroundColor: BRAND, alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
@@ -67,7 +68,7 @@ export default function OnboardingWelcome() {
               key={f.text}
               from={{ opacity: 0, translateX: -12 }}
               animate={{ opacity: 1, translateX: 0 }}
-              transition={{ type: "timing", duration: 380, delay: 200 + i * 80 }}
+              transition={{ type: "timing", duration: 220, delay: 200 + i * 80, easing: Easing.bezier(0.23, 1, 0.32, 1) }}
               style={{ flexDirection: "row", alignItems: "center", gap: 14 }}
             >
               <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: "#EEF2FF", alignItems: "center", justifyContent: "center" }}>
@@ -85,7 +86,7 @@ export default function OnboardingWelcome() {
         <MotiView
           from={{ opacity: 0, translateY: 12 }}
           animate={{ opacity: 1, translateY: 0 }}
-          transition={{ type: "timing", duration: 380, delay: 480 }}
+          transition={{ type: "timing", duration: 220, delay: 480, easing: Easing.bezier(0.23, 1, 0.32, 1) }}
         >
           <Button onPress={() => router.push({ pathname: "/(onboarding)/grade", params: { name } })}>
             Get started
