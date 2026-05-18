@@ -1,6 +1,6 @@
 import { ViewIcon, ViewOffIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react-native";
-import { router } from "expo-router";
+import { router, Stack } from "expo-router";
 import { MotiView } from "moti";
 import { Easing } from "react-native-reanimated";
 import { useState, useRef } from "react";
@@ -61,6 +61,11 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
+      {/* Hide the header */}
+      <Stack.Screen
+        options={{ headerShown: false }}
+      />
+      
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
