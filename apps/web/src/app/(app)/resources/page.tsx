@@ -164,16 +164,32 @@ export default function ResourcesPage() {
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted mb-4">
-            <HugeiconsIcon icon={BookOpen01Icon} className="h-6 w-6 text-muted-foreground" />
+        <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in-0 duration-300">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 mb-4">
+            <HugeiconsIcon icon={BookOpen01Icon} className="h-6 w-6 text-primary/40" />
           </div>
-          <p className="text-sm font-medium">No resources found</p>
-          <p className="mt-1 text-xs text-muted-foreground">Try adjusting your filters or search term.</p>
+          <p className="text-sm font-medium">
+            {resources.length === 0 ? "No resources available" : "No resources match your filters"}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {resources.length === 0
+              ? "Resources will appear here once they're added."
+              : search.trim()
+              ? `No results for "${search}".`
+              : "Try clearing your filters."}
+          </p>
+          {(subject !== "All" || grade !== "All" || type !== "All" || year !== "All" || search) && (
+            <button
+              onClick={() => { setSubject("All"); setGrade("All"); setType("All"); setYear("All"); setSearch(""); }}
+              className="mt-4 text-xs text-primary hover:underline"
+            >
+              Clear all filters
+            </button>
+          )}
         </div>
       ) : (
-        <>
-          <p className="text-xs text-muted-foreground">{filtered.length} result{filtered.length !== 1 ? "s" : ""}</p>
+        <div className="animate-in fade-in-0 duration-300">
+          <p className="text-xs text-muted-foreground mb-4">{filtered.length} result{filtered.length !== 1 ? "s" : ""}</p>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((r) => (
               <Card key={r.id} className="rounded-xl">
@@ -199,7 +215,7 @@ export default function ResourcesPage() {
               </Card>
             ))}
           </div>
-        </>
+        </div>
       )}
     </div>
   );

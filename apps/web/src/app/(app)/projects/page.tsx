@@ -158,7 +158,7 @@ export default function ProjectsPage() {
   const displayContent = selected?.content ?? streamedContent;
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-5xl animate-in fade-in-0 duration-300">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Projects</h1>

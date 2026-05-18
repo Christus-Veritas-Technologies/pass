@@ -168,8 +168,8 @@ export default function PapersPage() {
           )}
         </div>
       ) : (
-        <>
-          <p className="text-xs text-muted-foreground">
+        <div className="animate-in fade-in-0 duration-300">
+          <p className="text-xs text-muted-foreground mb-4">
             {filtered.length} paper{filtered.length !== 1 ? "s" : ""}
           </p>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -205,7 +205,7 @@ export default function PapersPage() {
               </Link>
             ))}
           </div>
-        </>
+        </div>
       )}
     </div>
   );
