@@ -3,7 +3,6 @@
 import {
   BookOpen01Icon,
   Download01Icon,
-  FilterIcon,
   Search01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -12,7 +11,6 @@ import { Badge } from "@pass/ui/components/badge";
 import { Button } from "@pass/ui/components/button";
 import { Card, CardContent } from "@pass/ui/components/card";
 import { Skeleton } from "@pass/ui/components/skeleton";
-import { cn } from "@/lib/utils";
 
 const SUBJECTS = ["All", "Mathematics", "English Language", "Combined Science", "History", "Geography", "Chemistry", "Biology", "English Literature", "Shona"];
 const GRADES = ["All", "Form 1", "Form 2", "Form 3", "Form 4", "Form 5", "Form 6"];
@@ -44,11 +42,14 @@ const API = process.env.NEXT_PUBLIC_SERVER_URL;
 
 function ResourceSkeleton() {
   return (
-    <div className="space-y-2">
-      <Skeleton className="h-4 w-3/4 rounded" />
-      <Skeleton className="h-3 w-1/2 rounded" />
-      <Skeleton className="h-3 w-1/3 rounded" />
-    </div>
+    <Card className="rounded-xl">
+      <CardContent className="py-4 space-y-2.5">
+        <Skeleton className="h-3.5 w-3/4 rounded" />
+        <Skeleton className="h-3 w-1/2 rounded" />
+        <Skeleton className="h-3 w-1/3 rounded" />
+        <Skeleton className="h-6 w-24 rounded-lg mt-2" />
+      </CardContent>
+    </Card>
   );
 }
 
@@ -83,8 +84,10 @@ export default function ResourcesPage() {
       )
     : resources;
 
+  const hasFilters = subject !== "All" || grade !== "All" || type !== "All" || year !== "All" || !!search;
+
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6 animate-fade-up">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Resources</h1>
@@ -104,12 +107,12 @@ export default function ResourcesPage() {
           placeholder="Search by title or subject…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-4 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+          className="w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-4 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-[box-shadow] duration-150"
         />
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-2.5">
         {/* Type tabs */}
         <div className="flex rounded-lg border border-border overflow-hidden">
           {TYPES.map((t) => (
@@ -117,10 +120,7 @@ export default function ResourcesPage() {
               key={t}
               onClick={() => setType(t)}
               variant={type === t ? "default" : "ghost"}
-              className={cn(
-                "px-3 py-1.5 text-xs font-medium rounded-none",
-                type !== t && "text-muted-foreground",
-              )}
+              className="px-3 py-1.5 text-xs font-medium rounded-none"
             >
               {TYPE_LABELS[t]}
             </Button>
@@ -154,61 +154,58 @@ export default function ResourcesPage() {
 
       {/* Results */}
       {loading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 9 }).map((_, i) => (
-            <Card key={i} className="rounded-xl">
-              <CardContent className="py-4 space-y-3">
-                <ResourceSkeleton />
-              </CardContent>
-            </Card>
-          ))}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 9 }).map((_, i) => <ResourceSkeleton key={i} />)}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in-0 duration-300">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 mb-4">
-            <HugeiconsIcon icon={BookOpen01Icon} className="h-6 w-6 text-primary/40" />
+        <div className="flex flex-col items-center justify-center py-20 text-center animate-fade-up">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/8 mb-4">
+            <HugeiconsIcon icon={BookOpen01Icon} className="h-5 w-5 text-primary/40" />
           </div>
           <p className="text-sm font-medium">
-            {resources.length === 0 ? "No resources available" : "No resources match your filters"}
+            {resources.length === 0 ? "No resources yet" : "No matches"}
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-1 text-xs text-muted-foreground max-w-xs">
             {resources.length === 0
               ? "Resources will appear here once they're added."
               : search.trim()
-              ? `No results for "${search}".`
-              : "Try clearing your filters."}
+              ? `Nothing for "${search}".`
+              : "Clear your filters to see all resources."}
           </p>
-          {(subject !== "All" || grade !== "All" || type !== "All" || year !== "All" || search) && (
+          {hasFilters && (
             <button
               onClick={() => { setSubject("All"); setGrade("All"); setType("All"); setYear("All"); setSearch(""); }}
-              className="mt-4 text-xs text-primary hover:underline"
+              className="mt-4 text-xs text-primary hover:underline transition-colors duration-100"
             >
               Clear all filters
             </button>
           )}
         </div>
       ) : (
-        <div className="animate-in fade-in-0 duration-300">
-          <p className="text-xs text-muted-foreground mb-4">{filtered.length} result{filtered.length !== 1 ? "s" : ""}</p>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="animate-fade-up">
+          <p className="text-xs text-muted-foreground mb-3">{filtered.length} result{filtered.length !== 1 ? "s" : ""}</p>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((r) => (
-              <Card key={r.id} className="rounded-xl">
+              <Card
+                key={r.id}
+                className="rounded-xl transition-[transform,box-shadow] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-0.5 hover:shadow-sm"
+              >
                 <CardContent className="py-4">
-                  <div className="flex items-start justify-between gap-2 mb-3">
-                    <Badge variant={TYPE_VARIANT[r.type] ?? "outline"} className="shrink-0">
+                  <div className="flex items-start justify-between gap-2 mb-2.5">
+                    <Badge variant={TYPE_VARIANT[r.type] ?? "outline"} className="shrink-0 text-xs">
                       {TYPE_LABELS[r.type] ?? r.type}
                     </Badge>
                     <span className="text-xs text-muted-foreground">{r.year}</span>
                   </div>
-                  <p className="text-sm font-medium leading-snug mb-1">{r.title}</p>
-                  <p className="text-xs text-muted-foreground mb-4">{r.subject} · {r.grade}</p>
+                  <p className="text-sm font-medium leading-snug mb-0.5 line-clamp-2">{r.title}</p>
+                  <p className="text-xs text-muted-foreground mb-3">{r.subject} · {r.grade}</p>
                   <a
                     href={r.fileUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-primary/8 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/15 active:scale-[0.97] transition-[transform,background-color] duration-100 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)]"
                   >
-                    <HugeiconsIcon icon={Download01Icon} className="h-3.5 w-3.5" />
+                    <HugeiconsIcon icon={Download01Icon} className="h-3 w-3" />
                     Download
                   </a>
                 </CardContent>
