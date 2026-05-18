@@ -6,6 +6,7 @@ import {
   FireIcon,
   TaskDaily01Icon,
   ChartIncreaseIcon,
+  SparklesIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import Link from "next/link";
@@ -51,22 +52,48 @@ function timeAgo(iso: string) {
   return `${days}d ago`;
 }
 
+const STAT_CARDS = [
+  {
+    icon: TaskDaily01Icon,
+    label: "Papers done",
+    color: "text-violet-600",
+    bg: "bg-violet-50",
+    key: "papersAttempted" as const,
+    suffix: "",
+  },
+  {
+    icon: CheckmarkCircle01Icon,
+    label: "Questions answered",
+    color: "text-emerald-600",
+    bg: "bg-emerald-50",
+    key: "questionsAnswered" as const,
+    suffix: "",
+  },
+  {
+    icon: FireIcon,
+    label: "Day streak",
+    color: "text-orange-500",
+    bg: "bg-orange-50",
+    key: "currentStreak" as const,
+    suffix: "d",
+  },
+];
+
 function StatsSkeleton() {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       {Array.from({ length: 4 }).map((_, i) => (
         <Card key={i} className="rounded-xl">
           <CardContent className="pt-5 space-y-2">
-            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-7 w-7 rounded-lg" />
             <Skeleton className="h-7 w-12" />
+            <Skeleton className="h-3 w-20" />
           </CardContent>
         </Card>
       ))}
     </div>
   );
 }
-
-const STAT_STAGGER = ["stagger-1", "stagger-2", "stagger-3", "stagger-4"];
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null);
@@ -104,11 +131,21 @@ export default function DashboardPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-8 animate-fade-up">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          {userName ? `Hi, ${userName}` : "Dashboard"}
+      <div className="rounded-2xl bg-gradient-to-br from-primary to-violet-600 px-6 py-7 text-white">
+        <p className="text-sm font-medium text-white/70 mb-1">Welcome back</p>
+        <h1 className="text-3xl font-bold tracking-tight">
+          {userName ? `Hi, ${userName} 👋` : "Dashboard"}
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">Keep the streak going.</p>
+        <p className="mt-1.5 text-sm text-white/70">Keep the streak going — every session counts.</p>
+        <div className="mt-5 flex gap-2.5">
+          <Link href="/study/new" className="inline-flex items-center gap-1.5 rounded-lg bg-white/15 hover:bg-white/25 transition-colors px-4 py-2 text-sm font-semibold text-white">
+            <HugeiconsIcon icon={SparklesIcon} className="h-4 w-4" />
+            Study a paper
+          </Link>
+          <Link href="/papers" className="inline-flex items-center gap-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors px-4 py-2 text-sm font-medium text-white/90">
+            Browse papers
+          </Link>
+        </div>
       </div>
 
       {/* Stats grid */}
@@ -116,66 +153,66 @@ export default function DashboardPage() {
         <StatsSkeleton />
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {[
-            { icon: TaskDaily01Icon, label: "Papers", value: stats?.papersAttempted ?? 0 },
-            { icon: CheckmarkCircle01Icon, label: "Questions", value: stats?.questionsAnswered ?? 0 },
-            { icon: FireIcon, label: "Streak", value: `${stats?.currentStreak ?? 0}d` },
-            { icon: ChartIncreaseIcon, label: "Weekly goal", value: stats?.weeklyProgress ?? 0, goal: stats?.weeklyGoal ?? 5 },
-          ].map(({ icon, label, value, goal }, i) => (
-            <Card
-              key={label}
-              className={`rounded-xl transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-sm animate-fade-up ${STAT_STAGGER[i]}`}
-            >
-              <CardContent className="pt-5 pb-4">
-                <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                  <HugeiconsIcon icon={icon} className="h-3.5 w-3.5" />
-                  <span className="text-xs font-medium">{label}</span>
+          {STAT_CARDS.map(({ icon, label, color, bg, key, suffix }, i) => (
+            <Card key={label} className={`rounded-xl border-border animate-fade-up stagger-${i + 1} transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-sm`}>
+              <CardContent className="pt-4 pb-4">
+                <div className={`mb-3 flex h-8 w-8 items-center justify-center rounded-lg ${bg}`}>
+                  <HugeiconsIcon icon={icon} className={`h-4 w-4 ${color}`} />
                 </div>
-                <p className="text-2xl font-bold tracking-tight">
-                  {value}
-                  {goal !== undefined && (
-                    <span className="text-sm font-normal text-muted-foreground ml-0.5">/{goal}</span>
-                  )}
+                <p className="text-2xl font-bold tracking-tight text-foreground">
+                  {stats?.[key] ?? 0}{suffix}
                 </p>
-                {goal !== undefined && (
-                  <Progress value={stats?.weeklyProgress ?? 0} max={goal} className="mt-2 h-1" />
-                )}
+                <p className="mt-0.5 text-xs text-muted-foreground">{label}</p>
               </CardContent>
             </Card>
           ))}
+
+          {/* Weekly goal card */}
+          <Card className="rounded-xl border-border col-span-2 sm:col-span-1 animate-fade-up stagger-4 transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-sm">
+            <CardContent className="pt-4 pb-4">
+              <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50">
+                <HugeiconsIcon icon={ChartIncreaseIcon} className="h-4 w-4 text-blue-600" />
+              </div>
+              <p className="text-2xl font-bold tracking-tight">
+                {stats?.weeklyProgress ?? 0}
+                <span className="text-sm font-normal text-muted-foreground ml-0.5">/{stats?.weeklyGoal ?? 5}</span>
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground mb-2">Weekly goal</p>
+              <Progress value={stats?.weeklyProgress ?? 0} max={stats?.weeklyGoal ?? 5} className="h-1.5" />
+            </CardContent>
+          </Card>
         </div>
       )}
 
       {/* Recent papers */}
       <div>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-foreground">Recent papers</h2>
-          <Link href="/papers" className="text-xs text-muted-foreground hover:text-foreground transition-colors duration-100">
+          <h2 className="text-base font-semibold text-foreground">Recent papers</h2>
+          <Link href="/papers" className="text-xs font-medium text-primary hover:text-primary/80 transition-colors">
             View all →
           </Link>
         </div>
         {loading ? (
           <div className="space-y-2">
             {Array.from({ length: 3 }).map((_, i) => (
-              <Card key={i} className="rounded-xl">
-                <CardContent className="py-3.5 flex items-center justify-between gap-4">
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-3.5 w-2/3" />
-                    <Skeleton className="h-3 w-1/3" />
-                  </div>
-                  <Skeleton className="h-5 w-10 rounded-full" />
-                </CardContent>
-              </Card>
+              <div key={i} className="flex items-center gap-4 px-4 py-3 rounded-xl border border-border bg-card">
+                <Skeleton className="h-8 w-8 rounded-lg shrink-0" />
+                <div className="flex-1 space-y-1.5">
+                  <Skeleton className="h-3.5 w-2/3" />
+                  <Skeleton className="h-3 w-1/3" />
+                </div>
+                <Skeleton className="h-5 w-10 rounded-full" />
+              </div>
             ))}
           </div>
         ) : sessions.length === 0 ? (
           <Card className="rounded-xl">
             <CardContent className="py-10 flex flex-col items-center text-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-                <HugeiconsIcon icon={TaskDaily01Icon} className="h-4 w-4 text-muted-foreground" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-50">
+                <HugeiconsIcon icon={TaskDaily01Icon} className="h-4 w-4 text-violet-500" />
               </div>
               <div>
-                <p className="text-sm font-medium">No papers yet</p>
+                <p className="text-sm font-semibold">No papers yet</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">Start a session to track progress.</p>
               </div>
               <Link href="/study/new" className={buttonVariants({ size: "sm" }) + " mt-1"}>Study a paper</Link>
@@ -187,13 +224,16 @@ export default function DashboardPage() {
               <Link
                 key={s.id}
                 href={`/papers/${s.paperId}`}
-                className="flex items-center justify-between gap-4 px-4 py-3 bg-card hover:bg-muted/50 transition-colors duration-100 cursor-pointer"
+                className="flex items-center gap-3 px-4 py-3 bg-card hover:bg-muted/40 transition-colors cursor-pointer"
               >
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/8">
+                  <HugeiconsIcon icon={TaskDaily01Icon} className="h-3.5 w-3.5 text-primary" />
+                </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{s.paperTitle}</p>
                   <p className="mt-0.5 text-xs text-muted-foreground">{s.subject} · {timeAgo(s.completedAt)}</p>
                 </div>
-                <Badge variant="outline" className="shrink-0">{s.questionsAnswered}q</Badge>
+                <Badge variant="outline" className="shrink-0 text-xs">{s.questionsAnswered}q</Badge>
               </Link>
             ))}
           </div>
@@ -203,8 +243,8 @@ export default function DashboardPage() {
       {/* Featured resources */}
       <div>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-foreground">Featured resources</h2>
-          <Link href="/resources" className="text-xs text-muted-foreground hover:text-foreground transition-colors duration-100">
+          <h2 className="text-base font-semibold text-foreground">Featured resources</h2>
+          <Link href="/resources" className="text-xs font-medium text-primary hover:text-primary/80 transition-colors">
             View all →
           </Link>
         </div>
@@ -227,16 +267,15 @@ export default function DashboardPage() {
         ) : (
           <div className="grid gap-3 sm:grid-cols-3">
             {resources.map((r) => (
-              <Card
-                key={r.id}
-                className="rounded-xl transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-sm cursor-default"
-              >
+              <Card key={r.id} className="rounded-xl transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-sm cursor-default">
                 <CardContent className="py-4">
                   <div className="mb-2 flex items-center gap-2">
-                    <HugeiconsIcon icon={BookOpen01Icon} className="h-3.5 w-3.5 shrink-0 text-primary" />
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50">
+                      <HugeiconsIcon icon={BookOpen01Icon} className="h-3.5 w-3.5 text-emerald-600" />
+                    </div>
                     <Badge variant="outline" className="capitalize text-xs">{r.type.toLowerCase().replace("_", " ")}</Badge>
                   </div>
-                  <p className="text-sm font-medium leading-snug line-clamp-2">{r.title}</p>
+                  <p className="text-sm font-semibold leading-snug line-clamp-2">{r.title}</p>
                   <p className="mt-0.5 text-xs text-muted-foreground">{r.subject}</p>
                 </CardContent>
               </Card>
@@ -247,22 +286,24 @@ export default function DashboardPage() {
 
       {/* Quick actions */}
       <div>
-        <h2 className="mb-3 text-sm font-semibold text-foreground">Quick actions</h2>
+        <h2 className="mb-3 text-base font-semibold text-foreground">Quick actions</h2>
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
           {(
             [
-              { label: "Study a paper", href: "/study/new" as const, icon: TaskDaily01Icon },
-              { label: "Browse resources", href: "/resources" as const, icon: BookOpen01Icon },
-              { label: "View projects", href: "/projects" as const, icon: ChartIncreaseIcon },
-              { label: "My profile", href: "/profile" as const, icon: CheckmarkCircle01Icon },
+              { label: "Study a paper", href: "/study/new" as const, icon: TaskDaily01Icon, color: "text-violet-600", bg: "bg-violet-50" },
+              { label: "Browse resources", href: "/resources" as const, icon: BookOpen01Icon, color: "text-emerald-600", bg: "bg-emerald-50" },
+              { label: "View projects", href: "/projects" as const, icon: ChartIncreaseIcon, color: "text-blue-600", bg: "bg-blue-50" },
+              { label: "My profile", href: "/profile" as const, icon: CheckmarkCircle01Icon, color: "text-orange-500", bg: "bg-orange-50" },
             ] as const
-          ).map(({ label, href, icon }) => (
+          ).map(({ label, href, icon, color, bg }) => (
             <Link
               key={href}
               href={href}
-              className="flex flex-col items-center gap-2 rounded-xl border border-border bg-card p-4 text-center text-xs font-medium text-muted-foreground transition-[transform,background-color,box-shadow] duration-150 hover:bg-muted hover:text-foreground hover:shadow-sm active:scale-[0.97]"
+              className="flex flex-col items-center gap-2.5 rounded-xl border border-border bg-card p-4 text-center text-xs font-medium text-muted-foreground transition-[transform,background-color,box-shadow] duration-150 hover:bg-muted/50 hover:text-foreground hover:shadow-sm active:scale-[0.97]"
             >
-              <HugeiconsIcon icon={icon} className="h-4 w-4 text-primary" />
+              <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${bg}`}>
+                <HugeiconsIcon icon={icon} className={`h-4.5 w-4.5 ${color}`} />
+              </div>
               {label}
             </Link>
           ))}
