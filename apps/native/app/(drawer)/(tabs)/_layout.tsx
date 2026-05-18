@@ -1,8 +1,8 @@
 import {
   BookOpen01Icon,
   Folder01Icon,
+  GraduationScrollIcon,
   Home01Icon,
-  TaskDaily01Icon,
   User01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react-native";
@@ -29,10 +29,10 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="papers"
+        name="study"
         options={{
-          title: "Papers",
-          tabBarIcon: ({ color }) => <HugeiconsIcon icon={TaskDaily01Icon} size={22} color={color} />,
+          title: "Study",
+          tabBarIcon: ({ color }) => <HugeiconsIcon icon={GraduationScrollIcon} size={22} color={color} />,
         }}
       />
       <Tabs.Screen
