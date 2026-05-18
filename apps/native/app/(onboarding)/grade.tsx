@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Dimensions, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { apiUpdateProfile } from "@/lib/auth";
+import { Button } from "@/components/ui/button";
 
 const BRAND = "#4F46E5";
 const { width } = Dimensions.get("window");
