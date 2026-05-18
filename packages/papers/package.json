@@ -5,6 +5,15 @@
   "private": true,
   "scripts": {
     "download": "bun run download-zimsec.ts",
-    "download:official": "bun run download-zimsec.ts"
+    "download:official": "bun run download-zimsec.ts",
+    "ingest:extract": "bun --env-file=../../apps/server/.env scripts/ingest.ts extract",
+    "ingest:submit": "bun --env-file=../../apps/server/.env scripts/ingest.ts submit",
+    "ingest:collect": "bun --env-file=../../apps/server/.env scripts/ingest.ts collect",
+    "ingest:status": "bun --env-file=../../apps/server/.env scripts/ingest.ts status"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.96.0",
+    "@pass/db": "workspace:*",
+    "unpdf": "^1.6.2"
   }
 }
