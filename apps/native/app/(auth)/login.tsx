@@ -15,8 +15,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { apiLogin, signInWithGoogle, storeTokens } from "@/lib/auth";
 
 const BRAND = "#4F46E5";
