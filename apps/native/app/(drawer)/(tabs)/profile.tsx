@@ -24,6 +24,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { env } from "@pass/env/native";
+import { Avatar } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 
 const BRAND = "#4F46E5";
 const BRAND_LIGHT = "#6366F1";
@@ -280,9 +283,7 @@ export default function ProfileScreen() {
               <Text style={{ fontSize: 13, color: "#6B7280", marginTop: 3 }}>{user?.email ?? ""}</Text>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10 }}>
                 {user?.grade && (
-                  <View style={{ backgroundColor: "#EEF2FF", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 }}>
-                    <Text style={{ fontSize: 12, fontWeight: "600", color: BRAND }}>{user.grade}</Text>
-                  </View>
+                  <Badge variant="default">{user.grade}</Badge>
                 )}
                 <View style={{ backgroundColor: planStyle.bg, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, flexDirection: "row", alignItems: "center", gap: 4 }}>
                   {user?.plan !== "FREE" && <HugeiconsIcon icon={Crown01Icon} size={11} color={planStyle.text} />}
@@ -296,18 +297,20 @@ export default function ProfileScreen() {
               from={{ opacity: 0, translateY: 6 }}
               animate={{ opacity: 1, translateY: 0 }}
               transition={{ type: "timing", duration: 220, delay: 50, easing: Easing.bezier(0.23, 1, 0.32, 1) }}
-              style={{ marginHorizontal: 20, marginTop: 12, backgroundColor: "#F9FAFB", borderRadius: 16, overflow: "hidden", borderWidth: 1, borderColor: "#F3F4F6" }}
+              style={{ marginHorizontal: 20, marginTop: 12 }}
             >
-              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: "#F3F4F6" }}>
-                <Text style={{ fontSize: 13, color: "#9CA3AF", fontWeight: "500" }}>Mail</Text>
-                <Text style={{ fontSize: 13, color: "#374151", fontWeight: "500" }} numberOfLines={1}>{user?.email ?? "—"}</Text>
-              </View>
-              {user?.school ? (
-                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingVertical: 13 }}>
-                  <Text style={{ fontSize: 13, color: "#9CA3AF", fontWeight: "500" }}>School</Text>
-                  <Text style={{ fontSize: 13, color: "#374151", fontWeight: "500" }} numberOfLines={1}>{user.school}</Text>
+              <Card style={{ backgroundColor: "#F9FAFB" }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: "#F3F4F6" }}>
+                  <Text style={{ fontSize: 13, color: "#9CA3AF", fontWeight: "500" }}>Mail</Text>
+                  <Text style={{ fontSize: 13, color: "#374151", fontWeight: "500" }} numberOfLines={1}>{user?.email ?? "—"}</Text>
                 </View>
-              ) : null}
+                {user?.school ? (
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingVertical: 13 }}>
+                    <Text style={{ fontSize: 13, color: "#9CA3AF", fontWeight: "500" }}>School</Text>
+                    <Text style={{ fontSize: 13, color: "#374151", fontWeight: "500" }} numberOfLines={1}>{user.school}</Text>
+                  </View>
+                ) : null}
+              </Card>
             </MotiView>
 
             {/* Stats */}
@@ -325,10 +328,12 @@ export default function ProfileScreen() {
                     { label: "Questions", value: stats.questionsAnswered },
                     { label: "Weekly", value: `${stats.weeklyProgress}/${stats.weeklyGoal}` },
                   ].map(({ label, value }) => (
-                    <View key={label} style={{ flex: 1, backgroundColor: "#F9FAFB", borderRadius: 12, borderWidth: 1, borderColor: "#F3F4F6", padding: 12, alignItems: "center" }}>
-                      <Text style={{ fontSize: 20, fontWeight: "700", color: "#111827" }}>{value}</Text>
-                      <Text style={{ fontSize: 10, color: "#9CA3AF", marginTop: 2, fontWeight: "500" }}>{label}</Text>
-                    </View>
+                    <Card key={label} style={{ flex: 1, backgroundColor: "#F9FAFB", borderRadius: 12 }}>
+                      <CardContent style={{ padding: 12, alignItems: "center" }}>
+                        <Text style={{ fontSize: 20, fontWeight: "700", color: "#111827" }}>{value}</Text>
+                        <Text style={{ fontSize: 10, color: "#9CA3AF", marginTop: 2, fontWeight: "500" }}>{label}</Text>
+                      </CardContent>
+                    </Card>
                   ))}
                 </View>
               </MotiView>
@@ -339,8 +344,9 @@ export default function ProfileScreen() {
               from={{ opacity: 0, translateY: 6 }}
               animate={{ opacity: 1, translateY: 0 }}
               transition={{ type: "timing", duration: 220, delay: 110, easing: Easing.bezier(0.23, 1, 0.32, 1) }}
-              style={{ marginHorizontal: 20, marginTop: 20, backgroundColor: "#FFFFFF", borderRadius: 16, borderWidth: 1, borderColor: "#F3F4F6", overflow: "hidden" }}
+              style={{ marginHorizontal: 20, marginTop: 20 }}
             >
+            <Card>
               {/* Edit profile */}
               <Pressable
                 onPress={startEdit}
@@ -390,6 +396,7 @@ export default function ProfileScreen() {
                 </View>
                 <Text style={{ flex: 1, fontSize: 14, fontWeight: "500", color: "#DC2626" }}>Sign out</Text>
               </Pressable>
+            </Card>
             </MotiView>
 
           </ScrollView>
@@ -403,14 +410,13 @@ export default function ProfileScreen() {
           alignItems: "center",
           zIndex: 10,
         }}>
-          <View style={{
-            width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2,
-            backgroundColor: BRAND_LIGHT,
-            borderWidth: 4, borderColor: "#FFFFFF",
-            alignItems: "center", justifyContent: "center",
-          }}>
-            <Text style={{ fontSize: 28, fontWeight: "800", color: "#FFFFFF", letterSpacing: -1 }}>{initials}</Text>
-          </View>
+          <Avatar
+            size={AVATAR_SIZE}
+            initials={initials !== "?" ? initials : undefined}
+            color={BRAND_LIGHT}
+            borderWidth={4}
+            borderColor="#FFFFFF"
+          />
         </View>
 
       </View>
