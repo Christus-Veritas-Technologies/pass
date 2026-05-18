@@ -1,31 +1,31 @@
-import { Link, Stack } from "expo-router";
-import { Button, Surface } from "heroui-native";
 import { AlertCircleIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react-native";
-import { Text, View } from "react-native";
+import { Link, Stack } from "expo-router";
+import { Pressable, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { Container } from "@/components/container";
+const BRAND = "#4F46E5";
 
 export default function NotFoundScreen() {
   return (
     <>
       <Stack.Screen options={{ title: "Not Found" }} />
-      <Container>
-        <View className="flex-1 justify-center items-center p-4">
-          <Surface variant="secondary" className="items-center p-6 max-w-sm rounded-lg">
-            <View className="mb-3">
-              <HugeiconsIcon icon={AlertCircleIcon} size={36} color="#64748b" />
-            </View>
-            <Text className="text-foreground font-medium text-lg mb-1">Page Not Found</Text>
-            <Text className="text-muted text-sm text-center mb-4">
-              The page you're looking for doesn't exist.
-            </Text>
-            <Link href="/" asChild>
-              <Button size="sm">Go Home</Button>
-            </Link>
-          </Surface>
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 24 }}>
+          <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: "#F3F4F6", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+            <HugeiconsIcon icon={AlertCircleIcon} size={28} color="#9CA3AF" />
+          </View>
+          <Text style={{ fontSize: 17, fontWeight: "700", color: "#111827", marginBottom: 6 }}>Page not found</Text>
+          <Text style={{ fontSize: 13, color: "#6B7280", textAlign: "center", marginBottom: 24 }}>
+            The page you're looking for doesn't exist.
+          </Text>
+          <Link href="/" asChild>
+            <Pressable style={{ backgroundColor: BRAND, borderRadius: 10, paddingHorizontal: 20, paddingVertical: 11 }}>
+              <Text style={{ fontSize: 14, fontWeight: "600", color: "#FFFFFF" }}>Go home</Text>
+            </Pressable>
+          </Link>
         </View>
-      </Container>
+      </SafeAreaView>
     </>
   );
 }
