@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
 import "../index.css";
 import Providers from "@/components/providers";
-
-const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Pass — Study smarter. Pass faster.",
@@ -22,7 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="apple-mobile-web-app-title" content="Pass AI" />
         <link rel="manifest" href="/site.webmanifest" />
       </head>
-      <body className={`${geistSans.variable} antialiased`}>
+      <body className="antialiased">
         <Providers>{children}</Providers>
       </body>
     </html>

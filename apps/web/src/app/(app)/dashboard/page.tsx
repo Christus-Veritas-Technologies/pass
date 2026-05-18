@@ -11,7 +11,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Badge } from "@pass/ui/components/badge";
-import { Button } from "@pass/ui/components/button";
+import { Button, buttonVariants } from "@pass/ui/components/button";
 import { Card, CardContent } from "@pass/ui/components/card";
 import { Progress } from "@pass/ui/components/progress";
 import { Skeleton } from "@pass/ui/components/skeleton";
@@ -74,7 +74,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const token = getAccessToken();
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
     Promise.allSettled([
       fetch(`${API}/users/me`, { headers }),
@@ -195,9 +195,7 @@ export default function DashboardPage() {
                 <p className="text-sm font-medium">No papers attempted yet</p>
                 <p className="mt-1 text-xs text-muted-foreground">Start a practice session to track your progress.</p>
               </div>
-              <Button asChild size="sm" className="mt-1">
-                <Link href="/papers">Browse papers</Link>
-              </Button>
+              <Link href="/papers" className={buttonVariants({ size: "sm" }) + " mt-1"}>Browse papers</Link>
             </CardContent>
           </Card>
         ) : (

@@ -5,14 +5,14 @@ import {
   GraduationScrollIcon,
   PlusSignIcon,
   TaskDaily01Icon,
-  TrendUp01Icon,
+  TrendingUpDownIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Badge } from "@pass/ui/components/badge";
-import { Button } from "@pass/ui/components/button";
+import { Button, buttonVariants } from "@pass/ui/components/button";
 import { Card, CardContent } from "@pass/ui/components/card";
 import { Skeleton } from "@pass/ui/components/skeleton";
 import {
@@ -95,12 +95,10 @@ export default function StudyPage() {
             Track your progress and start new practice sessions.
           </p>
         </div>
-        <Button asChild>
-          <Link href="/study/new">
-            <HugeiconsIcon icon={PlusSignIcon} className="mr-2 h-4 w-4" />
-            Study new paper
-          </Link>
-        </Button>
+        <Link href="/study/new" className={buttonVariants()}>
+          <HugeiconsIcon icon={PlusSignIcon} className="mr-2 h-4 w-4" />
+          Study new paper
+        </Link>
       </div>
 
       {/* Stats */}
@@ -124,7 +122,7 @@ export default function StudyPage() {
           <Card className="rounded-xl">
             <CardContent className="pt-5">
               <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                <HugeiconsIcon icon={TrendUp01Icon} className="h-4 w-4" />
+                <HugeiconsIcon icon={TrendingUpDownIcon} className="h-4 w-4" />
                 <span className="text-xs font-medium">Completion rate</span>
               </div>
               <p className="text-3xl font-bold">{data?.passRate ?? 0}%</p>
@@ -173,9 +171,7 @@ export default function StudyPage() {
                   Start your first practice session to track your progress.
                 </p>
               </div>
-              <Button asChild size="sm">
-                <Link href="/study/new">Study new paper</Link>
-              </Button>
+              <Link href="/study/new" className={buttonVariants({ size: "sm" })}>Study new paper</Link>
             </CardContent>
           </Card>
         ) : (

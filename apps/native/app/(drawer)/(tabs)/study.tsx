@@ -3,7 +3,7 @@ import {
   GraduationScrollIcon,
   PlusSignIcon,
   TaskDaily01Icon,
-  TrendUp01Icon,
+  TrendingUpDownIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import * as SecureStore from "expo-secure-store";
@@ -134,7 +134,7 @@ export default function StudyScreen() {
                   sub={`of ${data?.sessionsStarted ?? 0} started`}
                 />
                 <StatCard
-                  icon={TrendUp01Icon}
+                  icon={TrendingUpDownIcon}
                   label="Completion"
                   value={`${data?.passRate ?? 0}%`}
                   sub="sessions finished"

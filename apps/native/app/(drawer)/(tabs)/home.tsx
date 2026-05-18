@@ -3,7 +3,7 @@ import {
   CheckmarkCircle01Icon,
   FireIcon,
   TaskDaily01Icon,
-  TrendUp01Icon,
+  TrendingUpDownIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import * as SecureStore from "expo-secure-store";
@@ -188,7 +188,7 @@ export default function HomeScreen() {
             }}
           >
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <HugeiconsIcon icon={TrendUp01Icon} size={15} color="#6B7280" />
+              <HugeiconsIcon icon={TrendingUpDownIcon} size={15} color="#6B7280" />
               <Text style={{ fontSize: 12, fontWeight: "500", color: "#6B7280" }}>Weekly goal</Text>
             </View>
             <Text style={{ fontSize: 18, fontWeight: "700", color: "#111827", marginTop: 4 }}>
