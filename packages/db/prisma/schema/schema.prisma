@@ -28,6 +28,21 @@ enum SessionMode {
   FREE
 }
 
+// Lifecycle of a Resource through the offline ingestion pipeline.
+enum IngestStatus {
+  PENDING // registered, not yet processed
+  TEXT_EXTRACTED // local text extraction succeeded, awaiting AI structuring
+  NEEDS_VISION // PDF is an image scan — needs Claude PDF-vision
+  INGESTED // questions + AI model answers stored
+  FAILED // processing failed — see ingestError
+}
+
+// Where a question's marking rubric came from.
+enum GuideSource {
+  AI_GENERATED // best-effort rubric produced at ingestion
+  OFFICIAL // official ZIMSEC marking scheme attached later
+}
+
 // ─── Models ───────────────────────────────────────────────────────────────────
 
 model User {
@@ -82,7 +97,42 @@ model Resource {
   fileUrl   String
   createdAt DateTime     @default(now())
 
+  // ─── Ingestion metadata (past papers only) ──────────────────────────────────
+  paperCode     String?      @unique // natural upsert key — ZIMSEC code or synthetic slug
+  filePath      String? // repo-relative path to the source PDF
+  pageCount     Int?
+  ingestStatus  IngestStatus @default(PENDING)
+  ingestError   String?
+  questionCount Int          @default(0)
+  ingestedAt    DateTime?
+
   paperSessions PaperSession[]
+  questions     PaperQuestion[]
+}
+
+// One extracted question from a past-paper PDF. Produced once by the offline
+// ingestion pipeline and reused by every study session at zero AI cost.
+model PaperQuestion {
+  id             String      @id @default(cuid())
+  resourceId     String
+  questionNumber Int
+  text           String // full question stem
+  marks          Int         @default(0)
+  subParts       Json? // [{ label: "(a)", text, marks }]
+  section        String? // "Section A" / "Section B"
+  topic          String?
+  pdfPage        Int? // page in the source PDF — for diagram deep-linking
+  hasDiagram     Boolean     @default(false)
+  diagramNote    String? // describes the figure the question depends on
+  aiModelAnswer  String // best-effort rubric — ALWAYS generated at ingestion
+  officialGuide  String? // official ZIMSEC marking scheme — attached later
+  guideSource    GuideSource @default(AI_GENERATED)
+  createdAt      DateTime    @default(now())
+
+  resource Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@unique([resourceId, questionNumber])
+  @@index([resourceId])
 }
 
 model PaperSession {
