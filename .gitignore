@@ -49,3 +49,10 @@ coverage
 .cache
 tmp
 temp
+
+# Claude Code internal tooling
+.claude/worktrees/
+.claude/settings.local.json
+
+# Paper ingestion pipeline — local text-extraction cache
+packages/papers/.ingest-cache/

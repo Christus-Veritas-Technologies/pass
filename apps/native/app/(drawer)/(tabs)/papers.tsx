@@ -1,7 +1,7 @@
 import {
   BookOpen01Icon,
   Calendar01Icon,
-  ChevronRight01Icon,
+  ArrowRight01Icon,
   Search01Icon,
   TaskDaily01Icon,
 } from "@hugeicons/core-free-icons";
@@ -123,7 +123,7 @@ export default function PapersScreen() {
           </View>
         </View>
 
-        <HugeiconsIcon icon={ChevronRight01Icon} size={16} color="#9CA3AF" />
+        <HugeiconsIcon icon={ArrowRight01Icon} size={16} color="#9CA3AF" />
       </Pressable>
     );
   }

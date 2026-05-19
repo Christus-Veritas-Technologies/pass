@@ -1,12 +1,5 @@
-import {
-  BookOpen01Icon,
-  CheckmarkCircle01Icon,
-  File01Icon,
-  Rocket01Icon,
-  SparklesIcon,
-} from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react-native";
 import * as SecureStore from "expo-secure-store";
+import { Image } from "expo-image";
 import { router } from "expo-router";
 import { MotiView } from "moti";
 import { Easing } from "react-native-reanimated";
@@ -22,65 +15,65 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const BRAND = "#4F46E5";
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const IMAGE_HEIGHT = SCREEN_HEIGHT * 0.52;
 const ONBOARDING_KEY = "onboarding_complete";
 
 const SLIDES = [
   {
-    key: "ai",
-    icon: SparklesIcon,
-    title: "Study with AI",
+    key: "welcome",
+    image: require("../assets/onboarding/welcome_1.jpg") as number,
+    badge: "Welcome to Pass",
+    title: "Study smarter,\nnot harder",
     description:
-      "Use Guide mode to get feedback on your answers, or Free mode to see full worked solutions. Pass adapts to how you learn.",
+      "Pass adapts to your learning style. Get AI-powered feedback in Guide mode or see full worked solutions in Free mode.",
+    accent: "#4F46E5",
   },
   {
     key: "resources",
-    icon: BookOpen01Icon,
-    title: "All your ZIMSEC resources",
+    image: require("../assets/onboarding/welcome_2.jpg") as number,
+    badge: "ZIMSEC Ready",
+    title: "All your past\npapers in one place",
     description:
-      "Access past papers, marking guides, and syllabi for every subject and grade — O-Level and A-Level.",
+      "Access O-Level and A-Level past papers, marking guides, and syllabi for every subject — all for free.",
+    accent: "#059669",
   },
   {
     key: "projects",
-    icon: Rocket01Icon,
-    title: "Get your projects done fast",
+    image: require("../assets/onboarding/welcome_3.jpg") as number,
+    badge: "Save Time",
+    title: "Projects done\nin seconds",
     description:
-      "Generate heritage studies projects in seconds. Let AI write the structure, then make it your own.",
+      "Generate structured study guides for any topic in seconds. AI writes the outline — you make it yours.",
+    accent: "#7C3AED",
   },
 ];
 
-function ProgressDots({ active, count }: { active: number; count: number }) {
+function Dot({ active, color }: { active: boolean; color: string }) {
   return (
-    <View style={{ flexDirection: "row", gap: 6, alignItems: "center" }}>
-      {Array.from({ length: count }).map((_, i) => (
-        <MotiView
-          key={i}
-          animate={{
-            width: i === active ? 22 : 7,
-            backgroundColor: i === active ? BRAND : "#D1D5DB",
-          }}
-          transition={{ type: "timing", duration: 200, easing: Easing.bezier(0.23, 1, 0.32, 1) }}
-          style={{ height: 7, borderRadius: 4 }}
-        />
-      ))}
-    </View>
+    <MotiView
+      animate={{
+        width: active ? 24 : 8,
+        backgroundColor: active ? color : "#D1D5DB",
+        opacity: active ? 1 : 0.6,
+      }}
+      transition={{ type: "spring", stiffness: 300, damping: 28 }}
+      style={{ height: 8, borderRadius: 4 }}
+    />
   );
 }
 
 export default function LaunchScreen() {
   const [activeIndex, setActiveIndex] = useState(0);
   const listRef = useRef<FlatList>(null);
+  const slide = SLIDES[activeIndex]!;
 
+  // Show-once: redirect immediately if already seen
   useEffect(() => {
     SecureStore.getItemAsync(ONBOARDING_KEY).then((val) => {
       if (val === "true") {
-        // Already seen onboarding — go to auth check
         SecureStore.getItemAsync("pass_access_token").then((token) => {
-          if (token) {
-            router.replace("/(drawer)/(tabs)/home");
-          } else {
-            router.replace("/(auth)/login");
-          }
+          router.replace(token ? "/(drawer)/(tabs)/home" : "/(auth)/login");
         });
       }
     });
@@ -106,93 +99,139 @@ export default function LaunchScreen() {
     }
   }
 
+  async function handleLogin() {
+    await SecureStore.setItemAsync(ONBOARDING_KEY, "true");
+    router.replace("/(auth)/login");
+  }
+
+  const isLast = activeIndex === SLIDES.length - 1;
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
-      {/* Skip */}
-      <View style={{ flexDirection: "row", justifyContent: "flex-end", paddingHorizontal: 24, paddingTop: 8 }}>
-        {activeIndex < SLIDES.length - 1 && (
-          <Pressable onPress={handleSkip} hitSlop={8}>
-            <Text style={{ fontSize: 14, color: "#6B7280", fontWeight: "500" }}>Skip</Text>
+      {/* Image carousel — swipeable */}
+      <View style={{ height: IMAGE_HEIGHT, overflow: "hidden" }}>
+        <FlatList
+          ref={listRef}
+          data={SLIDES}
+          keyExtractor={(s) => s.key}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          scrollEnabled
+          bounces={false}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
+          renderItem={({ item }) => (
+            <Image
+              source={item.image}
+              style={{ width: SCREEN_WIDTH, height: IMAGE_HEIGHT }}
+              contentFit="cover"
+              transition={300}
+            />
+          )}
+        />
+
+        {/* Skip — floated over image */}
+        {!isLast && (
+          <Pressable
+            onPress={handleSkip}
+            hitSlop={12}
+            style={{
+              position: "absolute",
+              top: 16,
+              right: 20,
+              backgroundColor: "rgba(0,0,0,0.28)",
+              borderRadius: 20,
+              paddingHorizontal: 14,
+              paddingVertical: 6,
+            }}
+          >
+            <Text style={{ fontSize: 13, color: "#FFFFFF", fontWeight: "600" }}>Skip</Text>
           </Pressable>
         )}
       </View>
 
-      {/* Slides */}
-      <FlatList
-        ref={listRef}
-        data={SLIDES}
-        keyExtractor={(s) => s.key}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        scrollEnabled={false}
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
-        renderItem={({ item, index }) => (
-          <View style={{ width: SCREEN_WIDTH, paddingHorizontal: 28, paddingTop: 28, paddingBottom: 16, justifyContent: "center" }}>
-            <MotiView
-              from={{ opacity: 0, translateY: 20 }}
-              animate={{ opacity: 1, translateY: 0 }}
-              transition={{ type: "timing", duration: 250, easing: Easing.bezier(0.23, 1, 0.32, 1) }}
-            >
-              <View
-                style={{
-                  width: 72,
-                  height: 72,
-                  borderRadius: 20,
-                  backgroundColor: "#EEF2FF",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginBottom: 32,
-                }}
-              >
-                <HugeiconsIcon icon={item.icon} size={36} color={BRAND} />
-              </View>
-              <Text
-                style={{
-                  fontSize: 28,
-                  fontWeight: "700",
-                  color: "#111827",
-                  letterSpacing: -0.5,
-                  lineHeight: 34,
-                  marginBottom: 16,
-                }}
-              >
-                {item.title}
-              </Text>
-              <Text style={{ fontSize: 16, color: "#6B7280", lineHeight: 26 }}>
-                {item.description}
-              </Text>
-            </MotiView>
-          </View>
-        )}
-        style={{ flex: 1 }}
-      />
+      {/* Text content — re-animates on each slide change via key */}
+      <MotiView
+        key={activeIndex}
+        from={{ opacity: 0, translateY: 18 }}
+        animate={{ opacity: 1, translateY: 0 }}
+        transition={{ type: "timing", duration: 320, easing: Easing.bezier(0.23, 1, 0.32, 1) }}
+        style={{ flex: 1, paddingHorizontal: 28, paddingTop: 28, paddingBottom: 8 }}
+      >
+        {/* Badge */}
+        <View
+          style={{
+            alignSelf: "flex-start",
+            backgroundColor: `${slide.accent}18`,
+            borderRadius: 20,
+            paddingHorizontal: 12,
+            paddingVertical: 5,
+            marginBottom: 14,
+          }}
+        >
+          <Text style={{ fontSize: 12, fontWeight: "700", color: slide.accent, letterSpacing: 0.3 }}>
+            {slide.badge}
+          </Text>
+        </View>
+
+        <Text
+          style={{
+            fontSize: 28,
+            fontWeight: "800",
+            color: "#111827",
+            letterSpacing: -0.8,
+            lineHeight: 34,
+            marginBottom: 12,
+          }}
+        >
+          {slide.title}
+        </Text>
+        <Text style={{ fontSize: 15, color: "#6B7280", lineHeight: 24 }}>
+          {slide.description}
+        </Text>
+      </MotiView>
 
       {/* Bottom controls */}
-      <View
-        style={{
-          paddingHorizontal: 24,
-          paddingBottom: 36,
-          paddingTop: 20,
-          gap: 24,
-        }}
-      >
-        <ProgressDots active={activeIndex} count={SLIDES.length} />
+      <View style={{ paddingHorizontal: 24, paddingBottom: 36, gap: 20 }}>
+        {/* Progress dots */}
+        <View style={{ flexDirection: "row", gap: 6, alignItems: "center" }}>
+          {SLIDES.map((s, i) => (
+            <Dot key={s.key} active={i === activeIndex} color={slide.accent} />
+          ))}
+        </View>
 
+        {/* Primary CTA */}
         <Pressable
           onPress={handleNext}
           style={({ pressed }) => ({
-            backgroundColor: pressed ? "#4338CA" : BRAND,
+            backgroundColor: pressed ? `${slide.accent}e0` : slide.accent,
             borderRadius: 14,
             paddingVertical: 16,
             alignItems: "center",
+            transform: [{ scale: pressed ? 0.98 : 1 }],
           })}
         >
-          <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "600" }}>
-            {activeIndex === SLIDES.length - 1 ? "Get Started" : "Next"}
+          <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "700", letterSpacing: 0.1 }}>
+            {isLast ? "Get Started" : "Next"}
           </Text>
         </Pressable>
+
+        {/* Secondary: already have an account */}
+        {isLast && (
+          <MotiView
+            from={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ type: "timing", duration: 200, delay: 100 }}
+          >
+            <Pressable onPress={handleLogin} hitSlop={8}>
+              <Text style={{ textAlign: "center", fontSize: 14, color: "#6B7280" }}>
+                Already have an account?{" "}
+                <Text style={{ color: slide.accent, fontWeight: "700" }}>Sign in</Text>
+              </Text>
+            </Pressable>
+          </MotiView>
+        )}
       </View>
     </SafeAreaView>
   );

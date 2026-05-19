@@ -16,72 +16,91 @@ const GRADE_SECTIONS = [
   { label: "A-Level", grades: ["Form 5", "Form 6"] },
 ] as const;
 
+// 3 bubbles per step — fully rounded circles of varying diameters
+// entryDelay: staggered spring pop-in on mount
+// floatDuration / drift: continuous gentle sine-wave float after entry
 const BUBBLES = [
   {
     source: require("../../assets/onboarding/grade_1.jpg"),
-    size: 88,
-    pos: { right: -10, top: 100 },
-    delay: 200,
-    duration: 3200,
-    drift: 18,
+    size: 110,
+    pos: { left: -18, top: 92 },
+    entryDelay: 60,
+    floatDuration: 3200,
+    drift: 20,
   },
   {
     source: require("../../assets/onboarding/grade_2.jpg"),
-    size: 62,
-    pos: { left: -8, top: 200 },
-    delay: 1100,
-    duration: 2700,
-    drift: 13,
+    size: 72,
+    pos: { right: -12, top: 230 },
+    entryDelay: 200,
+    floatDuration: 2700,
+    drift: 14,
   },
   {
     source: require("../../assets/onboarding/grade_3.jpg"),
-    size: 46,
-    pos: { right: 20, top: 310 },
-    delay: 2000,
-    duration: 3600,
+    size: 48,
+    pos: { left: 10, top: 355 },
+    entryDelay: 340,
+    floatDuration: 3600,
     drift: 9,
   },
 ];
 
+/**
+ * Outer MotiView  → spring pop-in on mount (scale 0.3→1, opacity 0→1, slide up)
+ * Inner MotiView  → continuous sine-wave float that starts after entry settles
+ */
 function FloatingBubble({
   source,
   size,
   pos,
-  delay,
-  duration,
+  entryDelay,
+  floatDuration,
   drift,
 }: {
   source: ReturnType<typeof require>;
   size: number;
   pos: object;
-  delay: number;
-  duration: number;
+  entryDelay: number;
+  floatDuration: number;
   drift: number;
 }) {
   return (
     <MotiView
-      from={{ translateY: 0, opacity: 0.75 }}
-      animate={{ translateY: -drift, opacity: 0.95 }}
+      from={{ opacity: 0, scale: 0.3, translateY: 30 }}
+      animate={{ opacity: 1, scale: 1, translateY: 0 }}
       transition={{
-        type: "timing",
-        duration,
-        loop: true,
-        repeatReverse: true,
-        delay,
-        easing: Easing.bezier(0.45, 0.05, 0.55, 0.95),
+        type: "spring",
+        delay: entryDelay,
+        damping: 14,
+        stiffness: 90,
+        mass: 0.8,
       }}
       style={[{ position: "absolute" }, pos]}
     >
-      <Image
-        source={source}
-        style={{
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          borderWidth: 2.5,
-          borderColor: "rgba(229, 231, 235, 0.9)",
+      <MotiView
+        from={{ translateY: 0 }}
+        animate={{ translateY: -drift }}
+        transition={{
+          type: "timing",
+          duration: floatDuration,
+          loop: true,
+          repeatReverse: true,
+          delay: entryDelay + 700,
+          easing: Easing.bezier(0.45, 0.05, 0.55, 0.95),
         }}
-      />
+      >
+        <Image
+          source={source}
+          style={{
+            width: size,
+            height: size,
+            borderRadius: size / 2,
+            borderWidth: 3,
+            borderColor: "rgba(229, 231, 235, 0.9)",
+          }}
+        />
+      </MotiView>
     </MotiView>
   );
 }

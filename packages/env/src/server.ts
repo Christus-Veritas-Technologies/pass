@@ -34,6 +34,12 @@ export const env = createEnv({
     R2_SECRET_ACCESS_KEY: z.string().optional(),
     R2_BUCKET_NAME: z.string().optional(),
     R2_PUBLIC_URL: z.string().optional(),
+
+    // Paynow Payment Gateway — optional (payments disabled when absent)
+    PAYNOW_INTEGRATION_ID: z.string().optional(),
+    PAYNOW_INTEGRATION_KEY: z.string().optional(),
+    PAYNOW_RESULT_URL: z.string().optional(),
+    PAYNOW_RETURN_URL: z.string().optional(),
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,

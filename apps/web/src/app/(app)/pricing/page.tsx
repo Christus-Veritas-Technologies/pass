@@ -122,7 +122,11 @@ export default function PricingPage() {
             </CardHeader>
 
             <CardContent className="px-5 pb-6 space-y-4">
-              <Link href={plan.id === "FREE" ? "/dashboard" : "/dashboard"}>
+              <Link href={
+                plan.id === "FREE"
+                  ? "/dashboard"
+                  : `/checkout?plan=${plan.id}`
+              }>
                 <Button variant={plan.ctaVariant} className="w-full">
                   {plan.cta}
                 </Button>

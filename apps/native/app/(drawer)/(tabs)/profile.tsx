@@ -5,6 +5,7 @@ import {
   Crown01Icon,
   Edit01Icon,
   Logout01Icon,
+  AlertCircleIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import * as SecureStore from "expo-secure-store";
@@ -60,6 +61,14 @@ interface PlanUsage {
   projects: { used: number; limit: number };
 }
 
+interface SubscriptionInfo {
+  plan: string;
+  status: string;
+  expiryDate: string;
+  daysRemaining: number;
+  renewalDue: boolean;
+}
+
 const PLAN_LABEL: Record<string, string> = { FREE: "Free", STUDY: "Study", PASS: "Pass" };
 const PLAN_COLOR: Record<string, { bg: string; text: string }> = {
   FREE: { bg: "#F3F4F6", text: "#6B7280" },
@@ -81,6 +90,7 @@ export default function ProfileScreen() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
   const [planUsage, setPlanUsage] = useState<PlanUsage | null>(null);
+  const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
 
@@ -106,6 +116,17 @@ export default function ProfileScreen() {
         setUser(data.user ?? null);
         setStats(data.stats ?? null);
         setPlanUsage(data.planUsage ?? null);
+
+        // Fetch subscription info if user has paid plan
+        if (token && data.user?.plan !== "FREE") {
+          const subRes = await fetch(`${API}/payments/renewal-status`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const subData = await subRes.json();
+          if (subData && !subData.error) {
+            setSubscription(subData);
+          }
+        }
       } catch {}
       setLoading(false);
     })();
@@ -406,6 +427,80 @@ export default function ProfileScreen() {
               </Card>
             </MotiView>
 
+            {/* Subscription Status */}
+            {subscription && (user?.plan === "STUDY" || user?.plan === "PASS") && (
+              <MotiView
+                from={{ opacity: 0, translateY: 6 }}
+                animate={{ opacity: 1, translateY: 0 }}
+                transition={{ type: "timing", duration: 220, delay: 115, easing: Easing.bezier(0.23, 1, 0.32, 1) }}
+                style={{ marginHorizontal: 20, marginTop: 12 }}
+              >
+                <Card style={subscription.renewalDue ? { backgroundColor: "#FFFBEB", borderColor: "#FCD34D" } : undefined}>
+                  <CardHeader style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                      <View style={{ width: 32, height: 32, borderRadius: 9, backgroundColor: subscription.renewalDue ? "#FCD34D" : "#DCFCE7", alignItems: "center", justifyContent: "center" }}>
+                        <HugeiconsIcon
+                          icon={subscription.renewalDue ? AlertCircleIcon : Crown01Icon}
+                          size={16}
+                          color={subscription.renewalDue ? "#D97706" : "#059669"}
+                        />
+                      </View>
+                      <CardTitle>Your subscription</CardTitle>
+                    </View>
+                    <View style={{ backgroundColor: subscription.renewalDue ? "#FEF3C7" : "#DCFCE7", borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4 }}>
+                      <Text style={{ fontSize: 10, fontWeight: "700", color: subscription.renewalDue ? "#B45309" : "#059669" }}>
+                        {subscription.status === "ACTIVE" ? "Active" : "Expired"}
+                      </Text>
+                    </View>
+                  </CardHeader>
+                  <CardContent style={{ gap: 12 }}>
+                    <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                      <View>
+                        <Text style={{ fontSize: 11, color: "#9CA3AF", fontWeight: "500", marginBottom: 4 }}>Expires on</Text>
+                        <Text style={{ fontSize: 14, fontWeight: "700", color: "#111827" }}>
+                          {new Date(subscription.expiryDate).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </Text>
+                      </View>
+                      <View style={{ alignItems: "flex-end" }}>
+                        <Text style={{ fontSize: 11, color: "#9CA3AF", fontWeight: "500", marginBottom: 4 }}>Days left</Text>
+                        <Text style={{ fontSize: 18, fontWeight: "800", color: subscription.renewalDue ? "#D97706" : "#4F46E5" }}>
+                          {subscription.daysRemaining}d
+                        </Text>
+                      </View>
+                    </View>
+                    {subscription.renewalDue && (
+                      <View style={{ backgroundColor: "#FED7AA", borderRadius: 8, padding: 10 }}>
+                        <Text style={{ fontSize: 11, color: "#92400E", fontWeight: "600" }}>
+                          Your subscription is expiring soon! Renew now to keep access.
+                        </Text>
+                      </View>
+                    )}
+                    <Pressable
+                      onPress={() => router.push({
+                        pathname: "/checkout" as never,
+                        params: { plan: subscription.plan } as never,
+                      })}
+                      style={({ pressed }) => ({
+                        backgroundColor: pressed ? "#4338CA" : BRAND,
+                        borderRadius: 10,
+                        paddingVertical: 11,
+                        alignItems: "center",
+                        marginTop: 2,
+                      })}
+                    >
+                      <Text style={{ fontSize: 14, fontWeight: "600", color: "#FFFFFF" }}>
+                        {subscription.renewalDue ? "Renew now" : "Manage"}
+                      </Text>
+                    </Pressable>
+                  </CardContent>
+                </Card>
+              </MotiView>
+            )}
+
             {/* Menu rows */}
             <MotiView
               from={{ opacity: 0, translateY: 6 }}
@@ -434,6 +529,10 @@ export default function ProfileScreen() {
               {/* Upgrade — only FREE plan */}
               {user?.plan === "FREE" && (
                 <Pressable
+                  onPress={() => router.push({
+                    pathname: "/checkout" as never,
+                    params: { plan: "STUDY" } as never,
+                  })}
                   style={({ pressed }) => ({
                     flexDirection: "row", alignItems: "center", gap: 12,
                     paddingHorizontal: 16, paddingVertical: 15,

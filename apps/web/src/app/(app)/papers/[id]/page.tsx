@@ -2,7 +2,10 @@
 
 import {
   ArrowLeft01Icon,
+  Cancel01Icon,
   CheckmarkCircle01Icon,
+  File01Icon,
+  Image01Icon,
   SparklesIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -23,6 +26,12 @@ interface Question {
   questionNumber: number;
   text: string;
   marks: number;
+  section?: string | null;
+  topic?: string | null;
+  pdfPage?: number | null;
+  hasDiagram?: boolean;
+  diagramNote?: string | null;
+  guideSource?: "AI_GENERATED" | "OFFICIAL";
 }
 
 interface Paper {
@@ -31,6 +40,7 @@ interface Paper {
   subject: string;
   grade: string;
   year: number;
+  fileUrl?: string;
 }
 
 type Mode = "GUIDE" | "FREE";
@@ -53,6 +63,15 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
   const [streaming, setStreaming] = useState(false);
   const [completed, setCompleted] = useState<Set<number>>(new Set());
   const [sessionComplete, setSessionComplete] = useState(false);
+
+  const [pdfOpen, setPdfOpen] = useState(false);
+  const [pdfPage, setPdfPage] = useState(1);
+
+  const pdfUrl = paper?.fileUrl ? `${API}${paper.fileUrl}` : "";
+  function openPdf(page = 1) {
+    setPdfPage(page);
+    setPdfOpen(true);
+  }
 
   const answerRef = useRef<HTMLTextAreaElement>(null);
   const aiBoxRef = useRef<HTMLDivElement>(null);
@@ -226,6 +245,12 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
           <h1 className="truncate text-lg font-bold">{paper.title}</h1>
           <p className="text-xs text-muted-foreground">{paper.subject} · {paper.grade} · {paper.year}</p>
         </div>
+        {pdfUrl && (
+          <Button variant="outline" onClick={() => openPdf(1)} className="gap-2 rounded-lg">
+            <HugeiconsIcon icon={File01Icon} className="h-4 w-4" />
+            Original paper
+          </Button>
+        )}
       </div>
 
       {/* Progress bar */}
@@ -323,6 +348,22 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
                   <Badge variant="outline">{mode === "GUIDE" ? "Guide" : "Free"}</Badge>
                 </div>
                 <p className="text-sm leading-relaxed">{currentQ.text}</p>
+
+                {/* Diagram-dependent question — link to the original PDF page */}
+                {currentQ.hasDiagram && (
+                  <button
+                    type="button"
+                    onClick={() => openPdf(currentQ.pdfPage ?? 1)}
+                    className="mt-3 flex w-full items-center gap-2 rounded-lg bg-amber-50 p-2.5 text-left text-xs text-amber-800 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-300"
+                  >
+                    <HugeiconsIcon icon={Image01Icon} className="h-4 w-4 shrink-0" />
+                    <span>
+                      {currentQ.diagramNote
+                        ? `Refers to a figure: ${currentQ.diagramNote}. Click to view the original paper.`
+                        : "This question refers to a figure. Click to view the original paper."}
+                    </span>
+                  </button>
+                )}
               </CardContent>
             </Card>
 
@@ -369,6 +410,20 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
                   <div className="flex items-center gap-2 mb-3 text-primary">
                     <HugeiconsIcon icon={SparklesIcon} className="h-4 w-4" />
                     <span className="text-xs font-semibold">AI {mode === "GUIDE" ? "Feedback" : "Solution"}</span>
+                    {mode === "GUIDE" && (
+                      <span
+                        className={cn(
+                          "ml-auto text-[10px] font-medium",
+                          currentQ.guideSource === "OFFICIAL"
+                            ? "text-emerald-600"
+                            : "text-muted-foreground",
+                        )}
+                      >
+                        {currentQ.guideSource === "OFFICIAL"
+                          ? "Official marking scheme"
+                          : "AI-estimated marking"}
+                      </span>
+                    )}
                   </div>
                   <div
                     ref={aiBoxRef}
@@ -402,6 +457,28 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Original-paper PDF overlay */}
+      {pdfOpen && pdfUrl && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-black/80 p-4 backdrop-blur-sm">
+          <div className="mx-auto flex w-full max-w-4xl items-center gap-3 pb-3">
+            <p className="flex-1 truncate text-sm font-medium text-white">{paper.title}</p>
+            <button
+              type="button"
+              onClick={() => setPdfOpen(false)}
+              className="rounded-lg p-1.5 text-white transition-colors hover:bg-white/10"
+              aria-label="Close"
+            >
+              <HugeiconsIcon icon={Cancel01Icon} className="h-5 w-5" />
+            </button>
+          </div>
+          <iframe
+            title="Original paper"
+            src={`${pdfUrl}#page=${pdfPage}`}
+            className="mx-auto h-full w-full max-w-4xl rounded-lg bg-white"
+          />
         </div>
       )}
     </div>
