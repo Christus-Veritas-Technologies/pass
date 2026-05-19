@@ -141,7 +141,7 @@ export default function CheckoutPage() {
           </div>
           <div className="border-t pt-3 flex items-center justify-between text-sm font-semibold">
             <span>Total</span>
-            <span>${amount.toFixed(2)} ZWL</span>
+            <span>USD {amount.toFixed(2)}</span>
           </div>
         </CardContent>
       </Card>
@@ -183,7 +183,7 @@ export default function CheckoutPage() {
               Processing...
             </>
           ) : (
-            `Pay $${amount.toFixed(2)} with Paynow`
+            "Pay now"
           )}
         </Button>
         <p className="text-xs text-center text-muted-foreground">

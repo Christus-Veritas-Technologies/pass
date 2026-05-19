@@ -205,7 +205,7 @@ export default function CheckoutScreen() {
           </View>
           <View style={{ borderTopWidth: 1, borderTopColor: "#E5E7EB", paddingTop: 10, flexDirection: "row", justifyContent: "space-between" }}>
             <Text style={{ fontSize: 13, fontWeight: "700", color: "#111827" }}>Total</Text>
-            <Text style={{ fontSize: 13, fontWeight: "700", color: "#111827" }}>${amount.toFixed(2)} ZWL</Text>
+            <Text style={{ fontSize: 13, fontWeight: "700", color: "#111827" }}>USD {amount.toFixed(2)}</Text>
           </View>
         </View>
 
@@ -248,7 +248,7 @@ export default function CheckoutScreen() {
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
             <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFFFFF" }}>
-              Pay ${amount.toFixed(2)} with Paynow
+              Pay now
             </Text>
           )}
         </Pressable>
