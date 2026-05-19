@@ -6,6 +6,7 @@ import { logger } from "hono/logger";
 import aiRoutes from "./routes/ai.routes";
 import authRoutes from "./routes/auth.routes";
 import papersRoutes from "./routes/papers.routes";
+import paymentsRoutes from "./routes/payments.routes";
 import projectsRoutes from "./routes/projects.routes";
 import resourcesRoutes from "./routes/resources.routes";
 import studyRoutes from "./routes/study.routes";
@@ -49,6 +50,7 @@ app.get("/static/papers/*", async (c) => {
 
 app.route("/ai", aiRoutes);
 app.route("/auth", authRoutes);
+app.route("/payments", paymentsRoutes);
 app.route("/resources", resourcesRoutes);
 app.route("/papers", papersRoutes);
 app.route("/projects", projectsRoutes);

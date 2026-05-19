@@ -43,6 +43,13 @@ enum GuideSource {
   OFFICIAL // official ZIMSEC marking scheme attached later
 }
 
+// Subscription status for tracking active/expired plans.
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
 // ─── Models ───────────────────────────────────────────────────────────────────
 
 model User {
@@ -63,6 +70,8 @@ model User {
   paperSessions       PaperSession[]
   projects            Project[]
   monthlyUsages       MonthlyUsage[]
+  subscription        Subscription?
+  paymentTransactions PaymentTransaction[]
 }
 
 // Stores one row per active refresh token. Deleting a row = revoking that session.
@@ -189,4 +198,54 @@ model MonthlyUsage {
   user User @relation(fields: [userId], references: [id])
 
   @@unique([userId, month])
+}
+
+// Tracks active subscriptions for users on paid plans (STUDY, PASS).
+model Subscription {
+  id         String               @id @default(cuid())
+  userId     String               @unique
+  plan       Plan                 // STUDY or PASS
+  status     SubscriptionStatus   @default(ACTIVE)
+
+  // Billing & Renewal
+  startDate  DateTime
+  expiryDate DateTime             // When subscription expires
+  renewalDue Boolean              @default(false)  // Prompt user to renew
+
+  // Paynow Reference
+  paynowRef  String?              @unique  // Paynow transaction reference
+  paynowStatus String?                     // "paid", "pending", "failed"
+
+  // Audit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiryDate])
+}
+
+// Tracks all payment transactions through Paynow.
+model PaymentTransaction {
+  id          String   @id @default(cuid())
+  userId      String
+  amount      Float          // In ZWL
+  currency    String   @default("ZWL")
+  plan        Plan           // Which plan being purchased
+
+  // Paynow Details
+  paynowRef   String   @unique  // Transaction reference from Paynow
+  redirectUrl String?           // URL user was redirected to
+  pollUrl     String?           // URL for polling transaction status
+  status      String           // "pending", "paid", "failed"
+
+  // Audit
+  createdAt DateTime @default(now())
+  paidAt    DateTime?         // When payment confirmed
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
 }
