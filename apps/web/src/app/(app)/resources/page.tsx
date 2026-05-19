@@ -12,9 +12,15 @@ import { Button } from "@pass/ui/components/button";
 import { Card, CardContent } from "@pass/ui/components/card";
 import { Skeleton } from "@pass/ui/components/skeleton";
 
-const SUBJECTS = ["All", "Mathematics", "English Language", "Combined Science", "History", "Geography", "Chemistry", "Biology", "English Literature", "Shona"];
-const GRADES = ["All", "Form 1", "Form 2", "Form 3", "Form 4", "Form 5", "Form 6"];
-const YEARS = ["All", "2023", "2022", "2021", "2020"];
+const LEVELS = [
+  { label: "All Levels", value: "All" },
+  { label: "A-Level",    value: "A-Level" },
+  { label: "O-Level",    value: "O-Level" },
+  { label: "Grade 7",    value: "Grade-7" },
+] as const;
+
+const SUBJECTS = ["All", "Mathematics", "English Language", "Combined Science", "History", "Geography", "Chemistry", "Biology", "English Literature", "Shona", "Physics", "Accounting", "Agriculture", "Art", "Sociology"];
+const YEARS = ["All", "2026", "2025", "2024", "2023", "2022", "2021", "2020"];
 const TYPES = ["All", "PAST_PAPER", "MARKING_GUIDE", "SYLLABUS"] as const;
 const TYPE_LABELS: Record<string, string> = {
   All: "All",
@@ -63,15 +69,15 @@ export default function ResourcesPage() {
   const [resources, setResources] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [level, setLevel] = useState("All");
   const [subject, setSubject] = useState("All");
-  const [grade, setGrade] = useState("All");
   const [type, setType] = useState("All");
   const [year, setYear] = useState("All");
 
   useEffect(() => {
     const params = new URLSearchParams();
     if (subject !== "All") params.set("subject", subject);
-    if (grade !== "All") params.set("grade", grade);
+    if (level !== "All") params.set("grade", level);
     if (type !== "All") params.set("type", type);
     if (year !== "All") params.set("year", year);
 
@@ -81,7 +87,7 @@ export default function ResourcesPage() {
       .then((d) => setResources(d.resources ?? []))
       .catch(() => setResources([]))
       .finally(() => setLoading(false));
-  }, [subject, grade, type, year]);
+  }, [level, subject, type, year]);
 
   const filtered = search.trim()
     ? resources.filter((r) =>
@@ -90,7 +96,7 @@ export default function ResourcesPage() {
       )
     : resources;
 
-  const hasFilters = subject !== "All" || grade !== "All" || type !== "All" || year !== "All" || !!search;
+  const hasFilters = level !== "All" || subject !== "All" || type !== "All" || year !== "All" || !!search;
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 animate-fade-up">
@@ -118,44 +124,63 @@ export default function ResourcesPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-2.5">
-        {/* Type tabs */}
-        <div className="flex rounded-lg border border-border overflow-hidden">
-          {TYPES.map((t) => (
+      <div className="space-y-2.5">
+        {/* Level tabs — first row */}
+        <div className="flex rounded-lg border border-border overflow-hidden w-fit">
+          {LEVELS.map((l) => (
             <Button
-              key={t}
-              onClick={() => setType(t)}
-              variant={type === t ? "default" : "ghost"}
-              className="px-3 py-1.5 text-xs font-medium rounded-none"
+              key={l.value}
+              onClick={() => setLevel(l.value)}
+              variant={level === l.value ? "default" : "ghost"}
+              className="px-3.5 py-1.5 text-xs font-medium rounded-none"
             >
-              {TYPE_LABELS[t]}
+              {l.label}
             </Button>
           ))}
         </div>
 
-        <select
-          value={subject}
-          onChange={(e) => setSubject(e.target.value)}
-          className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-        >
-          {SUBJECTS.map((s) => <option key={s}>{s}</option>)}
-        </select>
+        {/* Type + subject + year — second row */}
+        <div className="flex flex-wrap gap-2.5">
+          {/* Type tabs */}
+          <div className="flex rounded-lg border border-border overflow-hidden">
+            {TYPES.map((t) => (
+              <Button
+                key={t}
+                onClick={() => setType(t)}
+                variant={type === t ? "default" : "ghost"}
+                className="px-3 py-1.5 text-xs font-medium rounded-none"
+              >
+                {TYPE_LABELS[t]}
+              </Button>
+            ))}
+          </div>
 
-        <select
-          value={grade}
-          onChange={(e) => setGrade(e.target.value)}
-          className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-        >
-          {GRADES.map((g) => <option key={g}>{g}</option>)}
-        </select>
+          <select
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+          >
+            {SUBJECTS.map((s) => <option key={s}>{s}</option>)}
+          </select>
 
-        <select
-          value={year}
-          onChange={(e) => setYear(e.target.value)}
-          className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-        >
-          {YEARS.map((y) => <option key={y}>{y}</option>)}
-        </select>
+          <select
+            value={year}
+            onChange={(e) => setYear(e.target.value)}
+            className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+          >
+            {YEARS.map((y) => <option key={y}>{y}</option>)}
+          </select>
+
+          {hasFilters && (
+            <Button
+              variant="ghost"
+              className="text-xs px-3 py-1.5 h-auto text-muted-foreground"
+              onClick={() => { setLevel("All"); setSubject("All"); setType("All"); setYear("All"); setSearch(""); }}
+            >
+              Clear filters
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Results */}
@@ -180,7 +205,7 @@ export default function ResourcesPage() {
           </p>
           {hasFilters && (
             <button
-              onClick={() => { setSubject("All"); setGrade("All"); setType("All"); setYear("All"); setSearch(""); }}
+              onClick={() => { setLevel("All"); setSubject("All"); setType("All"); setYear("All"); setSearch(""); }}
               className="mt-4 text-xs text-primary hover:underline transition-colors duration-100"
             >
               Clear all filters

@@ -23,23 +23,23 @@ import { env } from "@pass/env/native";
 const BRAND = "#4F46E5";
 const API = env.EXPO_PUBLIC_SERVER_URL;
 
+const LEVEL_FILTERS = [
+  { key: "All",     label: "All Levels" },
+  { key: "A-Level", label: "A-Level" },
+  { key: "O-Level", label: "O-Level" },
+  { key: "Grade-7", label: "Grade 7" },
+];
+
 const TYPE_FILTERS = [
-  { key: "All", label: "All" },
-  { key: "PAST_PAPER", label: "Past Papers" },
+  { key: "All",           label: "All" },
+  { key: "PAST_PAPER",    label: "Past Papers" },
   { key: "MARKING_GUIDE", label: "Marking Guides" },
-  { key: "SYLLABUS", label: "Syllabi" },
+  { key: "SYLLABUS",      label: "Syllabi" },
 ];
 
 const SUBJECT_FILTERS = [
-  "All",
-  "Mathematics",
-  "English Language",
-  "Combined Science",
-  "Chemistry",
-  "Biology",
-  "History",
-  "Geography",
-  "Shona",
+  "All", "Mathematics", "English Language", "Combined Science",
+  "Chemistry", "Biology", "History", "Geography", "Shona", "Physics", "Accounting",
 ];
 
 const TYPE_COLORS: Record<string, { bg: string; text: string }> = {
@@ -63,6 +63,7 @@ export default function ResourcesScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
+  const [levelFilter, setLevelFilter] = useState("All");
   const [typeFilter, setTypeFilter] = useState("All");
   const [subjectFilter, setSubjectFilter] = useState("All");
 
@@ -71,6 +72,7 @@ export default function ResourcesScreen() {
     else setLoading(true);
 
     const params = new URLSearchParams();
+    if (levelFilter !== "All") params.set("grade", levelFilter);
     if (typeFilter !== "All") params.set("type", typeFilter);
     if (subjectFilter !== "All") params.set("subject", subjectFilter);
 
@@ -88,7 +90,7 @@ export default function ResourcesScreen() {
 
   useEffect(() => {
     fetchResources();
-  }, [typeFilter, subjectFilter]);
+  }, [levelFilter, typeFilter, subjectFilter]);
 
   const filtered = search.trim()
     ? resources.filter(
@@ -169,11 +171,36 @@ export default function ResourcesScreen() {
           />
         </View>
 
-        {/* Type filter chips */}
+        {/* Level filter chips */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           style={{ marginTop: 12 }}
+          contentContainerStyle={{ gap: 8 }}
+        >
+          {LEVEL_FILTERS.map((l) => (
+            <Pressable
+              key={l.key}
+              onPress={() => setLevelFilter(l.key)}
+              style={{
+                paddingHorizontal: 14,
+                paddingVertical: 6,
+                borderRadius: 20,
+                backgroundColor: levelFilter === l.key ? BRAND : "#F3F4F6",
+              }}
+            >
+              <Text style={{ fontSize: 13, fontWeight: "500", color: levelFilter === l.key ? "#FFFFFF" : "#6B7280" }}>
+                {l.label}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+
+        {/* Type filter chips */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ marginTop: 8 }}
           contentContainerStyle={{ gap: 8 }}
         >
           {TYPE_FILTERS.map((t) => (

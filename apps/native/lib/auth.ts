@@ -9,8 +9,14 @@ async function request<T>(path: string, init: RequestInit): Promise<T> {
     headers: { "Content-Type": "application/json" },
     ...init,
   });
-  const json = await res.json();
-  if (!res.ok) throw new Error(json.error ?? "Something went wrong");
+  // Guard against plain-text error responses (e.g. "Internal Server Error")
+  let json: Record<string, unknown>;
+  try {
+    json = await res.json();
+  } catch {
+    throw new Error(res.ok ? "Invalid server response" : `Server error (${res.status})`);
+  }
+  if (!res.ok) throw new Error((json.error as string) ?? (json.message as string) ?? "Something went wrong");
   return json as T;
 }
 

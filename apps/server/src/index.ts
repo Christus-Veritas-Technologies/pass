@@ -26,6 +26,13 @@ app.use(
 
 app.get("/", (c) => c.text("OK"));
 
+// Always return JSON for unhandled errors so clients can parse the response.
+app.onError((err, c) => {
+  console.error("Unhandled server error:", err);
+  const status = "status" in err && typeof err.status === "number" ? err.status as 400 | 401 | 403 | 404 | 409 | 500 : 500;
+  return c.json({ error: err.message ?? "Internal server error" }, status);
+});
+
 // ─── Static past-paper PDFs ───────────────────────────────────────────────────
 // The 176 committed ZIMSEC PDFs live in packages/papers/papers. Resource.fileUrl
 // points here; react-native-pdf and the web viewer load these directly.

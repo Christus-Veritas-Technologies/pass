@@ -22,9 +22,16 @@ import { getAccessToken } from "@/lib/auth";
 
 const API = process.env.NEXT_PUBLIC_SERVER_URL;
 
+const LEVELS = [
+  { label: "All Levels", value: "All" },
+  { label: "A-Level",    value: "A-Level" },
+  { label: "O-Level",    value: "O-Level" },
+  { label: "Grade 7",    value: "Grade-7" },
+] as const;
+
 const SUBJECTS = [
   "All", "Mathematics", "English Language", "Combined Science",
-  "Chemistry", "Biology", "History", "Geography",
+  "Chemistry", "Biology", "History", "Geography", "Physics", "Accounting",
 ];
 
 interface Paper {
@@ -65,6 +72,7 @@ export default function StudyNewPage() {
   const [papers, setPapers] = useState<Paper[]>([]);
   const [loadingPapers, setLoadingPapers] = useState(true);
   const [search, setSearch] = useState("");
+  const [level, setLevel] = useState("All");
   const [subject, setSubject] = useState("All");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -82,6 +90,7 @@ export default function StudyNewPage() {
   }, []);
 
   const filtered = papers.filter((p) => {
+    if (level !== "All" && p.grade !== level) return false;
     if (subject !== "All" && p.subject !== subject) return false;
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -160,6 +169,24 @@ export default function StudyNewPage() {
             onChange={(e) => setSearch(e.target.value)}
             className="w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-4 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
           />
+        </div>
+
+        {/* Level tabs */}
+        <div className="flex rounded-lg border border-border overflow-hidden w-fit">
+          {LEVELS.map((l) => (
+            <button
+              key={l.value}
+              onClick={() => setLevel(l.value)}
+              className={cn(
+                "px-3.5 py-1.5 text-xs font-medium transition-colors",
+                level === l.value
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-muted",
+              )}
+            >
+              {l.label}
+            </button>
+          ))}
         </div>
 
         {/* Subject chips */}
