@@ -1,4 +1,5 @@
 import {
+  BankIcon,
   CheckmarkCircle01Icon,
   CrownIcon,
   SparklesIcon,
@@ -149,6 +150,33 @@ export default function PricingPage() {
             </CardContent>
           </Card>
         ))}
+      </div>
+
+      {/* Accepted payment methods */}
+      <div className="max-w-2xl mx-auto">
+        <p className="text-xs font-semibold text-center text-muted-foreground uppercase tracking-wider mb-4">Accepted payment methods</p>
+        <div className="flex items-center justify-center gap-3 flex-wrap">
+          <div className="flex flex-col items-center gap-1.5">
+            <div className="h-11 w-11 rounded-xl border bg-muted/50 flex items-center justify-center">
+              <HugeiconsIcon icon={BankIcon} className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <span className="text-[10px] text-muted-foreground">Bank Transfer</span>
+          </div>
+          {[
+            { src: "/payment-methods/ecocash.png", label: "EcoCash" },
+            { src: "/payment-methods/onemoney.png", label: "OneMoney" },
+            { src: "/payment-methods/omari.png", label: "Omari" },
+            { src: "/payment-methods/innbucks.png", label: "InnBucks" },
+          ].map(({ src, label }) => (
+            <div key={label} className="flex flex-col items-center gap-1.5">
+              <div className="h-11 w-11 rounded-xl border bg-white overflow-hidden flex items-center justify-center p-1.5">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={src} alt={label} className="h-full w-full object-contain" />
+              </div>
+              <span className="text-[10px] text-muted-foreground">{label}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* FAQ */}
