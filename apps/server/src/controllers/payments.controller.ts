@@ -14,7 +14,7 @@ const createPaymentSchema = z.object({
  * Create a Paynow payment for upgrading to a paid plan.
  * POST /api/payments/create
  */
-export async function createPayment(c: Context) {
+export async function createPayment(c: Context): Promise<Response> {
   try {
     const userId = c.get("userId") as string;
     const body = await c.req.json();
@@ -98,7 +98,7 @@ export async function createPayment(c: Context) {
  * POST /api/payments/webhook
  * Public endpoint (no auth required).
  */
-export async function handlePaymentWebhook(c: Context) {
+export async function handlePaymentWebhook(c: Context): Promise<Response> {
   try {
     const body = await c.req.text();
 
@@ -197,7 +197,7 @@ export async function handlePaymentWebhook(c: Context) {
  * Poll transaction status.
  * GET /api/payments/status/:transactionRef
  */
-export async function pollTransactionStatus(c: Context) {
+export async function pollTransactionStatus(c: Context): Promise<Response> {
   try {
     const ref = c.req.param("transactionRef") as string;
 
@@ -271,7 +271,7 @@ export async function pollTransactionStatus(c: Context) {
  * Get subscription renewal status.
  * GET /api/payments/renewal-status
  */
-export async function getRenewalStatus(c: Context) {
+export async function getRenewalStatus(c: Context): Promise<Response> {
   try {
     const userId = c.get("userId") as string;
 
@@ -292,7 +292,7 @@ export async function getRenewalStatus(c: Context) {
  * Initiate renewal payment.
  * POST /api/payments/renew
  */
-export async function renewSubscription(c: Context) {
+export async function renewSubscription(c: Context): Promise<Response> {
   try {
     const userId = c.get("userId") as string;
 
@@ -317,7 +317,7 @@ export async function renewSubscription(c: Context) {
  * Get payment history for a user.
  * GET /api/payments/history
  */
-export async function getPaymentHistory(c: Context) {
+export async function getPaymentHistory(c: Context): Promise<Response> {
   try {
     const userId = c.get("userId") as string;
 

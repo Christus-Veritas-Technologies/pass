@@ -1,5 +1,6 @@
 import prisma from "@pass/db";
-import { PLAN_LIMITS, type PlanKey as Plan } from "./planLimits";
+import type { Plan, SubscriptionStatus } from "@pass/db";
+import { PLAN_LIMITS } from "./planLimits";
 import { sendEmail } from "./emails";
 
 /**
@@ -78,7 +79,15 @@ export async function checkSubscriptionExpiry() {
 /**
  * Get subscription info for a user.
  */
-export async function getSubscriptionInfo(userId: string) {
+export async function getSubscriptionInfo(userId: string): Promise<{
+  plan: Plan;
+  status: SubscriptionStatus;
+  startDate: Date;
+  expiryDate: Date;
+  daysRemaining: number;
+  isExpired: boolean;
+  renewalDue: boolean;
+} | null> {
   const subscription = await prisma.subscription.findUnique({
     where: { userId },
   });
@@ -130,7 +139,15 @@ export async function checkPlanLimit(userId: string, resource: "paper" | "projec
 /**
  * Get remaining usage for a user's current plan.
  */
-export async function getPlanUsage(userId: string) {
+export async function getPlanUsage(userId: string): Promise<{
+  plan: Plan;
+  papersUsed: number;
+  papersLimit: number;
+  papersRemaining: number;
+  projectsUsed: number;
+  projectsLimit: number;
+  projectsRemaining: number;
+} | null> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
   });

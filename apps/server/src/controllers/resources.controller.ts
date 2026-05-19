@@ -4,7 +4,7 @@ import prisma from "@pass/db";
 
 const PAGE_SIZE = 20;
 
-export async function getResources(c: Context) {
+export async function getResources(c: Context): Promise<Response> {
   const { subject, grade, type, year, page: pageStr } = c.req.query() as {
     subject?: string;
     grade?: string;
@@ -36,21 +36,21 @@ export async function getResources(c: Context) {
   return c.json({ resources: data, total, page, pageSize: paginate ? PAGE_SIZE : total });
 }
 
-export async function getResource(c: Context) {
+export async function getResource(c: Context): Promise<Response> {
   const id = c.req.param("id");
   const resource = await prisma.resource.findUnique({ where: { id } });
   if (!resource) return c.json({ error: "Resource not found" }, 404);
   return c.json({ resource });
 }
 
-export async function downloadResource(c: Context) {
+export async function downloadResource(c: Context): Promise<Response> {
   const id = c.req.param("id");
   const resource = await prisma.resource.findUnique({ where: { id } });
   if (!resource) return c.json({ error: "Resource not found" }, 404);
   return c.json({ downloadUrl: resource.fileUrl });
 }
 
-export async function getFeaturedResources(c: Context) {
+export async function getFeaturedResources(c: Context): Promise<Response> {
   const resources = await prisma.resource.findMany({
     where: { type: "PAST_PAPER" },
     orderBy: { year: "desc" },

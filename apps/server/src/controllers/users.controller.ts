@@ -7,7 +7,7 @@ const USER_SELECT = {
   id: true, email: true, name: true, grade: true, school: true, plan: true,
 } as const;
 
-export async function getMe(c: Context) {
+export async function getMe(c: Context): Promise<Response> {
   const userId = c.get("userId") as string;
   const user = await prisma.user.findUnique({ where: { id: userId }, select: USER_SELECT });
   if (!user) return c.json({ error: "User not found" }, 404);
@@ -58,7 +58,7 @@ const updateMeSchema = z.object({
   school: z.string().optional(),
 });
 
-export async function updateMe(c: Context) {
+export async function updateMe(c: Context): Promise<Response> {
   const userId = c.get("userId") as string;
   const body = await c.req.json().catch(() => null);
   const parsed = updateMeSchema.safeParse(body);

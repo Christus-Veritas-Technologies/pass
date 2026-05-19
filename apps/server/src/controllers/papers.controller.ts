@@ -42,7 +42,7 @@ function mapQuestion(q: QuestionRow) {
 
 // ─── Controllers ─────────────────────────────────────────────────────────────
 
-export async function getPapers(c: Context) {
+export async function getPapers(c: Context): Promise<Response> {
   const papers = await prisma.resource.findMany({
     where: { type: "PAST_PAPER" },
     orderBy: [{ year: "desc" }, { subject: "asc" }],
@@ -50,7 +50,7 @@ export async function getPapers(c: Context) {
   return c.json({ papers });
 }
 
-export async function getPaper(c: Context) {
+export async function getPaper(c: Context): Promise<Response> {
   const id = c.req.param("id");
   const paper = await prisma.resource.findUnique({
     where: { id },
@@ -62,7 +62,7 @@ export async function getPaper(c: Context) {
   return c.json({ paper: meta, questions: questions.map(mapQuestion) });
 }
 
-export async function startSession(c: Context) {
+export async function startSession(c: Context): Promise<Response> {
   const userId = c.get("userId") as string;
   const paperId = c.req.param("id") as string;
   const body = await c.req.json().catch(() => ({}));
@@ -211,7 +211,7 @@ Give the full, worked solution with a clear step-by-step explanation. Use simple
   });
 }
 
-export async function completeSession(c: Context) {
+export async function completeSession(c: Context): Promise<Response> {
   const userId = c.get("userId") as string;
   const sessionId = c.req.param("sessionId");
 
@@ -229,7 +229,7 @@ export async function completeSession(c: Context) {
   return c.json({ session: updated });
 }
 
-export async function getRecentSessions(c: Context) {
+export async function getRecentSessions(c: Context): Promise<Response> {
   const userId = c.get("userId") as string;
 
   const sessions = await prisma.paperSession.findMany({
