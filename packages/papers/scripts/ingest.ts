@@ -289,7 +289,9 @@ async function cmdCollect() {
       | { questions: ExtractedQuestion[] }
       | undefined;
 
-    if (!questions?.questions?.length) {
+    // Guard: questions.questions must be a real array
+    const rawArray: unknown = questions?.questions;
+    if (!Array.isArray(rawArray) || rawArray.length === 0) {
       await prisma.resource.update({
         where: { id: resource.id },
         data: { ingestStatus: "FAILED", ingestError: "batch: no questions returned" },
@@ -299,37 +301,84 @@ async function cmdCollect() {
       continue;
     }
 
+    // Sanity guard: a real exam paper never has more than 200 questions.
+    // If Claude hallucinated a huge array (e.g. repeated empty objects), cap it.
+    const MAX_QUESTIONS = 200;
+    const capped = rawArray.length > MAX_QUESTIONS;
+    const rawQuestions = (rawArray as ExtractedQuestion[]).slice(0, MAX_QUESTIONS);
+    if (capped) {
+      console.warn(`    ⚠ ${paperCode} — Claude returned ${rawArray.length} items; capped at ${MAX_QUESTIONS}`);
+    }
+
+    // Pre-filter: only keep entries that have actual text (skip empty objects early)
+    const validQuestions = rawQuestions.filter(
+      (q) => q && typeof q.text === "string" && q.text.trim().length > 0
+    );
+
+    if (validQuestions.length === 0) {
+      await prisma.resource.update({
+        where: { id: resource.id },
+        data: { ingestStatus: "FAILED", ingestError: "batch: all returned questions had empty text" },
+      });
+      failed++;
+      console.warn(`  ✗ ${paperCode} — no usable questions in Claude response`);
+      continue;
+    }
+
     // Replace any prior questions for this paper, then write fresh rows.
     await prisma.paperQuestion.deleteMany({ where: { resourceId: resource.id } });
-    for (const q of questions.questions) {
+
+    // Track used question numbers to handle duplicates from Claude
+    const usedNumbers = new Set<number>();
+
+    let written = 0;
+    for (let idx = 0; idx < validQuestions.length; idx++) {
+      const q = validQuestions[idx];
+
+      // ── Defensive coercion: Claude occasionally omits or misnames fields ────
+      // questionNumber: may be string, float, or missing → coerce to int, fall back to index+1
+      let qNum = Number.isFinite(Number(q.questionNumber)) ? Math.round(Number(q.questionNumber)) : idx + 1;
+      if (qNum <= 0) qNum = idx + 1;
+      // Deduplicate: if this number is already used, just increment by 1 until free
+      while (usedNumbers.has(qNum)) qNum++;
+      usedNumbers.add(qNum);
+
+      // aiModelAnswer: required — use a placeholder so we don't block ingestion
+      const aiModelAnswer =
+        typeof q.aiModelAnswer === "string" && q.aiModelAnswer.trim()
+          ? q.aiModelAnswer.trim()
+          : "Model answer not available — see official ZIMSEC marking guide.";
+
       await prisma.paperQuestion.create({
         data: {
           resourceId: resource.id,
-          questionNumber: q.questionNumber,
-          text: q.text,
-          marks: q.marks ?? 0,
-          subParts: q.subParts ?? undefined,
+          questionNumber: qNum,
+          text: q.text.trim(),
+          marks: Number.isFinite(Number(q.marks)) ? Math.round(Number(q.marks)) : 0,
+          subParts: Array.isArray(q.subParts) && q.subParts.length ? q.subParts : undefined,
           section: q.section ?? null,
           topic: q.topic ?? null,
-          pdfPage: q.pdfPage ?? null,
-          hasDiagram: q.hasDiagram ?? false,
+          pdfPage: Number.isFinite(Number(q.pdfPage)) ? Math.round(Number(q.pdfPage)) : null,
+          hasDiagram: q.hasDiagram === true,
           diagramNote: q.diagramNote ?? null,
-          aiModelAnswer: q.aiModelAnswer,
+          aiModelAnswer,
           guideSource: "AI_GENERATED",
         },
       });
+      written++;
     }
+
     await prisma.resource.update({
       where: { id: resource.id },
       data: {
         ingestStatus: "INGESTED",
         ingestError: null,
-        questionCount: questions.questions.length,
+        questionCount: written,
         ingestedAt: new Date(),
       },
     });
     ingested++;
-    console.log(`  ✓ ${paperCode} — ${questions.questions.length} questions`);
+    console.log(`  ✓ ${paperCode} — ${written} questions`);
   }
 
   console.log(`\nIngested ${ingested} papers, ${failed} failed.`);
