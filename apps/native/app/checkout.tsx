@@ -1,5 +1,6 @@
 import {
   ArrowLeft01Icon,
+  BankIcon,
   CrownIcon,
   Loading01Icon,
   SparklesIcon,
@@ -10,12 +11,12 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
+  Modal,
   Pressable,
   ScrollView,
   Text,
   View,
-  Modal,
-  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
@@ -256,6 +257,36 @@ export default function CheckoutScreen() {
         <Text style={{ fontSize: 11, color: "#9CA3AF", textAlign: "center" }}>
           You'll be redirected to Paynow to complete your payment securely.
         </Text>
+
+        {/* Accepted payment methods */}
+        <View style={{ borderTopWidth: 1, borderTopColor: "#F3F4F6", marginTop: 24, paddingTop: 20 }}>
+          <Text style={{ fontSize: 10, fontWeight: "600", color: "#9CA3AF", textAlign: "center", letterSpacing: 0.6, textTransform: "uppercase", marginBottom: 14 }}>
+            Accepted payment methods
+          </Text>
+          <View style={{ flexDirection: "row", justifyContent: "center", flexWrap: "wrap", gap: 12 }}>
+            {/* Bank Transfer */}
+            <View style={{ alignItems: "center", gap: 6 }}>
+              <View style={{ width: 44, height: 44, borderRadius: 12, borderWidth: 1, borderColor: "#E5E7EB", backgroundColor: "#F9FAFB", alignItems: "center", justifyContent: "center" }}>
+                <HugeiconsIcon icon={BankIcon} size={20} color="#9CA3AF" />
+              </View>
+              <Text style={{ fontSize: 9, color: "#9CA3AF" }}>Bank Transfer</Text>
+            </View>
+            {/* Logo-based methods */}
+            {[
+              { source: require("../../assets/payment-methods/ecocash.png"), label: "EcoCash" },
+              { source: require("../../assets/payment-methods/onemoney.png"), label: "OneMoney" },
+              { source: require("../../assets/payment-methods/omari.png"), label: "Omari" },
+              { source: require("../../assets/payment-methods/innbucks.png"), label: "InnBucks" },
+            ].map(({ source, label }) => (
+              <View key={label} style={{ alignItems: "center", gap: 6 }}>
+                <View style={{ width: 44, height: 44, borderRadius: 12, borderWidth: 1, borderColor: "#E5E7EB", backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center", padding: 6, overflow: "hidden" }}>
+                  <Image source={source} style={{ width: "100%", height: "100%" }} resizeMode="contain" />
+                </View>
+                <Text style={{ fontSize: 9, color: "#9CA3AF" }}>{label}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
       </ScrollView>
 
       {/* WebView Modal for Paynow */}
