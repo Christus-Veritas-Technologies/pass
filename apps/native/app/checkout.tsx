@@ -323,10 +323,10 @@ export default function CheckoutScreen() {
             </View>
             {/* Logo-based methods */}
             {[
-              { source: require("../../assets/payment-methods/ecocash.png"), label: "EcoCash" },
-              { source: require("../../assets/payment-methods/onemoney.png"), label: "OneMoney" },
-              { source: require("../../assets/payment-methods/omari.png"), label: "Omari" },
-              { source: require("../../assets/payment-methods/innbucks.png"), label: "InnBucks" },
+              { source: require("../assets/payment-methods/ecocash.png"), label: "EcoCash" },
+              { source: require("../assets/payment-methods/onemoney.png"), label: "OneMoney" },
+              { source: require("../assets/payment-methods/omari.png"), label: "Omari" },
+              { source: require("../assets/payment-methods/innbucks.png"), label: "InnBucks" },
             ].map(({ source, label }) => (
               <View key={label} style={{ alignItems: "center", gap: 6 }}>
                 <View style={{ width: 44, height: 44, borderRadius: 12, borderWidth: 1, borderColor: "#E5E7EB", backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center", padding: 6, overflow: "hidden" }}>
