@@ -25,11 +25,12 @@ import { env } from "@pass/env/native";
 const BRAND = "#4F46E5";
 const API = env.EXPO_PUBLIC_SERVER_URL;
 
-const PLANS = {
+type Billing = "MONTHLY" | "ANNUAL";
+
+const PLAN_DATA = {
   STUDY: {
     name: "Study",
-    price: "$2.99",
-    period: "month",
+    prices: { MONTHLY: 2.99, ANNUAL: 19.99 },
     icon: SparklesIcon,
     color: "#7C3AED",
     features: [
@@ -41,8 +42,7 @@ const PLANS = {
   },
   PASS: {
     name: "Pass",
-    price: "$5.99",
-    period: "month",
+    prices: { MONTHLY: 5.99, ANNUAL: 39.99 },
     icon: CrownIcon,
     color: "#D97706",
     features: [
@@ -59,15 +59,17 @@ export default function CheckoutScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const planParam = (params.plan as "STUDY" | "PASS") || "STUDY";
+  const billingParam = (params.billing as Billing) || "MONTHLY";
 
   const [selectedPlan, setSelectedPlan] = useState<"STUDY" | "PASS">(planParam);
+  const [billing, setBilling] = useState<Billing>(billingParam);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [webviewUrl, setWebviewUrl] = useState<string | null>(null);
   const [showWebview, setShowWebview] = useState(false);
 
-  const plan = PLANS[selectedPlan];
-  const amount = selectedPlan === "STUDY" ? 2.99 : 5.99;
+  const plan = PLAN_DATA[selectedPlan];
+  const amount = plan.prices[billing];
 
   async function getToken() {
     try {
@@ -95,7 +97,7 @@ export default function CheckoutScreen() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ plan: selectedPlan }),
+        body: JSON.stringify({ plan: selectedPlan, billingCycle: billing }),
       });
 
       const data = await response.json();
@@ -162,10 +164,43 @@ export default function CheckoutScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ paddingVertical: 20, paddingHorizontal: 16 }} showsVerticalScrollIndicator={false}>
+
+        {/* Billing toggle */}
+        <View style={{ flexDirection: "row", backgroundColor: "#F3F4F6", borderRadius: 10, padding: 3, marginBottom: 20, alignSelf: "flex-start" }}>
+          {(["MONTHLY", "ANNUAL"] as Billing[]).map((b) => (
+            <Pressable
+              key={b}
+              onPress={() => setBilling(b)}
+              style={{
+                paddingHorizontal: 16,
+                paddingVertical: 7,
+                borderRadius: 8,
+                backgroundColor: billing === b ? "#FFFFFF" : "transparent",
+                shadowColor: billing === b ? "#000" : "transparent",
+                shadowOpacity: billing === b ? 0.06 : 0,
+                shadowRadius: 4,
+                elevation: billing === b ? 2 : 0,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <Text style={{ fontSize: 13, fontWeight: "600", color: billing === b ? "#111827" : "#6B7280" }}>
+                {b === "MONTHLY" ? "Monthly" : "Annual"}
+              </Text>
+              {b === "ANNUAL" && (
+                <View style={{ backgroundColor: "#ECFDF5", borderRadius: 20, paddingHorizontal: 6, paddingVertical: 2 }}>
+                  <Text style={{ fontSize: 9, fontWeight: "700", color: "#059669" }}>-44%</Text>
+                </View>
+              )}
+            </Pressable>
+          ))}
+        </View>
+
         {/* Plan selector */}
         <View style={{ gap: 12, marginBottom: 20 }}>
           {(["STUDY", "PASS"] as const).map((planKey) => {
-            const p = PLANS[planKey];
+            const p = PLAN_DATA[planKey];
             const isSelected = selectedPlan === planKey;
             return (
               <Pressable
@@ -183,9 +218,16 @@ export default function CheckoutScreen() {
                   <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: planKey === "PASS" ? "#FEF3C7" : "#EEF2FF", alignItems: "center", justifyContent: "center" }}>
                     <HugeiconsIcon icon={p.icon} size={20} color={p.color} />
                   </View>
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: BRAND }}>{p.price}</Text>
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: BRAND }}>
+                    ${p.prices[billing].toFixed(2)}
+                  </Text>
                 </View>
                 <Text style={{ fontSize: 15, fontWeight: "700", color: "#111827" }}>{p.name}</Text>
+                {billing === "ANNUAL" && (
+                  <Text style={{ fontSize: 11, color: "#059669", marginTop: 2 }}>
+                    ${(p.prices.ANNUAL / 12).toFixed(2)}/mo — billed annually
+                  </Text>
+                )}
               </Pressable>
             );
           })}
@@ -197,12 +239,20 @@ export default function CheckoutScreen() {
           <View style={{ gap: 10, marginBottom: 12 }}>
             <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
               <Text style={{ fontSize: 13, color: "#6B7280" }}>{plan.name} plan</Text>
-              <Text style={{ fontSize: 13, fontWeight: "600", color: "#111827" }}>${amount.toFixed(2)}</Text>
+              <Text style={{ fontSize: 13, fontWeight: "600", color: "#111827" }}>USD {amount.toFixed(2)}</Text>
             </View>
             <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
               <Text style={{ fontSize: 13, color: "#6B7280" }}>Billing period</Text>
-              <Text style={{ fontSize: 13, fontWeight: "600", color: "#111827" }}>1 month</Text>
+              <Text style={{ fontSize: 13, fontWeight: "600", color: "#111827" }}>{billing === "ANNUAL" ? "1 year" : "1 month"}</Text>
             </View>
+            {billing === "ANNUAL" && (
+              <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                <Text style={{ fontSize: 12, color: "#059669" }}>Annual saving</Text>
+                <Text style={{ fontSize: 12, fontWeight: "600", color: "#059669" }}>
+                  USD {((plan.prices.MONTHLY * 12) - amount).toFixed(2)}
+                </Text>
+              </View>
+            )}
           </View>
           <View style={{ borderTopWidth: 1, borderTopColor: "#E5E7EB", paddingTop: 10, flexDirection: "row", justifyContent: "space-between" }}>
             <Text style={{ fontSize: 13, fontWeight: "700", color: "#111827" }}>Total</Text>
@@ -214,7 +264,7 @@ export default function CheckoutScreen() {
         <View style={{ backgroundColor: "#F9FAFB", borderRadius: 16, padding: 16, marginBottom: 20 }}>
           <Text style={{ fontSize: 13, fontWeight: "700", color: "#111827", marginBottom: 12 }}>What's included</Text>
           <View style={{ gap: 10 }}>
-            {plan.features.map((feature, idx) => (
+            {PLAN_DATA[selectedPlan].features.map((feature, idx) => (
               <View key={idx} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                 <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: "#10B981", alignItems: "center", justifyContent: "center" }}>
                   <Text style={{ fontSize: 10, color: "#FFFFFF", fontWeight: "700" }}>✓</Text>
