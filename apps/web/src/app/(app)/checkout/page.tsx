@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { ArrowLeft01Icon, CrownIcon, Loading01Icon, SparklesIcon } from "@hugeicons/core-free-icons";
+import { ArrowLeft01Icon, BankIcon, CrownIcon, Loading01Icon, SparklesIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Button } from "@pass/ui/components/button";
 import { Card, CardContent, CardHeader } from "@pass/ui/components/card";
@@ -189,6 +189,33 @@ export default function CheckoutPage() {
         <p className="text-xs text-center text-muted-foreground">
           You'll be redirected to Paynow to complete your payment securely. Cancel anytime from your settings.
         </p>
+      </div>
+
+      {/* Accepted payment methods */}
+      <div className="border-t pt-6">
+        <p className="text-xs font-semibold text-center text-muted-foreground uppercase tracking-wider mb-4">Accepted payment methods</p>
+        <div className="flex items-center justify-center gap-3 flex-wrap">
+          <div className="flex flex-col items-center gap-1.5">
+            <div className="h-10 w-10 rounded-lg border bg-muted/50 flex items-center justify-center">
+              <HugeiconsIcon icon={BankIcon} className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <span className="text-[10px] text-muted-foreground">Bank Transfer</span>
+          </div>
+          {[
+            { src: "/payment-methods/ecocash.png", label: "EcoCash" },
+            { src: "/payment-methods/onemoney.png", label: "OneMoney" },
+            { src: "/payment-methods/omari.png", label: "Omari" },
+            { src: "/payment-methods/innbucks.png", label: "InnBucks" },
+          ].map(({ src, label }) => (
+            <div key={label} className="flex flex-col items-center gap-1.5">
+              <div className="h-10 w-10 rounded-lg border bg-white overflow-hidden flex items-center justify-center p-1">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={src} alt={label} className="h-full w-full object-contain" />
+              </div>
+              <span className="text-[10px] text-muted-foreground">{label}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
