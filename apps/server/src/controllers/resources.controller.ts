@@ -19,19 +19,21 @@ export async function getResources(c: Context) {
   if (type) where.type = type.toUpperCase();
   if (year) where.year = Number(year);
 
+  // Pagination is opt-in: the resources UIs do client-side search/filter
+  // and need the full catalogue, so without an explicit ?page they get all.
+  const paginate = pageStr !== undefined;
   const page = Math.max(1, Number(pageStr ?? 1));
 
   const [data, total] = await Promise.all([
     prisma.resource.findMany({
       where,
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
+      ...(paginate ? { skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE } : {}),
       orderBy: [{ year: "desc" }, { subject: "asc" }],
     }),
     prisma.resource.count({ where }),
   ]);
 
-  return c.json({ resources: data, total, page, pageSize: PAGE_SIZE });
+  return c.json({ resources: data, total, page, pageSize: paginate ? PAGE_SIZE : total });
 }
 
 export async function getResource(c: Context) {
