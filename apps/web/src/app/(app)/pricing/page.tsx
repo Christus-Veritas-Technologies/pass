@@ -25,8 +25,8 @@ const PLANS = [
     cta: "Get started",
     ctaVariant: "outline" as const,
     features: [
-      "3 past papers per month",
-      "1 AI project per month",
+      "5 past papers per month",
+      "2 AI projects per month",
       "Basic marking guidance",
       "Resource downloads",
     ],
@@ -186,7 +186,7 @@ export default function PricingPage() {
           {[
             {
               q: "Can I try before I buy?",
-              a: "Yes — the Free plan gives you 3 papers and 1 project every month with no credit card required. Study is $2.99/mo and Pass is $5.99/mo.",
+              a: "Yes — the Free plan gives you 5 papers and 2 projects every month with no credit card required. Study is $2.99/mo and Pass is $5.99/mo.",
             },
             {
               q: "Which ZIMSEC subjects are covered?",

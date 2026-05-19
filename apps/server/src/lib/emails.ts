@@ -192,8 +192,8 @@ export async function sendSubscriptionExpiredEmail(
     <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:20px 24px;margin:20px 0 28px 0;">
       <p style="margin:0 0 12px 0;font-size:13px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:0.5px;">What changes on free</p>
       <ul style="margin:0;padding:0 0 0 18px;font-size:14px;color:#374151;line-height:1.7;">
-        <li>3 past papers per month</li>
-        <li>1 AI study project per month</li>
+        <li>5 past papers per month</li>
+        <li>2 AI study projects per month</li>
         <li>Standard AI feedback</li>
       </ul>
     </div>

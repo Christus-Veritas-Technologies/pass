@@ -1,5 +1,5 @@
 export const PLAN_LIMITS = {
-  FREE:  { papers: 3,  projects: 1  },
+  FREE:  { papers: 5,  projects: 2  },
   STUDY: { papers: 12, projects: 7  },
   PASS:  { papers: 20, projects: 12 },
 } as const;
