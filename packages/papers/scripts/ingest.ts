@@ -408,6 +408,150 @@ async function cmdStatus() {
   for (const r of rows) console.log(`  ${r.ingestStatus.padEnd(16)} ${r._count}`);
 }
 
+// ─── retry-direct: call standard API (not batch) for FAILED papers ────────────
+
+const COMPREHENSION_SYSTEM_PROMPT = `You extract questions from ZIMSEC (Zimbabwe) exam past papers to power a study app.
+
+IMPORTANT: This paper may be a comprehension or listening paper. Extract EVERY question, including:
+- Listening comprehension questions (extract the printed question text even if audio is not available)
+- Sub-lettered questions (a), (b), (c) within a comprehension section — treat each as a separate question or sub-part
+- Summary questions that reference a passage — include the passage text in the question text
+- Any numbered question (1, 2, 3…) or lettered question (a), (b), (c)…
+
+For each question provide:
+- questionNumber: use the printed number (1, 2, 3…). For sub-lettered questions, assign sequential numbers.
+- section: the exam section ("Section A", "Section B", …) or omit if none.
+- text: the COMPLETE question text, verbatim. For comprehension questions, include the relevant passage extract. For summary questions include the full passage.
+- marks: total marks for the question (look for [N] at end of question).
+- subParts: if the question has labelled parts, an array of { label: "(a)", text, marks }. Omit if none.
+- topic: the syllabus topic the question tests (short phrase).
+- pdfPage: the 1-based page number the question appears on.
+- hasDiagram: true if answering REQUIRES a diagram, map, graph, circuit, table or figure.
+- diagramNote: when hasDiagram is true, a short description of the figure.
+- aiModelAnswer: a concise model answer / marking rubric. MUST always be filled. For comprehension, give the expected answer points. For summary, give the key points to include.
+
+You MUST call the submit_questions tool with ALL questions found. Do not return an empty list.`;
+
+async function cmdRetryDirect() {
+  const failed = await prisma.resource.findMany({
+    where: { type: "PAST_PAPER", ingestStatus: "FAILED", paperCode: { not: null } },
+  });
+
+  if (failed.length === 0) {
+    console.log("No FAILED papers to retry.");
+    return;
+  }
+
+  console.log(`Retrying ${failed.length} FAILED papers directly (non-batch)…\n`);
+  const files = await listPaperFiles();
+  let ingested = 0;
+  let stillFailed = 0;
+
+  for (const r of failed) {
+    const cachePath = textCachePath(r.paperCode!);
+    if (!existsSync(cachePath)) {
+      console.warn(`  ✗ ${r.paperCode} — no cached text, skipping`);
+      stillFailed++;
+      continue;
+    }
+
+    const text = readFileSync(cachePath, "utf8");
+    console.log(`  Processing ${r.paperCode} (${text.length} chars)…`);
+
+    try {
+      const response = await anthropic.messages.create({
+        model: STRUCTURING_MODEL,
+        max_tokens: 16000,
+        system: COMPREHENSION_SYSTEM_PROMPT,
+        tools: [QUESTION_TOOL],
+        tool_choice: { type: "tool", name: "submit_questions" },
+        messages: [{
+          role: "user",
+          content: `Extract all questions from this ZIMSEC paper: ${r.title}.\n\nThis paper may be a comprehension or listening paper — extract ALL printed questions and sub-questions.\n\n--- PAPER TEXT ---\n${text}`,
+        }],
+      });
+
+      const toolUse = response.content.find((b) => b.type === "tool_use");
+      const questions = (toolUse as Anthropic.ToolUseBlock | undefined)?.input as
+        | { questions: ExtractedQuestion[] }
+        | undefined;
+
+      const rawArray: unknown = questions?.questions;
+      if (!Array.isArray(rawArray) || rawArray.length === 0) {
+        await prisma.resource.update({
+          where: { id: r.id },
+          data: { ingestStatus: "FAILED", ingestError: "direct: no questions returned" },
+        });
+        stillFailed++;
+        console.warn(`  ✗ ${r.paperCode} — still no questions`);
+        continue;
+      }
+
+      const validQuestions = (rawArray as ExtractedQuestion[]).filter(
+        (q) => q && typeof q.text === "string" && q.text.trim().length > 0
+      );
+      if (validQuestions.length === 0) {
+        await prisma.resource.update({
+          where: { id: r.id },
+          data: { ingestStatus: "FAILED", ingestError: "direct: all questions had empty text" },
+        });
+        stillFailed++;
+        console.warn(`  ✗ ${r.paperCode} — all questions empty`);
+        continue;
+      }
+
+      await prisma.paperQuestion.deleteMany({ where: { resourceId: r.id } });
+      const usedNumbers = new Set<number>();
+      let written = 0;
+      for (let idx = 0; idx < validQuestions.length; idx++) {
+        const q = validQuestions[idx];
+        let qNum = Number.isFinite(Number(q.questionNumber)) ? Math.round(Number(q.questionNumber)) : idx + 1;
+        if (qNum <= 0) qNum = idx + 1;
+        while (usedNumbers.has(qNum)) qNum++;
+        usedNumbers.add(qNum);
+        const aiModelAnswer =
+          typeof q.aiModelAnswer === "string" && q.aiModelAnswer.trim()
+            ? q.aiModelAnswer.trim()
+            : "Model answer not available — see official ZIMSEC marking guide.";
+        await prisma.paperQuestion.create({
+          data: {
+            resourceId: r.id,
+            questionNumber: qNum,
+            text: q.text.trim(),
+            marks: Number.isFinite(Number(q.marks)) ? Math.round(Number(q.marks)) : 0,
+            subParts: Array.isArray(q.subParts) && q.subParts.length ? q.subParts : undefined,
+            section: q.section ?? null,
+            topic: q.topic ?? null,
+            pdfPage: Number.isFinite(Number(q.pdfPage)) ? Math.round(Number(q.pdfPage)) : null,
+            hasDiagram: q.hasDiagram === true,
+            diagramNote: q.diagramNote ?? null,
+            aiModelAnswer,
+            guideSource: "AI_GENERATED",
+          },
+        });
+        written++;
+      }
+
+      await prisma.resource.update({
+        where: { id: r.id },
+        data: { ingestStatus: "INGESTED", ingestError: null, questionCount: written, ingestedAt: new Date() },
+      });
+      ingested++;
+      console.log(`  ✓ ${r.paperCode} — ${written} questions`);
+    } catch (err) {
+      await prisma.resource.update({
+        where: { id: r.id },
+        data: { ingestStatus: "FAILED", ingestError: `direct: ${(err as Error).message}` },
+      });
+      stillFailed++;
+      console.warn(`  ✗ ${r.paperCode} — ${(err as Error).message}`);
+    }
+  }
+
+  console.log(`\nDirect retry: ${ingested} recovered, ${stillFailed} still failed.`);
+  if (ingested > 0) await writeSnapshot();
+}
+
 // ─── CLI ─────────────────────────────────────────────────────────────────────
 
 const cmd = process.argv[2];
@@ -417,6 +561,7 @@ const commands: Record<string, () => Promise<void>> = {
   collect: cmdCollect,
   status: cmdStatus,
   snapshot: writeSnapshot,
+  "retry-direct": cmdRetryDirect,
 };
 
 const run = commands[cmd ?? ""];
