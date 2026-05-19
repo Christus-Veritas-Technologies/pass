@@ -55,7 +55,7 @@ export function getGoogleAuthUrl() {
   return `${API}/auth/google`;
 }
 
-async function authedRequest<T>(path: string, init: RequestInit): Promise<T> {
+export async function authedRequest<T>(path: string, init: RequestInit): Promise<T> {
   const accessToken = typeof window !== "undefined"
     ? localStorage.getItem("pass_access_token")
     : null;

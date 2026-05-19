@@ -1,5 +1,5 @@
 import {
-  CheckCircle2Icon,
+  CheckmarkCircle02Icon,
   ArrowRight01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react-native";
@@ -63,7 +63,7 @@ export default function PaymentSuccessScreen() {
         {/* Success icon */}
         <View style={{ alignItems: "center", marginBottom: 24 }}>
           <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: "#DCFCE7", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
-            <HugeiconsIcon icon={CheckCircle2Icon} size={40} color="#059669" />
+            <HugeiconsIcon icon={CheckmarkCircle02Icon} size={40} color="#059669" />
           </View>
           <Text style={{ fontSize: 24, fontWeight: "800", color: "#111827", marginBottom: 8, textAlign: "center" }}>
             Payment successful!

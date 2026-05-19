@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { ArrowLeft01Icon, CrownIcon, LoaderIcon, SparklesIcon } from "@hugeicons/core-free-icons";
+import { ArrowLeft01Icon, CrownIcon, Loading01Icon, SparklesIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Button } from "@pass/ui/components/button";
 import { Card, CardContent, CardHeader } from "@pass/ui/components/card";
@@ -179,7 +179,7 @@ export default function CheckoutPage() {
         >
           {loading ? (
             <>
-              <HugeiconsIcon icon={LoaderIcon} className="h-4 w-4 mr-2 animate-spin" />
+              <HugeiconsIcon icon={Loading01Icon} className="h-4 w-4 mr-2 animate-spin" />
               Processing...
             </>
           ) : (

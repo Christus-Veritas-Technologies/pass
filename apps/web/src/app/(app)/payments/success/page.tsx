@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CheckCircle2Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
+import { CheckmarkCircle02Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Button } from "@pass/ui/components/button";
 import { Card, CardContent, CardHeader } from "@pass/ui/components/card";
@@ -27,7 +27,7 @@ export default function PaymentSuccessPage() {
   useEffect(() => {
     const fetchSubscription = async () => {
       try {
-        const data = await authedRequest<SubscriptionInfo>("/payments/renewal-status");
+        const data = await authedRequest<SubscriptionInfo>("/payments/renewal-status", { method: "GET" });
         setSubscription(data);
       } catch (err) {
         console.error("Failed to fetch subscription:", err);
@@ -56,7 +56,7 @@ export default function PaymentSuccessPage() {
         <div className="flex justify-center mb-4">
           <div className="h-16 w-16 rounded-full bg-emerald-100 flex items-center justify-center">
             <HugeiconsIcon
-              icon={CheckCircle2Icon}
+              icon={CheckmarkCircle02Icon}
               className="h-8 w-8 text-emerald-600"
             />
           </div>
