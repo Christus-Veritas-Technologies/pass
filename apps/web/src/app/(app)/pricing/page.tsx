@@ -1,3 +1,5 @@
+"use client";
+
 import {
   BankIcon,
   CheckmarkCircle01Icon,
@@ -7,21 +9,34 @@ import {
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import Link from "next/link";
+import { useState } from "react";
 import { Badge } from "@pass/ui/components/badge";
 import { Button } from "@pass/ui/components/button";
 import { Card, CardContent, CardHeader } from "@pass/ui/components/card";
 import { cn } from "@/lib/utils";
 
+type Billing = "MONTHLY" | "ANNUAL";
+
+const PLAN_PRICES = {
+  FREE:  { MONTHLY: "$0",     ANNUAL: "$0"     },
+  STUDY: { MONTHLY: "$2.99",  ANNUAL: "$19.99" },
+  PASS:  { MONTHLY: "$5.99",  ANNUAL: "$39.99" },
+};
+
+const ANNUAL_EQUIV = {
+  STUDY: "$1.67/mo",
+  PASS:  "$3.33/mo",
+};
+
 const PLANS = [
   {
     id: "FREE",
     name: "Free",
-    price: "$0",
-    period: "forever",
+    period: { MONTHLY: "forever", ANNUAL: "forever" },
     tagline: "Start practising today",
     icon: ZapIcon,
     color: "text-muted-foreground",
-    badge: null,
+    badge: null as string | null,
     cta: "Get started",
     ctaVariant: "outline" as const,
     features: [
@@ -39,8 +54,7 @@ const PLANS = [
   {
     id: "STUDY",
     name: "Study",
-    price: "$2.99",
-    period: "per month",
+    period: { MONTHLY: "per month", ANNUAL: "per year" },
     tagline: "For serious exam prep",
     icon: SparklesIcon,
     color: "text-primary",
@@ -63,8 +77,7 @@ const PLANS = [
   {
     id: "PASS",
     name: "Pass",
-    price: "$5.99",
-    period: "per month",
+    period: { MONTHLY: "per month", ANNUAL: "per year" },
     tagline: "Maximum exam coverage",
     icon: CrownIcon,
     color: "text-amber-500",
@@ -84,72 +97,114 @@ const PLANS = [
 ];
 
 export default function PricingPage() {
+  const [billing, setBilling] = useState<Billing>("MONTHLY");
+
   return (
     <div className="mx-auto max-w-4xl space-y-10 animate-fade-up">
       {/* Header */}
-      <div className="text-center space-y-2">
+      <div className="text-center space-y-4">
         <h1 className="text-3xl font-bold tracking-tight">Simple, transparent pricing</h1>
         <p className="text-sm text-muted-foreground max-w-md mx-auto">
           Choose a plan that fits your study goals. Upgrade or cancel anytime.
         </p>
+
+        {/* Billing toggle */}
+        <div className="inline-flex items-center rounded-lg border bg-muted/50 p-1 gap-1">
+          <button
+            onClick={() => setBilling("MONTHLY")}
+            className={cn(
+              "rounded-md px-4 py-1.5 text-sm font-medium transition-all",
+              billing === "MONTHLY"
+                ? "bg-background shadow-sm text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Monthly
+          </button>
+          <button
+            onClick={() => setBilling("ANNUAL")}
+            className={cn(
+              "rounded-md px-4 py-1.5 text-sm font-medium transition-all flex items-center gap-1.5",
+              billing === "ANNUAL"
+                ? "bg-background shadow-sm text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Annual
+            <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">
+              Save 44%
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* Plans */}
       <div className="grid gap-6 sm:grid-cols-3">
-        {PLANS.map((plan) => (
-          <Card
-            key={plan.id}
-            className={cn(
-              "rounded-xl relative transition-[transform,box-shadow] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-1 hover:shadow-md",
-              plan.id === "STUDY" && "ring-2 ring-primary shadow-lg",
-            )}
-          >
-            {plan.badge && (
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <Badge className="text-xs font-semibold">{plan.badge}</Badge>
-              </div>
-            )}
+        {PLANS.map((plan) => {
+          const price = PLAN_PRICES[plan.id as keyof typeof PLAN_PRICES][billing];
+          const period = plan.period[billing];
+          const annualEquiv = billing === "ANNUAL" && plan.id !== "FREE"
+            ? ANNUAL_EQUIV[plan.id as keyof typeof ANNUAL_EQUIV]
+            : null;
 
-            <CardHeader className="pt-6 pb-4 px-5">
-              <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl mb-3", plan.id === "PASS" ? "bg-amber-50" : plan.id === "STUDY" ? "bg-primary/10" : "bg-muted")}>
-                <HugeiconsIcon icon={plan.icon} className={cn("h-5 w-5", plan.color)} />
-              </div>
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{plan.name}</p>
-              <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-3xl font-bold">{plan.price}</span>
-                <span className="text-xs text-muted-foreground">/{plan.period}</span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">{plan.tagline}</p>
-            </CardHeader>
+          return (
+            <Card
+              key={plan.id}
+              className={cn(
+                "rounded-xl relative transition-[transform,box-shadow] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-1 hover:shadow-md",
+                plan.id === "STUDY" && "ring-2 ring-primary shadow-lg",
+              )}
+            >
+              {plan.badge && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <Badge className="text-xs font-semibold">{plan.badge}</Badge>
+                </div>
+              )}
 
-            <CardContent className="px-5 pb-6 space-y-4">
-              <Link href={
-                plan.id === "FREE"
-                  ? "/dashboard"
-                  : `/checkout?plan=${plan.id}`
-              }>
-                <Button variant={plan.ctaVariant} className="w-full">
-                  {plan.cta}
-                </Button>
-              </Link>
+              <CardHeader className="pt-6 pb-4 px-5">
+                <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl mb-3", plan.id === "PASS" ? "bg-amber-50" : plan.id === "STUDY" ? "bg-primary/10" : "bg-muted")}>
+                  <HugeiconsIcon icon={plan.icon} className={cn("h-5 w-5", plan.color)} />
+                </div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{plan.name}</p>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-3xl font-bold">{price}</span>
+                  <span className="text-xs text-muted-foreground">/{period}</span>
+                </div>
+                {annualEquiv && (
+                  <p className="text-xs text-emerald-600 font-medium mt-0.5">{annualEquiv} — billed annually</p>
+                )}
+                <p className="text-xs text-muted-foreground mt-1">{plan.tagline}</p>
+              </CardHeader>
 
-              <ul className="space-y-2">
-                {plan.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-xs">
-                    <HugeiconsIcon icon={CheckmarkCircle01Icon} className="h-3.5 w-3.5 mt-0.5 shrink-0 text-emerald-500" />
-                    <span>{f}</span>
-                  </li>
-                ))}
-                {plan.missing.map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-xs text-muted-foreground line-through">
-                    <HugeiconsIcon icon={CheckmarkCircle01Icon} className="h-3.5 w-3.5 mt-0.5 shrink-0 opacity-30" />
-                    <span>{f}</span>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-        ))}
+              <CardContent className="px-5 pb-6 space-y-4">
+                <Link href={
+                  plan.id === "FREE"
+                    ? "/dashboard"
+                    : `/checkout?plan=${plan.id}&billing=${billing}`
+                }>
+                  <Button variant={plan.ctaVariant} className="w-full">
+                    {plan.cta}
+                  </Button>
+                </Link>
+
+                <ul className="space-y-2">
+                  {plan.features.map((f) => (
+                    <li key={f} className="flex items-start gap-2 text-xs">
+                      <HugeiconsIcon icon={CheckmarkCircle01Icon} className="h-3.5 w-3.5 mt-0.5 shrink-0 text-emerald-500" />
+                      <span>{f}</span>
+                    </li>
+                  ))}
+                  {plan.missing.map((f) => (
+                    <li key={f} className="flex items-start gap-2 text-xs text-muted-foreground line-through">
+                      <HugeiconsIcon icon={CheckmarkCircle01Icon} className="h-3.5 w-3.5 mt-0.5 shrink-0 opacity-30" />
+                      <span>{f}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {/* Accepted payment methods */}
@@ -199,6 +254,10 @@ export default function PricingPage() {
             {
               q: "Can I cancel at any time?",
               a: "Absolutely. Cancel from your profile settings and you keep access until the end of the billing period.",
+            },
+            {
+              q: "What is the annual plan?",
+              a: "Paying annually gives you 12 months for the price of roughly 7 (44% off). Your subscription runs for a full year from the payment date.",
             },
           ].map(({ q, a }) => (
             <Card key={q} className="rounded-xl">
