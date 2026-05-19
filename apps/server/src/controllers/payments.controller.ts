@@ -7,6 +7,7 @@ import { sendEmail } from "../lib/emails";
 
 const createPaymentSchema = z.object({
   plan: z.enum(["STUDY", "PASS"]),
+  billingCycle: z.enum(["MONTHLY", "ANNUAL"]).default("MONTHLY"),
 });
 
 /**
@@ -19,7 +20,7 @@ export async function createPayment(c: Context) {
     const body = await c.req.json();
 
     // Validate request
-    const { plan } = createPaymentSchema.parse(body);
+    const { plan, billingCycle } = createPaymentSchema.parse(body);
 
     // Get user
     const user = await prisma.user.findUnique({
@@ -31,7 +32,7 @@ export async function createPayment(c: Context) {
     }
 
     // Get price
-    const amount = PLAN_PRICES[plan];
+    const amount = PLAN_PRICES[plan]?.[billingCycle];
     if (!amount) {
       return c.json({ error: "Invalid plan" }, 400);
     }
@@ -42,13 +43,14 @@ export async function createPayment(c: Context) {
         userId,
         amount,
         plan,
+        billingCycle,
         status: "pending",
       },
     });
 
     // Create Paynow payment
     const payment = paynow.createPayment(transaction.id, user.email);
-    payment.add(PLAN_DESCRIPTIONS[plan] ?? plan, amount);
+    payment.add(PLAN_DESCRIPTIONS[plan]?.[billingCycle] ?? plan, amount);
 
     // Send to Paynow
     const response = await paynow.send(payment);
@@ -130,15 +132,17 @@ export async function handlePaymentWebhook(c: Context) {
         },
       });
 
-      // Create subscription
+      // Create subscription — expiry depends on billing cycle
       const startDate = new Date();
-      const expiryDate = new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days
+      const days = transaction.billingCycle === "ANNUAL" ? 365 : 30;
+      const expiryDate = new Date(startDate.getTime() + days * 24 * 60 * 60 * 1000);
 
       await prisma.subscription.upsert({
         where: { userId: transaction.userId },
         create: {
           userId: transaction.userId,
           plan: transaction.plan,
+          billingCycle: transaction.billingCycle,
           startDate,
           expiryDate,
           paynowRef: reference,
@@ -146,6 +150,7 @@ export async function handlePaymentWebhook(c: Context) {
         },
         update: {
           plan: transaction.plan,
+          billingCycle: transaction.billingCycle,
           status: "ACTIVE",
           startDate,
           expiryDate,
@@ -230,12 +235,14 @@ export async function pollTransactionStatus(c: Context) {
 
       if (!sub) {
         const startDate = new Date();
-        const expiryDate = new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+        const days = transaction.billingCycle === "ANNUAL" ? 365 : 30;
+        const expiryDate = new Date(startDate.getTime() + days * 24 * 60 * 60 * 1000);
 
         await prisma.subscription.create({
           data: {
             userId: transaction.userId,
             plan: transaction.plan,
+            billingCycle: transaction.billingCycle,
             startDate,
             expiryDate,
             paynowRef: transaction.paynowRef,
@@ -297,9 +304,8 @@ export async function renewSubscription(c: Context) {
       return c.json({ error: "No active subscription" }, 404);
     }
 
-    // Redirect to create payment with the same plan
     return c.json({
-      redirectTo: `/checkout?plan=${sub.plan}`,
+      redirectTo: `/checkout?plan=${sub.plan}&billing=${sub.billingCycle}`,
     });
   } catch (error) {
     console.error("Error initiating renewal:", error);

@@ -50,6 +50,12 @@ enum SubscriptionStatus {
   CANCELLED
 }
 
+// Whether a subscription was purchased monthly or annually.
+enum BillingCycle {
+  MONTHLY
+  ANNUAL
+}
+
 // ─── Models ───────────────────────────────────────────────────────────────────
 
 model User {
@@ -208,6 +214,7 @@ model Subscription {
   status     SubscriptionStatus   @default(ACTIVE)
 
   // Billing & Renewal
+  billingCycle BillingCycle @default(MONTHLY)
   startDate  DateTime
   expiryDate DateTime             // When subscription expires
   renewalDue Boolean              @default(false)  // Prompt user to renew
@@ -233,6 +240,8 @@ model PaymentTransaction {
   amount      Float          // In ZWL
   currency    String   @default("ZWL")
   plan        Plan           // Which plan being purchased
+
+  billingCycle BillingCycle @default(MONTHLY)
 
   // Paynow Details
   paynowRef   String?  @unique  // Transaction reference from Paynow (set after Paynow responds)
