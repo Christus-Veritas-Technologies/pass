@@ -1,5 +1,5 @@
 import prisma from "@pass/db";
-import { Plan } from "@pass/db";
+import { type Plan } from "@pass/db/prisma/generated/enums";
 import { sendEmail } from "./emails";
 
 /**
