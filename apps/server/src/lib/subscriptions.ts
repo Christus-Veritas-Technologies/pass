@@ -39,6 +39,7 @@ export async function checkSubscriptionExpiry() {
         template: "renewal_reminder",
         plan: sub.plan,
         daysLeft,
+        expiryDate: sub.expiryDate,
         renewalUrl: `${process.env.APP_URL}/payments/renew`,
       });
     }
@@ -68,6 +69,7 @@ export async function checkSubscriptionExpiry() {
     // Send expiration email
     await sendEmail(sub.user.email, "Your Pass subscription has expired", {
       template: "subscription_expired",
+      plan: sub.plan,
       upgradeUrl: `${process.env.APP_URL}/pricing`,
     });
   }

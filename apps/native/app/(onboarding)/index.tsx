@@ -1,4 +1,4 @@
-import { BarChart01Icon, CheckmarkCircle01Icon, File01Icon } from "@hugeicons/core-free-icons";
+import { Analytics01Icon, CheckmarkCircle01Icon, File01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { MotiView } from "moti";
@@ -12,7 +12,7 @@ const BRAND = "#4F46E5";
 const FEATURES = [
   { icon: File01Icon,            text: "Past papers matched to your grade" },
   { icon: CheckmarkCircle01Icon, text: "AI marking against the ZIMSEC scheme" },
-  { icon: BarChart01Icon,        text: "Track your progress question by question" },
+  { icon: Analytics01Icon,       text: "Track your progress question by question" },
 ];
 
 // 3 bubbles per step — fully rounded circles of varying diameters
