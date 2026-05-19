@@ -7,6 +7,8 @@ import {
   Edit01Icon,
   Logout01Icon,
   User02Icon,
+  AlertCircleIcon,
+  ArrowRight01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useRouter } from "next/navigation";
@@ -50,6 +52,14 @@ interface PlanUsage {
   projects: { used: number; limit: number };
 }
 
+interface SubscriptionInfo {
+  plan: string;
+  status: string;
+  expiryDate: string;
+  daysRemaining: number;
+  renewalDue: boolean;
+}
+
 function getInitials(name: string) {
   return name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase();
 }
@@ -59,6 +69,7 @@ export default function ProfilePage() {
   const [user, setUser]         = useState<UserProfile | null>(null);
   const [stats, setStats]       = useState<Stats | null>(null);
   const [planUsage, setPlanUsage] = useState<PlanUsage | null>(null);
+  const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
   const [loading, setLoading]   = useState(true);
   const [editing, setEditing] = useState(false);
 
@@ -71,6 +82,8 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const token = getAccessToken();
+
+    // Fetch user profile and stats
     fetch(`${API}/users/me`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
@@ -82,6 +95,20 @@ export default function ProfilePage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
+
+    // Fetch subscription info if user has paid plan
+    if (token) {
+      fetch(`${API}/payments/renewal-status`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((r) => r.json())
+        .then((d) => {
+          if (d && !d.error) {
+            setSubscription(d);
+          }
+        })
+        .catch(() => {});
+    }
   }, []);
 
   function startEdit() {
@@ -269,6 +296,71 @@ export default function ProfilePage() {
                   <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
                 </div>
               ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Subscription Status */}
+      {!editing && subscription && (user?.plan === "STUDY" || user?.plan === "PASS") && (
+        <Card className={`rounded-xl ${subscription.renewalDue ? "border-amber-200 bg-amber-50/30" : ""}`}>
+          <CardHeader className="pb-3 pt-5 px-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${subscription.renewalDue ? "bg-amber-100" : "bg-emerald-50"}`}>
+                  <HugeiconsIcon
+                    icon={subscription.renewalDue ? AlertCircleIcon : CrownIcon}
+                    className={`h-4 w-4 ${subscription.renewalDue ? "text-amber-600" : "text-emerald-600"}`}
+                  />
+                </div>
+                <CardTitle className="text-sm font-semibold">Your subscription</CardTitle>
+              </div>
+              <Badge
+                variant={subscription.renewalDue ? "warning" : "success"}
+                className="text-xs"
+              >
+                {subscription.status === "ACTIVE" ? "Active" : "Expired"}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="px-5 pb-5 space-y-3">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">Expires on</p>
+                  <p className="font-semibold">
+                    {new Date(subscription.expiryDate).toLocaleDateString("en-US", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground mb-0.5">Days remaining</p>
+                  <p className={`text-lg font-bold ${subscription.renewalDue ? "text-amber-600" : "text-primary"}`}>
+                    {subscription.daysRemaining}d
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {subscription.renewalDue && (
+              <div className="rounded-lg bg-amber-100 border border-amber-300 px-3 py-2">
+                <p className="text-xs text-amber-900 font-medium">
+                  Your subscription is expiring soon! Renew now to keep access.
+                </p>
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-1">
+              <Button
+                onClick={() => router.push(`/checkout?plan=${subscription.plan}`)}
+                className="flex-1 h-9"
+              >
+                {subscription.renewalDue ? "Renew now" : "Manage"}
+                <HugeiconsIcon icon={ArrowRight01Icon} className="h-3.5 w-3.5 ml-1" />
+              </Button>
             </div>
           </CardContent>
         </Card>

@@ -51,3 +51,5 @@ paymentsRouter.post("/renew", requireAuth(), renewSubscription);
  * Get payment transaction history
  */
 paymentsRouter.get("/history", requireAuth(), getPaymentHistory);
+
+export default paymentsRouter;
