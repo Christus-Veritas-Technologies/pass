@@ -1,36 +1,53 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { storeTokens } from "@/lib/auth";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   useEffect(() => {
-    const access = searchParams.get("access");
-    const refresh = searchParams.get("refresh");
+    // The server redirects to /auth/callback#access=<token>&refresh=<token>
+    // Hash fragments are not sent to the server — read them client-side via
+    // window.location.hash.
+    const hash = window.location.hash.slice(1); // strip leading "#"
+    const params = new URLSearchParams(hash);
+
+    const access = params.get("access");
+    const refresh = params.get("refresh");
 
     if (access && refresh) {
       try {
-        // Parse the JWT tokens (they're in the URL hash/query)
+        // URLSearchParams.get() already URL-decodes values — no need to
+        // call decodeURIComponent again even though the server used encodeURIComponent.
         storeTokens({
           accessToken: access,
           refreshToken: refresh,
         });
-
-        // Redirect to dashboard
         router.push("/dashboard");
       } catch (error) {
         console.error("Auth callback error:", error);
         router.push("/login?error=callback_failed");
       }
     } else {
-      // No tokens in callback
-      router.push("/login?error=no_tokens");
+      // Also try query params as a fallback (in case redirect format changes)
+      const qp = new URLSearchParams(window.location.search);
+      const qAccess = qp.get("access");
+      const qRefresh = qp.get("refresh");
+
+      if (qAccess && qRefresh) {
+        try {
+          storeTokens({ accessToken: qAccess, refreshToken: qRefresh });
+          router.push("/dashboard");
+        } catch {
+          router.push("/login?error=callback_failed");
+        }
+      } else {
+        router.push("/login?error=no_tokens");
+      }
     }
-  }, [searchParams, router]);
+  }, [router]);
 
   return (
     <div className="flex items-center justify-center min-h-screen">
