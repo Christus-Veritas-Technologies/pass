@@ -35,7 +35,7 @@ export async function presignUpload(c: Context) {
 
   const { type, contentType, filename } = parsed.data;
 
-  const allowed = ALLOWED_TYPES[type];
+  const allowed = ALLOWED_TYPES[type] ?? [];
   if (!allowed.includes(contentType)) {
     return c.json({ error: `Content type ${contentType} is not allowed for ${type}` }, 400);
   }

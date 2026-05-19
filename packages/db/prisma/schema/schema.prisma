@@ -235,7 +235,7 @@ model PaymentTransaction {
   plan        Plan           // Which plan being purchased
 
   // Paynow Details
-  paynowRef   String   @unique  // Transaction reference from Paynow
+  paynowRef   String?  @unique  // Transaction reference from Paynow (set after Paynow responds)
   redirectUrl String?           // URL user was redirected to
   pollUrl     String?           // URL for polling transaction status
   status      String           // "pending", "paid", "failed"

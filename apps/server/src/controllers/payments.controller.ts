@@ -1,4 +1,4 @@
-import { Context } from "hono";
+import type { Context } from "hono";
 import { z } from "zod";
 import prisma from "@pass/db";
 import { paynow, PLAN_PRICES, PLAN_DESCRIPTIONS } from "../lib/paynow";
@@ -48,7 +48,7 @@ export async function createPayment(c: Context) {
 
     // Create Paynow payment
     const payment = paynow.createPayment(transaction.id, user.email);
-    payment.add(PLAN_DESCRIPTIONS[plan], amount);
+    payment.add(PLAN_DESCRIPTIONS[plan] ?? plan, amount);
 
     // Send to Paynow
     const response = await paynow.send(payment);
@@ -105,8 +105,6 @@ export async function handlePaymentWebhook(c: Context) {
     const params = new URLSearchParams(body);
 
     const reference = params.get("reference");
-    const paynowReference = params.get("paynow_reference");
-    const pollUrl = params.get("poll_url");
     const status = params.get("status")?.toLowerCase();
 
     if (!reference) {

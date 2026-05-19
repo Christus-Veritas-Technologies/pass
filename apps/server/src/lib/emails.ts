@@ -46,7 +46,7 @@ export async function sendEmail(
   // });
 }
 
-function generateEmailHtml(options: EmailOptions): string {
+export function generateEmailHtml(options: EmailOptions): string {
   switch (options.template) {
     case "payment_confirmed":
       return `

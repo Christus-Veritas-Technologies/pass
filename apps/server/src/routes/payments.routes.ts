@@ -16,7 +16,7 @@ export const paymentsRouter = new Hono();
  * Requires authentication
  * Create a new payment for upgrading to a paid plan
  */
-paymentsRouter.post("/create", requireAuth(), createPayment);
+paymentsRouter.post("/create", requireAuth, createPayment);
 
 /**
  * POST /api/payments/webhook
@@ -36,20 +36,20 @@ paymentsRouter.get("/status/:transactionRef", pollTransactionStatus);
  * Requires authentication
  * Get subscription renewal status for the current user
  */
-paymentsRouter.get("/renewal-status", requireAuth(), getRenewalStatus);
+paymentsRouter.get("/renewal-status", requireAuth, getRenewalStatus);
 
 /**
  * POST /api/payments/renew
  * Requires authentication
  * Initiate renewal payment
  */
-paymentsRouter.post("/renew", requireAuth(), renewSubscription);
+paymentsRouter.post("/renew", requireAuth, renewSubscription);
 
 /**
  * GET /api/payments/history
  * Requires authentication
  * Get payment transaction history
  */
-paymentsRouter.get("/history", requireAuth(), getPaymentHistory);
+paymentsRouter.get("/history", requireAuth, getPaymentHistory);
 
 export default paymentsRouter;
