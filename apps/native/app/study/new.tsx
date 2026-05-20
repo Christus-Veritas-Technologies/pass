@@ -1,4 +1,4 @@
-import { ArrowLeft, CheckCircle, GraduationCap, Sparkle, Note } from "@vuduc0801/react-native-phosphor-icons";
+import { ArrowLeft, CaretLeft, CaretRight, CheckCircle, GraduationCap, Sparkle, Note } from "@vuduc0801/react-native-phosphor-icons";
 import * as SecureStore from "expo-secure-store";
 import { useRouter } from "expo-router";
 import { MotiView } from "moti";
