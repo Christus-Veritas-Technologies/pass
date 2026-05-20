@@ -66,6 +66,7 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
 
   const [pdfOpen, setPdfOpen] = useState(false);
   const [pdfPage, setPdfPage] = useState(1);
+  const [startError, setStartError] = useState<string | null>(null);
 
   const pdfUrl = paper?.fileUrl ? `${API}${paper.fileUrl}` : "";
   function openPdf(page = 1) {
@@ -77,18 +78,21 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
   const aiBoxRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetch(`${API}/papers/${id}`)
+    const controller = new AbortController();
+    fetch(`${API}/papers/${id}`, { signal: controller.signal })
       .then((r) => r.json())
       .then((d) => {
         setPaper(d.paper);
         setQuestions(d.questions ?? []);
       })
-      .catch(console.error)
+      .catch((err) => { if (err.name !== "AbortError") console.error(err); })
       .finally(() => setLoading(false));
+    return () => controller.abort();
   }, [id]);
 
   async function handleStart() {
     setStarting(true);
+    setStartError(null);
     const token = getAccessToken();
     try {
       const res = await fetch(`${API}/papers/${id}/session/start`, {
@@ -100,10 +104,11 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
         body: JSON.stringify({ mode }),
       });
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to start session");
       setSessionId(data.session?.id ?? null);
       setStarted(true);
     } catch (err) {
-      console.error(err);
+      setStartError((err as Error).message ?? "Failed to start session. Please try again.");
     } finally {
       setStarting(false);
     }
@@ -172,7 +177,6 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
       }));
     } finally {
       setStreaming(false);
-      setCompleted((prev) => new Set([...prev, q.questionNumber]));
     }
   }
 
@@ -299,6 +303,9 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
             >
               {starting ? "Starting…" : "Start session"}
             </Button>
+            {startError && (
+              <p className="text-xs text-destructive">{startError}</p>
+            )}
           </CardContent>
         </Card>
       )}

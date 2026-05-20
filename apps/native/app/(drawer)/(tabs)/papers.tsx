@@ -1,11 +1,4 @@
-import {
-  BookOpen01Icon,
-  Calendar01Icon,
-  ArrowRight01Icon,
-  Search01Icon,
-  TaskDaily01Icon,
-} from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react-native";
+import { BookOpen, Calendar, ArrowRight, MagnifyingGlass, Note } from "@vuduc0801/react-native-phosphor-icons";
 import { useRouter } from "expo-router";
 import { MotiView } from "moti";
 import { Easing } from "react-native-reanimated";
@@ -103,7 +96,7 @@ export default function PapersScreen() {
             flexShrink: 0,
           }}
         >
-          <HugeiconsIcon icon={TaskDaily01Icon} size={20} color={BRAND} />
+          <Note size={20} color={BRAND} />
         </View>
 
         <View style={{ flex: 1 }}>
@@ -118,12 +111,12 @@ export default function PapersScreen() {
             <Text style={{ fontSize: 11, color: "#D1D5DB" }}>·</Text>
             <Text style={{ fontSize: 11, color: "#6B7280" }}>{item.grade}</Text>
             <Text style={{ fontSize: 11, color: "#D1D5DB" }}>·</Text>
-            <HugeiconsIcon icon={Calendar01Icon} size={11} color="#9CA3AF" />
+            <Calendar size={11} color="#9CA3AF" />
             <Text style={{ fontSize: 11, color: "#6B7280" }}>{item.year}</Text>
           </View>
         </View>
 
-        <HugeiconsIcon icon={ArrowRight01Icon} size={16} color="#9CA3AF" />
+        <ArrowRight size={16} color="#9CA3AF" />
       </Pressable>
     );
   }
@@ -154,7 +147,7 @@ export default function PapersScreen() {
             gap: 8,
           }}
         >
-          <HugeiconsIcon icon={Search01Icon} size={16} color="#9CA3AF" />
+          <MagnifyingGlass size={16} color="#9CA3AF" />
           <TextInput
             placeholder="Search papers…"
             placeholderTextColor="#9CA3AF"
@@ -243,7 +236,7 @@ export default function PapersScreen() {
               style={{ alignItems: "center", paddingTop: 60, gap: 12 }}
             >
               <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: "#EEF2FF", alignItems: "center", justifyContent: "center" }}>
-                <HugeiconsIcon icon={BookOpen01Icon} size={28} color="#A5B4FC" />
+                <BookOpen size={28} color="#A5B4FC" />
               </View>
               <Text style={{ fontSize: 15, fontWeight: "600", color: "#374151" }}>No papers found</Text>
               <Text style={{ fontSize: 13, color: "#9CA3AF", textAlign: "center", paddingHorizontal: 24 }}>

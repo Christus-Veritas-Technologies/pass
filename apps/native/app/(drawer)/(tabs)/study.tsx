@@ -1,16 +1,9 @@
-import {
-  CheckmarkCircle01Icon,
-  GraduationScrollIcon,
-  PlusSignIcon,
-  TaskDaily01Icon,
-  TrendingUpDownIcon,
-} from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react-native";
+import { CheckCircle, GraduationCap, Plus, Note, TrendUp } from "@vuduc0801/react-native-phosphor-icons";
 import * as SecureStore from "expo-secure-store";
 import { useRouter } from "expo-router";
 import { MotiView } from "moti";
 import { Easing } from "react-native-reanimated";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -57,11 +50,11 @@ async function getToken() {
   try { return await SecureStore.getItemAsync("pass_access_token"); } catch { return null; }
 }
 
-function StatCard({ icon, label, value, sub }: { icon: unknown; label: string; value: string | number; sub?: string }) {
+function StatCard({ icon: Icon, label, value, sub }: { icon: any; label: string; value: string | number; sub?: string }) {
   return (
     <View style={{ flex: 1, backgroundColor: "#F9FAFB", borderRadius: 12, borderWidth: 1, borderColor: "#F3F4F6", padding: 14 }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 }}>
-        <HugeiconsIcon icon={icon as never} size={14} color="#6B7280" />
+        <Icon size={14} color="#6B7280" />
         <Text style={{ fontSize: 11, color: "#6B7280", fontWeight: "500" }}>{label}</Text>
       </View>
       <Text style={{ fontSize: 26, fontWeight: "700", color: "#111827" }}>{value}</Text>
@@ -92,8 +85,13 @@ export default function StudyScreen() {
 
   useEffect(() => { fetchStats(); }, []);
 
-  // Re-fetch when tab comes into focus so stats update after a session
-  useFocusEffect(useCallback(() => { fetchStats(); }, []));
+  const lastFetchRef = useRef(0);
+  // Re-fetch when tab comes into focus so stats update after a session, throttled to once per 30s
+  useFocusEffect(useCallback(() => {
+    if (Date.now() - lastFetchRef.current < 30_000) return;
+    lastFetchRef.current = Date.now();
+    fetchStats();
+  }, []));
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#FFFFFF" }} edges={["top"]}>
@@ -113,7 +111,7 @@ export default function StudyScreen() {
               onPress={() => router.push("/study/new" as never)}
               style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: BRAND, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 9 }}
             >
-              <HugeiconsIcon icon={PlusSignIcon} size={14} color="#FFFFFF" />
+              <Plus size={14} color="#FFFFFF" />
               <Text style={{ fontSize: 13, fontWeight: "600", color: "#FFFFFF" }}>Study new paper</Text>
             </Pressable>
           </View>
@@ -129,13 +127,13 @@ export default function StudyScreen() {
             <MotiView from={{ opacity: 0, translateY: 6, scale: 0.97 }} animate={{ opacity: 1, translateY: 0, scale: 1 }} transition={{ type: "timing", duration: 220, delay: 50, easing: Easing.bezier(0.23, 1, 0.32, 1) }}>
               <View style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
                 <StatCard
-                  icon={TaskDaily01Icon}
+                  icon={Note}
                   label="Papers done"
                   value={data?.sessionsCompleted ?? 0}
                   sub={`of ${data?.sessionsStarted ?? 0} started`}
                 />
                 <StatCard
-                  icon={TrendingUpDownIcon}
+                  icon={TrendUp}
                   label="Completion"
                   value={`${data?.passRate ?? 0}%`}
                   sub="sessions finished"
@@ -143,7 +141,7 @@ export default function StudyScreen() {
               </View>
               <View style={{ marginBottom: 28 }}>
                 <StatCard
-                  icon={CheckmarkCircle01Icon}
+                  icon={CheckCircle}
                   label="Questions answered"
                   value={data?.totalQuestionsAnswered ?? 0}
                   sub="across all sessions"
@@ -158,7 +156,7 @@ export default function StudyScreen() {
               {!data?.sessions.length ? (
                 <View style={{ alignItems: "center", paddingVertical: 40, gap: 10, backgroundColor: "#F9FAFB", borderRadius: 14, borderWidth: 1, borderColor: "#F3F4F6" }}>
                   <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: "#EEF2FF", alignItems: "center", justifyContent: "center" }}>
-                    <HugeiconsIcon icon={GraduationScrollIcon} size={24} color="#A5B4FC" />
+                    <GraduationCap size={24} color="#A5B4FC" />
                   </View>
                   <Text style={{ fontSize: 14, fontWeight: "600", color: "#374151" }}>No sessions yet</Text>
                   <Text style={{ fontSize: 13, color: "#9CA3AF", textAlign: "center", paddingHorizontal: 20 }}>
@@ -187,7 +185,7 @@ export default function StudyScreen() {
                     >
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                         <View style={{ width: 36, height: 36, borderRadius: 9, backgroundColor: "#EEF2FF", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                          <HugeiconsIcon icon={TaskDaily01Icon} size={18} color={BRAND} />
+                          <Note size={18} color={BRAND} />
                         </View>
                         <View style={{ flex: 1 }}>
                           <Text style={{ fontSize: 13, fontWeight: "500", color: "#111827" }} numberOfLines={1}>{s.paperTitle}</Text>

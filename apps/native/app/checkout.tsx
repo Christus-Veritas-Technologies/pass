@@ -1,11 +1,4 @@
-import {
-  ArrowLeft01Icon,
-  BankIcon,
-  CrownIcon,
-  Loading01Icon,
-  SparklesIcon,
-} from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react-native";
+import { ArrowLeft, Bank, Crown, Sparkle } from "@vuduc0801/react-native-phosphor-icons";
 import * as SecureStore from "expo-secure-store";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -25,13 +18,12 @@ import { env } from "@pass/env/native";
 const BRAND = "#4F46E5";
 const API = env.EXPO_PUBLIC_SERVER_URL;
 
-type Billing = "MONTHLY" | "ANNUAL";
-
-const PLAN_DATA = {
+const PLANS = {
   STUDY: {
     name: "Study",
-    prices: { MONTHLY: 2.99, ANNUAL: 19.99 },
-    icon: SparklesIcon,
+    price: "$2.99",
+    period: "month",
+    icon: Sparkle,
     color: "#7C3AED",
     features: [
       "12 past papers per month",
@@ -42,8 +34,9 @@ const PLAN_DATA = {
   },
   PASS: {
     name: "Pass",
-    prices: { MONTHLY: 5.99, ANNUAL: 39.99 },
-    icon: CrownIcon,
+    price: "$5.99",
+    period: "month",
+    icon: Crown,
     color: "#D97706",
     features: [
       "20 past papers per month",
@@ -59,17 +52,15 @@ export default function CheckoutScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const planParam = (params.plan as "STUDY" | "PASS") || "STUDY";
-  const billingParam = (params.billing as Billing) || "MONTHLY";
 
   const [selectedPlan, setSelectedPlan] = useState<"STUDY" | "PASS">(planParam);
-  const [billing, setBilling] = useState<Billing>(billingParam);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [webviewUrl, setWebviewUrl] = useState<string | null>(null);
   const [showWebview, setShowWebview] = useState(false);
 
-  const plan = PLAN_DATA[selectedPlan];
-  const amount = plan.prices[billing];
+  const plan = PLANS[selectedPlan];
+  const amount = selectedPlan === "STUDY" ? 2.99 : 5.99;
 
   async function getToken() {
     try {
@@ -97,7 +88,7 @@ export default function CheckoutScreen() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ plan: selectedPlan, billingCycle: billing }),
+        body: JSON.stringify({ plan: selectedPlan }),
       });
 
       const data = await response.json();
@@ -155,7 +146,7 @@ export default function CheckoutScreen() {
             backgroundColor: pressed ? "#F3F4F6" : "transparent",
           })}
         >
-          <HugeiconsIcon icon={ArrowLeft01Icon} size={20} color="#374151" />
+          <ArrowLeft size={20} color="#374151" />
         </Pressable>
         <View>
           <Text style={{ fontSize: 18, fontWeight: "700", color: "#111827" }}>Upgrade your plan</Text>
@@ -164,43 +155,11 @@ export default function CheckoutScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ paddingVertical: 20, paddingHorizontal: 16 }} showsVerticalScrollIndicator={false}>
-
-        {/* Billing toggle */}
-        <View style={{ flexDirection: "row", backgroundColor: "#F3F4F6", borderRadius: 10, padding: 3, marginBottom: 20, alignSelf: "flex-start" }}>
-          {(["MONTHLY", "ANNUAL"] as Billing[]).map((b) => (
-            <Pressable
-              key={b}
-              onPress={() => setBilling(b)}
-              style={{
-                paddingHorizontal: 16,
-                paddingVertical: 7,
-                borderRadius: 8,
-                backgroundColor: billing === b ? "#FFFFFF" : "transparent",
-                shadowColor: billing === b ? "#000" : "transparent",
-                shadowOpacity: billing === b ? 0.06 : 0,
-                shadowRadius: 4,
-                elevation: billing === b ? 2 : 0,
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 6,
-              }}
-            >
-              <Text style={{ fontSize: 13, fontWeight: "600", color: billing === b ? "#111827" : "#6B7280" }}>
-                {b === "MONTHLY" ? "Monthly" : "Annual"}
-              </Text>
-              {b === "ANNUAL" && (
-                <View style={{ backgroundColor: "#ECFDF5", borderRadius: 20, paddingHorizontal: 6, paddingVertical: 2 }}>
-                  <Text style={{ fontSize: 9, fontWeight: "700", color: "#059669" }}>-44%</Text>
-                </View>
-              )}
-            </Pressable>
-          ))}
-        </View>
-
         {/* Plan selector */}
         <View style={{ gap: 12, marginBottom: 20 }}>
           {(["STUDY", "PASS"] as const).map((planKey) => {
-            const p = PLAN_DATA[planKey];
+            const p = PLANS[planKey];
+            const PlanIcon = p.icon;
             const isSelected = selectedPlan === planKey;
             return (
               <Pressable
@@ -216,18 +175,11 @@ export default function CheckoutScreen() {
               >
                 <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
                   <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: planKey === "PASS" ? "#FEF3C7" : "#EEF2FF", alignItems: "center", justifyContent: "center" }}>
-                    <HugeiconsIcon icon={p.icon} size={20} color={p.color} />
+                    <PlanIcon size={20} color={p.color} />
                   </View>
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: BRAND }}>
-                    ${p.prices[billing].toFixed(2)}
-                  </Text>
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: BRAND }}>{p.price}</Text>
                 </View>
                 <Text style={{ fontSize: 15, fontWeight: "700", color: "#111827" }}>{p.name}</Text>
-                {billing === "ANNUAL" && (
-                  <Text style={{ fontSize: 11, color: "#059669", marginTop: 2 }}>
-                    ${(p.prices.ANNUAL / 12).toFixed(2)}/mo — billed annually
-                  </Text>
-                )}
               </Pressable>
             );
           })}
@@ -239,20 +191,12 @@ export default function CheckoutScreen() {
           <View style={{ gap: 10, marginBottom: 12 }}>
             <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
               <Text style={{ fontSize: 13, color: "#6B7280" }}>{plan.name} plan</Text>
-              <Text style={{ fontSize: 13, fontWeight: "600", color: "#111827" }}>USD {amount.toFixed(2)}</Text>
+              <Text style={{ fontSize: 13, fontWeight: "600", color: "#111827" }}>${amount.toFixed(2)}</Text>
             </View>
             <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
               <Text style={{ fontSize: 13, color: "#6B7280" }}>Billing period</Text>
-              <Text style={{ fontSize: 13, fontWeight: "600", color: "#111827" }}>{billing === "ANNUAL" ? "1 year" : "1 month"}</Text>
+              <Text style={{ fontSize: 13, fontWeight: "600", color: "#111827" }}>1 month</Text>
             </View>
-            {billing === "ANNUAL" && (
-              <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                <Text style={{ fontSize: 12, color: "#059669" }}>Annual saving</Text>
-                <Text style={{ fontSize: 12, fontWeight: "600", color: "#059669" }}>
-                  USD {((plan.prices.MONTHLY * 12) - amount).toFixed(2)}
-                </Text>
-              </View>
-            )}
           </View>
           <View style={{ borderTopWidth: 1, borderTopColor: "#E5E7EB", paddingTop: 10, flexDirection: "row", justifyContent: "space-between" }}>
             <Text style={{ fontSize: 13, fontWeight: "700", color: "#111827" }}>Total</Text>
@@ -264,7 +208,7 @@ export default function CheckoutScreen() {
         <View style={{ backgroundColor: "#F9FAFB", borderRadius: 16, padding: 16, marginBottom: 20 }}>
           <Text style={{ fontSize: 13, fontWeight: "700", color: "#111827", marginBottom: 12 }}>What's included</Text>
           <View style={{ gap: 10 }}>
-            {PLAN_DATA[selectedPlan].features.map((feature, idx) => (
+            {plan.features.map((feature, idx) => (
               <View key={idx} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                 <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: "#10B981", alignItems: "center", justifyContent: "center" }}>
                   <Text style={{ fontSize: 10, color: "#FFFFFF", fontWeight: "700" }}>✓</Text>
@@ -317,16 +261,16 @@ export default function CheckoutScreen() {
             {/* Bank Transfer */}
             <View style={{ alignItems: "center", gap: 6 }}>
               <View style={{ width: 44, height: 44, borderRadius: 12, borderWidth: 1, borderColor: "#E5E7EB", backgroundColor: "#F9FAFB", alignItems: "center", justifyContent: "center" }}>
-                <HugeiconsIcon icon={BankIcon} size={20} color="#9CA3AF" />
+                <Bank size={20} color="#9CA3AF" />
               </View>
               <Text style={{ fontSize: 9, color: "#9CA3AF" }}>Bank Transfer</Text>
             </View>
             {/* Logo-based methods */}
             {[
-              { source: require("../assets/payment-methods/ecocash.png"), label: "EcoCash" },
-              { source: require("../assets/payment-methods/onemoney.png"), label: "OneMoney" },
-              { source: require("../assets/payment-methods/omari.png"), label: "Omari" },
-              { source: require("../assets/payment-methods/innbucks.png"), label: "InnBucks" },
+              { source: require("../../assets/payment-methods/ecocash.png"), label: "EcoCash" },
+              { source: require("../../assets/payment-methods/onemoney.png"), label: "OneMoney" },
+              { source: require("../../assets/payment-methods/omari.png"), label: "Omari" },
+              { source: require("../../assets/payment-methods/innbucks.png"), label: "InnBucks" },
             ].map(({ source, label }) => (
               <View key={label} style={{ alignItems: "center", gap: 6 }}>
                 <View style={{ width: 44, height: 44, borderRadius: 12, borderWidth: 1, borderColor: "#E5E7EB", backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center", padding: 6, overflow: "hidden" }}>
@@ -354,7 +298,7 @@ export default function CheckoutScreen() {
                 backgroundColor: pressed ? "#F3F4F6" : "transparent",
               })}
             >
-              <HugeiconsIcon icon={ArrowLeft01Icon} size={20} color="#374151" />
+              <ArrowLeft size={20} color="#374151" />
             </Pressable>
             <Text style={{ fontSize: 18, fontWeight: "700", color: "#111827", flex: 1 }}>Paynow Payment</Text>
           </View>

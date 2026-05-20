@@ -7,21 +7,20 @@ import { passAgent } from "../mastra";
 export async function getStudyStats(c: Context) {
   const userId = c.get("userId") as string;
 
-  const [sessionsCompleted, sessionsStarted, totalQuestionsAnswered] = await Promise.all([
+  const [sessionsCompleted, sessionsStarted, totalQuestionsAnswered, recentSessions] = await Promise.all([
     prisma.paperSession.count({ where: { userId, completedAt: { not: null } } }),
     prisma.paperSession.count({ where: { userId } }),
     prisma.questionAttempt.count({ where: { session: { userId } } }),
+    prisma.paperSession.findMany({
+      where: { userId, completedAt: { not: null } },
+      include: { resource: true },
+      orderBy: { completedAt: "desc" },
+      take: 5,
+    }),
   ]);
 
   const passRate =
     sessionsStarted > 0 ? Math.round((sessionsCompleted / sessionsStarted) * 100) : 0;
-
-  const recentSessions = await prisma.paperSession.findMany({
-    where: { userId, completedAt: { not: null } },
-    include: { resource: true, questionAttempts: true },
-    orderBy: { completedAt: "desc" },
-    take: 5,
-  });
 
   const sessions = recentSessions.map((s) => ({
     id: s.id,
@@ -49,11 +48,16 @@ export async function prepareStudySession(c: Context) {
   if (!paper) return c.json({ error: "Paper not found" }, 404);
 
   try {
-    const response = await passAgent.generate([
-      {
-        role: "user",
-        content: `Use the lookupResource tool to fetch resource "${paper.id}", then write a concise 2-3 sentence study brief for a ${paper.grade} student about to attempt this ${paper.subject} ${paper.year} past paper. Include what key topics to expect and one quick exam tip. Be encouraging.`,
-      },
+    const response = await Promise.race<{ text: string }>([
+      passAgent.generate([
+        {
+          role: "user",
+          content: `Use the lookupResource tool to fetch resource "${paper.id}", then write a concise 2-3 sentence study brief for a ${paper.grade} student about to attempt this ${paper.subject} ${paper.year} past paper. Include what key topics to expect and one quick exam tip. Be encouraging.`,
+        },
+      ]),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("AI timeout")), 10_000)
+      ),
     ]);
 
     return c.json({

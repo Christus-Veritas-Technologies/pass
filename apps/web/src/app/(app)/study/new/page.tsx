@@ -81,10 +81,26 @@ export default function StudyNewPage() {
   const [preparing, setPreparing] = useState(false);
   const [prepError, setPrepError] = useState("");
 
+  const PAPERS_CACHE_KEY = "pass_papers_cache";
   useEffect(() => {
+    try {
+      const cached = sessionStorage.getItem(PAPERS_CACHE_KEY);
+      if (cached) {
+        const { data, ts } = JSON.parse(cached) as { data: Paper[]; ts: number };
+        if (Date.now() - ts < 5 * 60 * 1000) {
+          setPapers(data);
+          setLoadingPapers(false);
+          return;
+        }
+      }
+    } catch {}
     fetch(`${API}/papers`)
       .then((r) => r.json())
-      .then((d) => setPapers(d.papers ?? []))
+      .then((d) => {
+        const list: Paper[] = d.papers ?? [];
+        try { sessionStorage.setItem(PAPERS_CACHE_KEY, JSON.stringify({ data: list, ts: Date.now() })); } catch {}
+        setPapers(list);
+      })
       .catch(() => setPapers([]))
       .finally(() => setLoadingPapers(false));
   }, []);

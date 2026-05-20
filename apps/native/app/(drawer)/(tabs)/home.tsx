@@ -1,11 +1,4 @@
-import {
-  BookOpen01Icon,
-  CheckmarkCircle01Icon,
-  FireIcon,
-  TaskDaily01Icon,
-  TrendingUpDownIcon,
-} from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react-native";
+import { BookOpen, CheckCircle, Fire, Note, TrendUp } from "@vuduc0801/react-native-phosphor-icons";
 import * as SecureStore from "expo-secure-store";
 import { useRouter } from "expo-router";
 import { MotiView } from "moti";
@@ -155,10 +148,10 @@ export default function HomeScreen() {
         <MotiView from={{ opacity: 0, translateY: 6, scale: 0.97 }} animate={{ opacity: 1, translateY: 0, scale: 1 }} transition={{ type: "timing", duration: 250, delay: 50, easing: Easing.bezier(0.23, 1, 0.32, 1) }}>
           <View style={{ flexDirection: "row", gap: 10, marginBottom: 24 }}>
             {[
-              { icon: TaskDaily01Icon, label: "Papers", value: String(stats?.papersAttempted ?? 0) },
-              { icon: CheckmarkCircle01Icon, label: "Questions", value: String(stats?.questionsAnswered ?? 0) },
-              { icon: FireIcon, label: "Streak", value: `${stats?.currentStreak ?? 0}d` },
-            ].map(({ icon, label, value }) => (
+              { Icon: Note, label: "Papers", value: String(stats?.papersAttempted ?? 0) },
+              { Icon: CheckCircle, label: "Questions", value: String(stats?.questionsAnswered ?? 0) },
+              { Icon: Fire, label: "Streak", value: `${stats?.currentStreak ?? 0}d` },
+            ].map(({ Icon, label, value }) => (
               <View
                 key={label}
                 style={{
@@ -170,7 +163,7 @@ export default function HomeScreen() {
                   padding: 12,
                 }}
               >
-                <HugeiconsIcon icon={icon} size={16} color="#6B7280" />
+                <Icon size={16} color="#6B7280" />
                 <Text style={{ fontSize: 20, fontWeight: "700", color: "#111827", marginTop: 6 }}>{value}</Text>
                 <Text style={{ fontSize: 11, color: "#6B7280", marginTop: 1 }}>{label}</Text>
               </View>
@@ -191,7 +184,7 @@ export default function HomeScreen() {
             }}
           >
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <HugeiconsIcon icon={TrendingUpDownIcon} size={15} color="#6B7280" />
+              <TrendUp size={15} color="#6B7280" />
               <Text style={{ fontSize: 12, fontWeight: "500", color: "#6B7280" }}>Weekly goal</Text>
             </View>
             <Text style={{ fontSize: 18, fontWeight: "700", color: "#111827", marginTop: 4 }}>
@@ -216,7 +209,7 @@ export default function HomeScreen() {
 
             {sessions.length === 0 ? (
               <View style={{ alignItems: "center", paddingVertical: 28, gap: 8, backgroundColor: "#F9FAFB", borderRadius: 12, borderWidth: 1, borderColor: "#F3F4F6" }}>
-                <HugeiconsIcon icon={TaskDaily01Icon} size={24} color="#D1D5DB" />
+                <Note size={24} color="#D1D5DB" />
                 <Text style={{ fontSize: 13, fontWeight: "500", color: "#6B7280" }}>No papers attempted yet</Text>
                 <Pressable
                   onPress={() => router.push("/(drawer)/(tabs)/papers")}
@@ -281,7 +274,7 @@ export default function HomeScreen() {
 
             {resources.length === 0 ? (
               <View style={{ alignItems: "center", paddingVertical: 28, gap: 8, backgroundColor: "#F9FAFB", borderRadius: 12, borderWidth: 1, borderColor: "#F3F4F6" }}>
-                <HugeiconsIcon icon={BookOpen01Icon} size={24} color="#D1D5DB" />
+                <BookOpen size={24} color="#D1D5DB" />
                 <Text style={{ fontSize: 13, fontWeight: "500", color: "#6B7280" }}>No resources yet</Text>
               </View>
             ) : (
@@ -301,7 +294,7 @@ export default function HomeScreen() {
                     }}
                   >
                     <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: "#EEF2FF", alignItems: "center", justifyContent: "center" }}>
-                      <HugeiconsIcon icon={BookOpen01Icon} size={18} color={BRAND} />
+                      <BookOpen size={18} color={BRAND} />
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={{ fontSize: 13, fontWeight: "500", color: "#111827" }} numberOfLines={1}>{r.title}</Text>

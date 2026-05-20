@@ -1,5 +1,4 @@
-import { AlertCircleIcon } from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react-native";
+import { WarningCircle } from "@vuduc0801/react-native-phosphor-icons";
 import { Link, Stack } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -13,7 +12,7 @@ export default function NotFoundScreen() {
       <SafeAreaView style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 24 }}>
           <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: "#F3F4F6", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
-            <HugeiconsIcon icon={AlertCircleIcon} size={28} color="#9CA3AF" />
+            <WarningCircle size={28} color="#9CA3AF" />
           </View>
           <Text style={{ fontSize: 17, fontWeight: "700", color: "#111827", marginBottom: 6 }}>Page not found</Text>
           <Text style={{ fontSize: 13, color: "#6B7280", textAlign: "center", marginBottom: 24 }}>
