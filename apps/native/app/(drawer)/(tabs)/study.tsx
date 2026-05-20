@@ -50,12 +50,12 @@ async function getToken() {
   try { return await SecureStore.getItemAsync("pass_access_token"); } catch { return null; }
 }
 
-function StatCard({ icon: Icon, label, value, sub }: { icon: any; label: string; value: string | number; sub?: string }) {
+function StatCard({ icon: Icon, label, value, sub, bg = "#F9FAFB", border = "#F3F4F6", iconColor = "#6B7280" }: { icon: any; label: string; value: string | number; sub?: string; bg?: string; border?: string; iconColor?: string }) {
   return (
-    <View style={{ flex: 1, backgroundColor: "#F9FAFB", borderRadius: 12, borderWidth: 1, borderColor: "#F3F4F6", padding: 14 }}>
+    <View style={{ flex: 1, backgroundColor: bg, borderRadius: 12, borderWidth: 1, borderColor: border, padding: 14 }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 }}>
-        <Icon size={14} color="#6B7280" />
-        <Text style={{ fontSize: 11, color: "#6B7280", fontWeight: "500" }}>{label}</Text>
+        <Icon size={14} color={iconColor} />
+        <Text style={{ fontSize: 11, color: iconColor, fontWeight: "600" }}>{label}</Text>
       </View>
       <Text style={{ fontSize: 26, fontWeight: "700", color: "#111827" }}>{value}</Text>
       {sub && <Text style={{ fontSize: 11, color: "#9CA3AF", marginTop: 2 }}>{sub}</Text>}
@@ -131,12 +131,18 @@ export default function StudyScreen() {
                   label="Papers done"
                   value={data?.sessionsCompleted ?? 0}
                   sub={`of ${data?.sessionsStarted ?? 0} started`}
+                  bg="#EEF2FF"
+                  border="#C7D2FE"
+                  iconColor="#4F46E5"
                 />
                 <StatCard
                   icon={TrendUp}
                   label="Completion"
                   value={`${data?.passRate ?? 0}%`}
                   sub="sessions finished"
+                  bg="#ECFDF5"
+                  border="#6EE7B7"
+                  iconColor="#059669"
                 />
               </View>
               <View style={{ marginBottom: 28 }}>
@@ -145,6 +151,9 @@ export default function StudyScreen() {
                   label="Questions answered"
                   value={data?.totalQuestionsAnswered ?? 0}
                   sub="across all sessions"
+                  bg="#F5F3FF"
+                  border="#DDD6FE"
+                  iconColor="#7C3AED"
                 />
               </View>
             </MotiView>
