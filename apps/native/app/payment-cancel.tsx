@@ -1,8 +1,4 @@
-import {
-  AlertCircleIcon,
-  ArrowLeft01Icon,
-} from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react-native";
+import { WarningCircle, ArrowLeft } from "@vuduc0801/react-native-phosphor-icons";
 import { useRouter } from "expo-router";
 import {
   Pressable,
@@ -23,7 +19,7 @@ export default function PaymentCancelScreen() {
         {/* Cancel icon */}
         <View style={{ alignItems: "center", marginBottom: 24 }}>
           <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: "#FEE2E2", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
-            <HugeiconsIcon icon={AlertCircleIcon} size={40} color="#DC2626" />
+            <WarningCircle size={40} color="#DC2626" />
           </View>
           <Text style={{ fontSize: 24, fontWeight: "800", color: "#111827", marginBottom: 8, textAlign: "center" }}>
             Payment cancelled
@@ -84,7 +80,7 @@ export default function PaymentCancelScreen() {
             gap: 8,
           })}
         >
-          <HugeiconsIcon icon={ArrowLeft01Icon} size={16} color={BRAND} />
+          <ArrowLeft size={16} color={BRAND} />
           <Text style={{ fontSize: 15, fontWeight: "600", color: BRAND }}>Go back</Text>
         </Pressable>
       </ScrollView>

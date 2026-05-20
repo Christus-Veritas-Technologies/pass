@@ -1,5 +1,4 @@
-import { ArrowLeft01Icon, CheckmarkCircle01Icon, Mail01Icon } from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react-native";
+import { ArrowLeft, CheckCircle, Envelope } from "@vuduc0801/react-native-phosphor-icons";
 import { router } from "expo-router";
 import { MotiView } from "moti";
 import { Easing } from "react-native-reanimated";
@@ -50,7 +49,7 @@ export default function ForgotPasswordScreen() {
           style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 32 }}
         >
           <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: "#DCFCE7", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
-            <HugeiconsIcon icon={CheckmarkCircle01Icon} size={36} color="#16A34A" />
+            <CheckCircle size={36} color="#16A34A" />
           </View>
           <Text style={{ fontSize: 22, fontWeight: "700", color: "#111827", textAlign: "center", marginBottom: 8 }}>Check your email</Text>
           <Text style={{ fontSize: 15, color: "#6B7280", textAlign: "center", lineHeight: 22, marginBottom: 32 }}>
@@ -84,14 +83,14 @@ export default function ForgotPasswordScreen() {
                 hitSlop={8}
                 style={{ flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start" }}
               >
-                <HugeiconsIcon icon={ArrowLeft01Icon} size={20} color="#6B7280" />
+                <ArrowLeft size={20} color="#6B7280" />
                 <Text style={{ fontSize: 14, color: "#6B7280" }}>Back</Text>
               </Pressable>
             </MotiView>
 
             <MotiView from={{ opacity: 0, translateY: 12 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 220, delay: 80, easing: Easing.bezier(0.23, 1, 0.32, 1) }} style={{ marginTop: 40, gap: 8 }}>
               <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: "#EEF2FF", alignItems: "center", justifyContent: "center", marginBottom: 4 }}>
-                <HugeiconsIcon icon={Mail01Icon} size={22} color={BRAND} />
+                <Envelope size={22} color={BRAND} />
               </View>
               <Text style={{ fontSize: 26, fontWeight: "700", color: "#111827", letterSpacing: -0.5 }}>Forgot password?</Text>
               <Text style={{ fontSize: 15, color: "#6B7280", lineHeight: 22 }}>

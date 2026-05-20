@@ -1,5 +1,4 @@
-import { Cancel01Icon } from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react-native";
+import { X } from "@vuduc0801/react-native-phosphor-icons";
 import { ActivityIndicator, Modal, Pressable, Text, View } from "react-native";
 import Pdf from "react-native-pdf";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -28,7 +27,7 @@ export function PdfViewerModal({ visible, onClose, uri, page, title }: PdfViewer
           }}
         >
           <Pressable onPress={onClose} hitSlop={10}>
-            <HugeiconsIcon icon={Cancel01Icon} size={22} color="#FFFFFF" />
+            <X size={22} color="#FFFFFF" />
           </Pressable>
           <Text numberOfLines={1} style={{ flex: 1, color: "#FFFFFF", fontSize: 15, fontWeight: "600" }}>
             {title ?? "Original paper"}

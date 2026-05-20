@@ -1,8 +1,4 @@
-import {
-  CheckmarkCircle02Icon,
-  ArrowRight01Icon,
-} from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react-native";
+import { CheckCircle, ArrowRight } from "@vuduc0801/react-native-phosphor-icons";
 import * as SecureStore from "expo-secure-store";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -63,7 +59,7 @@ export default function PaymentSuccessScreen() {
         {/* Success icon */}
         <View style={{ alignItems: "center", marginBottom: 24 }}>
           <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: "#DCFCE7", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
-            <HugeiconsIcon icon={CheckmarkCircle02Icon} size={40} color="#059669" />
+            <CheckCircle size={40} color="#059669" />
           </View>
           <Text style={{ fontSize: 24, fontWeight: "800", color: "#111827", marginBottom: 8, textAlign: "center" }}>
             Payment successful!
@@ -148,7 +144,7 @@ export default function PaymentSuccessScreen() {
           })}
         >
           <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFFFFF" }}>Start studying</Text>
-          <HugeiconsIcon icon={ArrowRight01Icon} size={16} color="#FFFFFF" />
+          <ArrowRight size={16} color="#FFFFFF" />
         </Pressable>
 
         <Pressable

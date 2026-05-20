@@ -1,11 +1,4 @@
-import {
-  ArrowLeft01Icon,
-  CheckmarkCircle01Icon,
-  File01Icon,
-  Image01Icon,
-  SparklesIcon,
-} from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react-native";
+import { ArrowLeft, CheckCircle, File, Image, Sparkle } from "@vuduc0801/react-native-phosphor-icons";
 import * as SecureStore from "expo-secure-store";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -82,6 +75,8 @@ export default function PaperSessionScreen() {
   const [pdfPage, setPdfPage] = useState(1);
 
   const scrollRef = useRef<ScrollView>(null);
+  const rafRef = useRef<number | undefined>(undefined);
+  const [startError, setStartError] = useState<string | null>(null);
 
   const pdfUri = paper?.fileUrl ? `${API}${paper.fileUrl}` : "";
   function openPdf(page = 1) {
@@ -90,18 +85,21 @@ export default function PaperSessionScreen() {
   }
 
   useEffect(() => {
-    fetch(`${API}/papers/${id}`)
+    const controller = new AbortController();
+    fetch(`${API}/papers/${id}`, { signal: controller.signal })
       .then((r) => r.json())
       .then((d) => {
         setPaper(d.paper ?? null);
         setQuestions(d.questions ?? []);
       })
-      .catch(console.error)
+      .catch((err) => { if (err.name !== "AbortError") console.error(err); })
       .finally(() => setLoading(false));
+    return () => controller.abort();
   }, [id]);
 
   async function handleStart() {
     setStarting(true);
+    setStartError(null);
     const token = await SecureStore.getItemAsync("pass_access_token");
     try {
       const res = await fetch(`${API}/papers/${id}/session/start`, {
@@ -113,10 +111,11 @@ export default function PaperSessionScreen() {
         body: JSON.stringify({ mode }),
       });
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to start session");
       setSessionId(data.session?.id ?? null);
       setStarted(true);
     } catch (err) {
-      console.error(err);
+      setStartError((err as Error).message ?? "Failed to start session. Please try again.");
     } finally {
       setStarting(false);
     }
@@ -169,7 +168,10 @@ export default function PaperSessionScreen() {
                 ...prev,
                 [q.questionNumber]: (prev[q.questionNumber] ?? "") + chunk,
               }));
-              scrollRef.current?.scrollToEnd({ animated: false });
+              if (rafRef.current !== undefined) cancelAnimationFrame(rafRef.current);
+              rafRef.current = requestAnimationFrame(() =>
+                scrollRef.current?.scrollToEnd({ animated: false })
+              );
             }
           }
         }
@@ -213,7 +215,7 @@ export default function PaperSessionScreen() {
       <SafeAreaView style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 32, gap: 16 }}>
           <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: "#DCFCE7", alignItems: "center", justifyContent: "center" }}>
-            <HugeiconsIcon icon={CheckmarkCircle01Icon} size={32} color="#16A34A" />
+            <CheckCircle size={32} color="#16A34A" />
           </View>
           <Text style={{ fontSize: 22, fontWeight: "700", color: "#111827", textAlign: "center" }}>Session complete!</Text>
           <Text style={{ fontSize: 15, color: "#6B7280", textAlign: "center" }}>
@@ -232,7 +234,7 @@ export default function PaperSessionScreen() {
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12, gap: 12, borderBottomWidth: 1, borderBottomColor: "#F3F4F6" }}>
         <Pressable onPress={() => router.back()} hitSlop={8}>
-          <HugeiconsIcon icon={ArrowLeft01Icon} size={20} color="#6B7280" />
+          <ArrowLeft size={20} color="#6B7280" />
         </Pressable>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 15, fontWeight: "600", color: "#111827" }} numberOfLines={1}>
@@ -258,7 +260,7 @@ export default function PaperSessionScreen() {
               paddingVertical: 6,
             }}
           >
-            <HugeiconsIcon icon={File01Icon} size={14} color={BRAND} />
+            <File size={14} color={BRAND} />
             <Text style={{ fontSize: 12, fontWeight: "600", color: BRAND }}>Paper</Text>
           </Pressable>
         )}
@@ -322,6 +324,11 @@ export default function PaperSessionScreen() {
               ))}
             </View>
 
+            {startError && (
+              <View style={{ backgroundColor: "#FEE2E2", borderRadius: 10, padding: 12 }}>
+                <Text style={{ fontSize: 13, color: "#DC2626" }}>{startError}</Text>
+              </View>
+            )}
             <Button onPress={handleStart} loading={starting} className="rounded-[12px]">
               Start session
             </Button>
@@ -352,7 +359,7 @@ export default function PaperSessionScreen() {
                     }}
                   >
                     {isDone ? (
-                      <HugeiconsIcon icon={CheckmarkCircle01Icon} size={18} color="#10B981" />
+                      <CheckCircle size={18} color="#10B981" />
                     ) : (
                       <Text style={{ fontSize: 13, fontWeight: "700", color: isActive ? BRAND : "#6B7280" }}>
                         {q.questionNumber}
@@ -389,7 +396,7 @@ export default function PaperSessionScreen() {
                     padding: 10,
                   }}
                 >
-                  <HugeiconsIcon icon={Image01Icon} size={16} color="#B45309" />
+                  <Image size={16} color="#B45309" />
                   <Text style={{ flex: 1, fontSize: 12, color: "#92400E", lineHeight: 17 }}>
                     {currentQ.diagramNote
                       ? `Refers to a figure: ${currentQ.diagramNote}. Tap to view the original paper.`
@@ -427,7 +434,7 @@ export default function PaperSessionScreen() {
                   size="sm"
                   className="rounded-[12px]"
                 >
-                  <HugeiconsIcon icon={SparklesIcon} size={16} color="#FFFFFF" />
+                  <Sparkle size={16} color="#FFFFFF" />
                   <Text style={{ fontSize: 14, fontWeight: "600", color: "#FFFFFF", marginLeft: 6 }}>
                     {streaming ? "Getting feedback…" : "Submit Answer"}
                   </Text>
@@ -443,7 +450,7 @@ export default function PaperSessionScreen() {
                 size="sm"
                 className="rounded-[12px]"
               >
-                <HugeiconsIcon icon={SparklesIcon} size={16} color="#FFFFFF" />
+                <Sparkle size={16} color="#FFFFFF" />
                 <Text style={{ fontSize: 14, fontWeight: "600", color: "#FFFFFF", marginLeft: 6 }}>
                   {streaming ? "Loading answer…" : "Get Answer"}
                 </Text>
@@ -454,7 +461,7 @@ export default function PaperSessionScreen() {
             {(aiResponses[currentQ.questionNumber] || streaming) && (
               <View style={{ backgroundColor: "#EEF2FF", borderRadius: 12, borderWidth: 1, borderColor: `${BRAND}30`, padding: 16 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                  <HugeiconsIcon icon={SparklesIcon} size={15} color={BRAND} />
+                  <Sparkle size={15} color={BRAND} />
                   <Text style={{ fontSize: 13, fontWeight: "600", color: BRAND }}>
                     AI {mode === "GUIDE" ? "Feedback" : "Solution"}
                   </Text>

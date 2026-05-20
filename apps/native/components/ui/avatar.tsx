@@ -1,7 +1,6 @@
 import * as React from "react";
 import { Text, View, type ViewProps } from "react-native";
-import { User01Icon } from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react-native";
+import { User } from "@vuduc0801/react-native-phosphor-icons";
 
 interface AvatarProps extends ViewProps {
   size?: number;
@@ -43,7 +42,7 @@ export function Avatar({
           {initials}
         </Text>
       ) : (
-        <HugeiconsIcon icon={User01Icon} size={iconSize} color={textColor} />
+        <User size={iconSize} color={textColor} />
       )}
     </View>
   );

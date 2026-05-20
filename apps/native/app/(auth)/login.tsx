@@ -1,5 +1,4 @@
-import { ViewIcon, ViewOffIcon } from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react-native";
+import { Eye, EyeSlash } from "@vuduc0801/react-native-phosphor-icons";
 import { router, Stack } from "expo-router";
 import { MotiView } from "moti";
 import { Easing } from "react-native-reanimated";
@@ -138,7 +137,7 @@ export default function LoginScreen() {
                     style={{ position: "absolute", right: 14, top: 14 }}
                     hitSlop={8}
                   >
-                    <HugeiconsIcon icon={showPassword ? ViewOffIcon : ViewIcon} size={20} color="#9CA3AF" />
+                    {showPassword ? <EyeSlash size={20} color="#9CA3AF" /> : <Eye size={20} color="#9CA3AF" />}
                   </Pressable>
                 </View>
                 {errors.password && <Text style={{ fontSize: 12, color: "#EF4444", marginTop: 6 }}>{errors.password}</Text>}

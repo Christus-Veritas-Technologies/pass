@@ -1,9 +1,4 @@
-import {
-  BookOpen01Icon,
-  Download01Icon,
-  Search01Icon,
-} from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react-native";
+import { BookOpen, DownloadSimple, MagnifyingGlass } from "@vuduc0801/react-native-phosphor-icons";
 import { MotiView } from "moti";
 import { Easing } from "react-native-reanimated";
 import { useEffect, useState } from "react";
@@ -128,7 +123,7 @@ export default function ResourcesScreen() {
           {item.subject} · {item.grade}
         </Text>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-          <HugeiconsIcon icon={Download01Icon} size={14} color={BRAND} />
+          <DownloadSimple size={14} color={BRAND} />
           <Text style={{ fontSize: 12, fontWeight: "600", color: BRAND }}>Download</Text>
         </View>
       </View>
@@ -161,7 +156,7 @@ export default function ResourcesScreen() {
             gap: 8,
           }}
         >
-          <HugeiconsIcon icon={Search01Icon} size={16} color="#9CA3AF" />
+          <MagnifyingGlass size={16} color="#9CA3AF" />
           <TextInput
             placeholder="Search resources…"
             placeholderTextColor="#9CA3AF"
@@ -287,7 +282,7 @@ export default function ResourcesScreen() {
               style={{ alignItems: "center", paddingTop: 60, gap: 12 }}
             >
               <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: "#EEF2FF", alignItems: "center", justifyContent: "center" }}>
-                <HugeiconsIcon icon={BookOpen01Icon} size={28} color="#A5B4FC" />
+                <BookOpen size={28} color="#A5B4FC" />
               </View>
               <Text style={{ fontSize: 15, fontWeight: "600", color: "#374151" }}>No resources found</Text>
               <Text style={{ fontSize: 13, color: "#9CA3AF", textAlign: "center", paddingHorizontal: 24 }}>

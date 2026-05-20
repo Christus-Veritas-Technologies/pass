@@ -1,11 +1,4 @@
-import {
-  ArrowLeft01Icon,
-  BankIcon,
-  CrownIcon,
-  Loading01Icon,
-  SparklesIcon,
-} from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react-native";
+import { ArrowLeft, Bank, Crown, Sparkle } from "@vuduc0801/react-native-phosphor-icons";
 import * as SecureStore from "expo-secure-store";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -30,7 +23,7 @@ const PLANS = {
     name: "Study",
     price: "$2.99",
     period: "month",
-    icon: SparklesIcon,
+    icon: Sparkle,
     color: "#7C3AED",
     features: [
       "12 past papers per month",
@@ -43,7 +36,7 @@ const PLANS = {
     name: "Pass",
     price: "$5.99",
     period: "month",
-    icon: CrownIcon,
+    icon: Crown,
     color: "#D97706",
     features: [
       "20 past papers per month",
@@ -153,7 +146,7 @@ export default function CheckoutScreen() {
             backgroundColor: pressed ? "#F3F4F6" : "transparent",
           })}
         >
-          <HugeiconsIcon icon={ArrowLeft01Icon} size={20} color="#374151" />
+          <ArrowLeft size={20} color="#374151" />
         </Pressable>
         <View>
           <Text style={{ fontSize: 18, fontWeight: "700", color: "#111827" }}>Upgrade your plan</Text>
@@ -166,6 +159,7 @@ export default function CheckoutScreen() {
         <View style={{ gap: 12, marginBottom: 20 }}>
           {(["STUDY", "PASS"] as const).map((planKey) => {
             const p = PLANS[planKey];
+            const PlanIcon = p.icon;
             const isSelected = selectedPlan === planKey;
             return (
               <Pressable
@@ -181,7 +175,7 @@ export default function CheckoutScreen() {
               >
                 <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
                   <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: planKey === "PASS" ? "#FEF3C7" : "#EEF2FF", alignItems: "center", justifyContent: "center" }}>
-                    <HugeiconsIcon icon={p.icon} size={20} color={p.color} />
+                    <PlanIcon size={20} color={p.color} />
                   </View>
                   <Text style={{ fontSize: 12, fontWeight: "700", color: BRAND }}>{p.price}</Text>
                 </View>
@@ -267,7 +261,7 @@ export default function CheckoutScreen() {
             {/* Bank Transfer */}
             <View style={{ alignItems: "center", gap: 6 }}>
               <View style={{ width: 44, height: 44, borderRadius: 12, borderWidth: 1, borderColor: "#E5E7EB", backgroundColor: "#F9FAFB", alignItems: "center", justifyContent: "center" }}>
-                <HugeiconsIcon icon={BankIcon} size={20} color="#9CA3AF" />
+                <Bank size={20} color="#9CA3AF" />
               </View>
               <Text style={{ fontSize: 9, color: "#9CA3AF" }}>Bank Transfer</Text>
             </View>
@@ -304,7 +298,7 @@ export default function CheckoutScreen() {
                 backgroundColor: pressed ? "#F3F4F6" : "transparent",
               })}
             >
-              <HugeiconsIcon icon={ArrowLeft01Icon} size={20} color="#374151" />
+              <ArrowLeft size={20} color="#374151" />
             </Pressable>
             <Text style={{ fontSize: 18, fontWeight: "700", color: "#111827", flex: 1 }}>Paynow Payment</Text>
           </View>

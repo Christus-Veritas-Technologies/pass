@@ -1,5 +1,4 @@
-import { Analytics01Icon, CheckmarkCircle01Icon, File01Icon } from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react-native";
+import { ChartBar, CheckCircle, File } from "@vuduc0801/react-native-phosphor-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { MotiView } from "moti";
 import { Easing } from "react-native-reanimated";
@@ -10,9 +9,9 @@ import { Button } from "@/components/ui/button";
 const BRAND = "#4F46E5";
 
 const FEATURES = [
-  { icon: File01Icon,            text: "Past papers matched to your grade" },
-  { icon: CheckmarkCircle01Icon, text: "AI marking against the ZIMSEC scheme" },
-  { icon: Analytics01Icon,       text: "Track your progress question by question" },
+  { Icon: File,        text: "Past papers matched to your grade" },
+  { Icon: CheckCircle, text: "AI marking against the ZIMSEC scheme" },
+  { Icon: ChartBar,    text: "Track your progress question by question" },
 ];
 
 // 3 bubbles per step — fully rounded circles of varying diameters
@@ -191,7 +190,7 @@ export default function OnboardingWelcome() {
                 backgroundColor: "#EEF2FF",
                 alignItems: "center", justifyContent: "center",
               }}>
-                <HugeiconsIcon icon={f.icon} size={20} color={BRAND} />
+                <f.Icon size={20} color={BRAND} />
               </View>
               <Text style={{ flex: 1, fontSize: 15, color: "#374151", lineHeight: 22 }}>{f.text}</Text>
             </MotiView>

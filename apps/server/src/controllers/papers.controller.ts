@@ -70,7 +70,6 @@ export async function startSession(c: Context) {
 
   const paper = await prisma.resource.findUnique({
     where: { id: paperId },
-    include: { questions: { orderBy: { questionNumber: "asc" } } },
   });
   if (!paper) return c.json({ error: "Paper not found" }, 404);
 
@@ -101,21 +100,12 @@ export async function startSession(c: Context) {
     data: { userId, resourceId: paperId, mode },
   });
 
-  const { questions, ...meta } = paper;
-  return c.json({ session, paper: meta, questions: questions.map(mapQuestion) }, 201);
+  return c.json({ session, paper }, 201);
 }
 
 export async function submitAnswer(c: Context) {
   const userId = c.get("userId") as string;
   const sessionId = c.req.param("sessionId") as string;
-
-  const session = await prisma.paperSession.findUnique({
-    where: { id: sessionId },
-    include: { resource: true },
-  });
-  if (!session || session.userId !== userId) {
-    return c.json({ error: "Session not found" }, 404);
-  }
 
   const body = await c.req.json().catch(() => null);
   if (body?.questionNumber == null) {
@@ -127,6 +117,22 @@ export async function submitAnswer(c: Context) {
     userAnswer?: string;
     mode?: string;
   };
+
+  const [session, existingAttempt] = await Promise.all([
+    prisma.paperSession.findUnique({
+      where: { id: sessionId },
+      include: { resource: true },
+    }),
+    prisma.questionAttempt.findUnique({
+      where: { sessionId_questionNumber: { sessionId, questionNumber } },
+      select: { id: true },
+    }),
+  ]);
+
+  if (!session || session.userId !== userId) {
+    return c.json({ error: "Session not found" }, 404);
+  }
+
   const sessionMode = (mode ?? session.mode) as "GUIDE" | "FREE";
 
   // Load the stored question + marking rubric SERVER-SIDE — the client no
@@ -178,11 +184,13 @@ Give the full, worked solution with a clear step-by-step explanation. Use simple
     update: { userAnswer, questionText, updatedAt: new Date() },
   });
 
-  // Increment questionsAnswered if this is a new question
-  await prisma.paperSession.update({
-    where: { id: sessionId },
-    data: { questionsAnswered: { increment: 1 } },
-  });
+  // Increment questionsAnswered only on the first attempt for this question
+  if (!existingAttempt) {
+    await prisma.paperSession.update({
+      where: { id: sessionId },
+      data: { questionsAnswered: { increment: 1 } },
+    });
+  }
 
   return streamSSE(c, async (stream) => {
     try {

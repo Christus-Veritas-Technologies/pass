@@ -1,11 +1,4 @@
-import {
-  ArrowLeft01Icon,
-  CheckmarkCircle01Icon,
-  GraduationScrollIcon,
-  SparklesIcon,
-  TaskDaily01Icon,
-} from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react-native";
+import { ArrowLeft, CheckCircle, GraduationCap, Sparkle, Note } from "@vuduc0801/react-native-phosphor-icons";
 import * as SecureStore from "expo-secure-store";
 import { useRouter } from "expo-router";
 import { MotiView } from "moti";
@@ -24,8 +17,10 @@ import { env } from "@pass/env/native";
 
 const BRAND = "#4F46E5";
 const API = env.EXPO_PUBLIC_SERVER_URL;
+const CACHE_TTL = 5 * 60 * 1000;
+let paperCache: { data: Paper[]; ts: number } | null = null;
 
-const SUBJECTS = ["All", "Mathematics", "English Language", "Combined Science", "Chemistry", "Biology", "History", "Geography"];
+const SUBJECTS =["All", "Mathematics", "English Language", "Combined Science", "Chemistry", "Biology", "History", "Geography"];
 
 interface Paper {
   id: string;
@@ -70,9 +65,18 @@ export default function StudyNewScreen() {
   const [prepError, setPrepError] = useState("");
 
   useEffect(() => {
+    if (paperCache && Date.now() - paperCache.ts < CACHE_TTL) {
+      setPapers(paperCache.data);
+      setLoadingPapers(false);
+      return;
+    }
     fetch(`${API}/papers`)
       .then((r) => r.json())
-      .then((d) => setPapers(d.papers ?? []))
+      .then((d) => {
+        const list: Paper[] = d.papers ?? [];
+        paperCache = { data: list, ts: Date.now() };
+        setPapers(list);
+      })
       .catch(() => setPapers([]))
       .finally(() => setLoadingPapers(false));
   }, []);
@@ -122,7 +126,7 @@ export default function StudyNewScreen() {
             onPress={() => router.back()}
             style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: "#F3F4F6", alignItems: "center", justifyContent: "center" }}
           >
-            <HugeiconsIcon icon={ArrowLeft01Icon} size={18} color="#374151" />
+            <ArrowLeft size={18} color="#374151" />
           </Pressable>
           <View>
             <Text style={{ fontSize: 17, fontWeight: "700", color: "#111827", letterSpacing: -0.3 }}>Choose a paper</Text>
@@ -177,7 +181,7 @@ export default function StudyNewScreen() {
             contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120, gap: 8 }}
             ListEmptyComponent={
               <View style={{ alignItems: "center", paddingTop: 40, gap: 8 }}>
-                <HugeiconsIcon icon={GraduationScrollIcon} size={32} color="#D1D5DB" />
+                <GraduationCap size={32} color="#D1D5DB" />
                 <Text style={{ fontSize: 13, color: "#9CA3AF" }}>No papers found</Text>
               </View>
             }
@@ -198,7 +202,7 @@ export default function StudyNewScreen() {
                   }}
                 >
                   <View style={{ width: 34, height: 34, borderRadius: 8, backgroundColor: isSelected ? BRAND : "#F3F4F6", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <HugeiconsIcon icon={isSelected ? CheckmarkCircle01Icon : TaskDaily01Icon} size={17} color={isSelected ? "#FFFFFF" : "#6B7280"} />
+                    {isSelected ? <CheckCircle size={17} color="#FFFFFF" /> : <Note size={17} color="#6B7280" />}
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 13, fontWeight: "500", color: "#111827" }} numberOfLines={2}>{p.title}</Text>
@@ -222,7 +226,7 @@ export default function StudyNewScreen() {
               onPress={handlePrepare}
               style={{ backgroundColor: BRAND, borderRadius: 12, paddingVertical: 14, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
             >
-              <HugeiconsIcon icon={SparklesIcon} size={16} color="#FFFFFF" />
+              <Sparkle size={16} color="#FFFFFF" />
               <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFFFFF" }}>Prepare session</Text>
             </Pressable>
           </MotiView>
@@ -241,7 +245,7 @@ export default function StudyNewScreen() {
         {/* Step indicator */}
         <View style={{ flexDirection: "row", alignItems: "center", paddingTop: 20, marginBottom: 32 }}>
           <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: "#EEF2FF", alignItems: "center", justifyContent: "center" }}>
-            <HugeiconsIcon icon={CheckmarkCircle01Icon} size={13} color={BRAND} />
+            <CheckCircle size={13} color={BRAND} />
           </View>
           <View style={{ flex: 1, height: 1, backgroundColor: `${BRAND}60`, marginHorizontal: 6 }} />
           <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: BRAND, alignItems: "center", justifyContent: "center" }}>
@@ -264,7 +268,7 @@ export default function StudyNewScreen() {
                 style={{ position: "absolute", width: 80, height: 80, borderRadius: 40, backgroundColor: `${BRAND}20` }}
               />
               <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: "#EEF2FF", alignItems: "center", justifyContent: "center" }}>
-                <HugeiconsIcon icon={SparklesIcon} size={28} color={BRAND} />
+                <Sparkle size={28} color={BRAND} />
               </View>
             </View>
             <View style={{ alignItems: "center", gap: 6 }}>
@@ -301,7 +305,7 @@ export default function StudyNewScreen() {
             {/* AI brief */}
             <View style={{ backgroundColor: "#EEF2FF", borderRadius: 14, borderWidth: 1, borderColor: `${BRAND}30`, padding: 16, marginBottom: 24 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                <HugeiconsIcon icon={SparklesIcon} size={14} color={BRAND} />
+                <Sparkle size={14} color={BRAND} />
                 <Text style={{ fontSize: 11, fontWeight: "600", color: BRAND }}>Pass AI — Study Brief</Text>
               </View>
               <Text style={{ fontSize: 13, color: "#374151", lineHeight: 20 }}>{brief}</Text>
@@ -313,14 +317,14 @@ export default function StudyNewScreen() {
                 onPress={() => { setStep("select"); setBrief(""); }}
                 style={{ flex: 1, backgroundColor: "#F3F4F6", borderRadius: 12, paddingVertical: 13, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 6 }}
               >
-                <HugeiconsIcon icon={ArrowLeft01Icon} size={15} color="#374151" />
+                <ArrowLeft size={15} color="#374151" />
                 <Text style={{ fontSize: 14, fontWeight: "600", color: "#374151" }}>Change paper</Text>
               </Pressable>
               <Pressable
                 onPress={() => router.push(`/papers/${selectedId}` as never)}
                 style={{ flex: 2, backgroundColor: BRAND, borderRadius: 12, paddingVertical: 13, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 6 }}
               >
-                <HugeiconsIcon icon={TaskDaily01Icon} size={15} color="#FFFFFF" />
+                <Note size={15} color="#FFFFFF" />
                 <Text style={{ fontSize: 14, fontWeight: "600", color: "#FFFFFF" }}>Begin session</Text>
               </Pressable>
             </View>

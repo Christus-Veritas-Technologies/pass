@@ -1,11 +1,4 @@
-import {
-  BookOpen01Icon,
-  Folder01Icon,
-  GraduationScrollIcon,
-  Home01Icon,
-  User01Icon,
-} from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react-native";
+import { BookOpen, Folder, GraduationCap, House, User } from "@vuduc0801/react-native-phosphor-icons";
 import { Tabs } from "expo-router";
 
 const BRAND = "#4F46E5";
@@ -25,35 +18,35 @@ export default function TabsLayout() {
         name="home"
         options={{
           title: "Home",
-          tabBarIcon: ({ color }) => <HugeiconsIcon icon={Home01Icon} size={22} color={color} />,
+          tabBarIcon: ({ color }) => <House size={22} color={color} />,
         }}
       />
       <Tabs.Screen
         name="study"
         options={{
           title: "Study",
-          tabBarIcon: ({ color }) => <HugeiconsIcon icon={GraduationScrollIcon} size={22} color={color} />,
+          tabBarIcon: ({ color }) => <GraduationCap size={22} color={color} />,
         }}
       />
       <Tabs.Screen
         name="resources"
         options={{
           title: "Resources",
-          tabBarIcon: ({ color }) => <HugeiconsIcon icon={BookOpen01Icon} size={22} color={color} />,
+          tabBarIcon: ({ color }) => <BookOpen size={22} color={color} />,
         }}
       />
       <Tabs.Screen
         name="projects"
         options={{
           title: "Projects",
-          tabBarIcon: ({ color }) => <HugeiconsIcon icon={Folder01Icon} size={22} color={color} />,
+          tabBarIcon: ({ color }) => <Folder size={22} color={color} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: "Profile",
-          tabBarIcon: ({ color }) => <HugeiconsIcon icon={User01Icon} size={22} color={color} />,
+          tabBarIcon: ({ color }) => <User size={22} color={color} />,
         }}
       />
     </Tabs>

@@ -1,10 +1,4 @@
-import {
-  Cancel01Icon,
-  CheckmarkBadge01Icon,
-  Folder01Icon,
-  SparklesIcon,
-} from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react-native";
+import { Folder, SealCheck, Sparkle, X } from "@vuduc0801/react-native-phosphor-icons";
 import * as SecureStore from "expo-secure-store";
 import { MotiView } from "moti";
 import { Easing } from "react-native-reanimated";
@@ -181,7 +175,7 @@ export default function ProjectsScreen() {
             justifyContent: "center",
           }}
         >
-          <HugeiconsIcon icon={Folder01Icon} size={20} color={BRAND} />
+          <Folder size={20} color={BRAND} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 13, fontWeight: "500", color: "#111827" }} numberOfLines={1}>
@@ -258,7 +252,7 @@ export default function ProjectsScreen() {
             paddingVertical: 9,
           }}
         >
-          <HugeiconsIcon icon={SparklesIcon} size={15} color="#FFFFFF" />
+          <Sparkle size={15} color="#FFFFFF" />
           <Text style={{ fontSize: 13, fontWeight: "600", color: "#FFFFFF" }}>Generate</Text>
         </Pressable>
       </View>
@@ -289,7 +283,7 @@ export default function ProjectsScreen() {
               style={{ alignItems: "center", paddingTop: 60, gap: 12 }}
             >
               <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: "#EEF2FF", alignItems: "center", justifyContent: "center" }}>
-                <HugeiconsIcon icon={Folder01Icon} size={28} color="#A5B4FC" />
+                <Folder size={28} color="#A5B4FC" />
               </View>
               <Text style={{ fontSize: 15, fontWeight: "600", color: "#374151" }}>No projects yet</Text>
               <Text style={{ fontSize: 13, color: "#9CA3AF", textAlign: "center", paddingHorizontal: 24 }}>
@@ -299,7 +293,7 @@ export default function ProjectsScreen() {
                 onPress={() => { setShowModal(true); setStreamedContent(""); setGenError(""); }}
                 style={{ marginTop: 4, flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: BRAND, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10 }}
               >
-                <HugeiconsIcon icon={SparklesIcon} size={14} color="#FFFFFF" />
+                <Sparkle size={14} color="#FFFFFF" />
                 <Text style={{ fontSize: 13, fontWeight: "600", color: "#FFFFFF" }}>Generate guide</Text>
               </Pressable>
             </MotiView>
@@ -320,7 +314,7 @@ export default function ProjectsScreen() {
               </Text>
             </View>
             <Pressable onPress={() => setSelected(null)} style={{ padding: 8 }}>
-              <HugeiconsIcon icon={Cancel01Icon} size={20} color="#6B7280" />
+              <X size={20} color="#6B7280" />
             </Pressable>
           </View>
           <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
@@ -336,12 +330,12 @@ export default function ProjectsScreen() {
             {/* Modal header */}
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: "#F3F4F6" }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                <HugeiconsIcon icon={SparklesIcon} size={18} color={BRAND} />
+                <Sparkle size={18} color={BRAND} />
                 <Text style={{ fontSize: 16, fontWeight: "700", color: "#111827" }}>Generate Study Guide</Text>
               </View>
               {!generating && (
                 <Pressable onPress={() => setShowModal(false)} style={{ padding: 8 }}>
-                  <HugeiconsIcon icon={Cancel01Icon} size={20} color="#6B7280" />
+                  <X size={20} color="#6B7280" />
                 </Pressable>
               )}
             </View>
@@ -419,7 +413,7 @@ export default function ProjectsScreen() {
               {generating && streamedContent ? (
                 <View style={{ backgroundColor: "#F9FAFB", borderRadius: 12, padding: 14, marginBottom: 20 }}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                    <HugeiconsIcon icon={SparklesIcon} size={14} color={BRAND} />
+                    <Sparkle size={14} color={BRAND} />
                     <Text style={{ fontSize: 12, color: BRAND, fontWeight: "500" }}>Writing…</Text>
                   </View>
                   <Text style={{ fontSize: 13, color: "#374151", lineHeight: 20 }} numberOfLines={10}>
@@ -452,7 +446,7 @@ export default function ProjectsScreen() {
                   {generating ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
-                    <HugeiconsIcon icon={SparklesIcon} size={16} color="#FFFFFF" />
+                    <Sparkle size={16} color="#FFFFFF" />
                   )}
                   <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFFFFF" }}>
                     {generating ? "Generating…" : "Generate"}
@@ -470,14 +464,14 @@ export default function ProjectsScreen() {
                       paddingHorizontal: 16,
                     }}
                   >
-                    <HugeiconsIcon icon={Cancel01Icon} size={18} color="#6B7280" />
+                    <X size={18} color="#6B7280" />
                   </Pressable>
                 )}
               </View>
 
               {!generating && streamedContent && (
                 <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 12 }}>
-                  <HugeiconsIcon icon={CheckmarkBadge01Icon} size={16} color="#059669" />
+                  <SealCheck size={16} color="#059669" />
                   <Text style={{ fontSize: 13, color: "#059669", fontWeight: "500" }}>Project saved to your list</Text>
                 </View>
               )}

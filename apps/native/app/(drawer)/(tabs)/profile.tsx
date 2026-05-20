@@ -1,13 +1,4 @@
-import {
-  ArrowRight01Icon,
-  Cancel01Icon,
-  CheckmarkCircle01Icon,
-  Crown01Icon,
-  Edit01Icon,
-  Logout01Icon,
-  AlertCircleIcon,
-} from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react-native";
+import { ArrowRight, X, CheckCircle, Crown, PencilSimple, SignOut, WarningCircle } from "@vuduc0801/react-native-phosphor-icons";
 import * as SecureStore from "expo-secure-store";
 import { useRouter } from "expo-router";
 import { MotiView } from "moti";
@@ -202,7 +193,7 @@ export default function ProfileScreen() {
               onPress={() => setEditing(false)}
               style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: "#F3F4F6", alignItems: "center", justifyContent: "center" }}
             >
-              <HugeiconsIcon icon={Cancel01Icon} size={18} color="#374151" />
+              <X size={18} color="#374151" />
             </Pressable>
             <Text style={{ fontSize: 17, fontWeight: "700", color: "#111827" }}>Edit Profile</Text>
           </View>
@@ -257,7 +248,7 @@ export default function ProfileScreen() {
             {saveErr ? <Text style={{ fontSize: 12, color: "#DC2626", textAlign: "center" }}>{saveErr}</Text> : null}
             {saveOk ? (
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                <HugeiconsIcon icon={CheckmarkCircle01Icon} size={16} color="#059669" />
+                <CheckCircle size={16} color="#059669" />
                 <Text style={{ fontSize: 13, color: "#059669", fontWeight: "500" }}>Saved!</Text>
               </View>
             ) : null}
@@ -315,7 +306,7 @@ export default function ProfileScreen() {
                   <Badge variant="default">{user.grade}</Badge>
                 )}
                 <View style={{ backgroundColor: planStyle.bg, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, flexDirection: "row", alignItems: "center", gap: 4 }}>
-                  {user?.plan !== "FREE" && <HugeiconsIcon icon={Crown01Icon} size={11} color={planStyle.text} />}
+                  {user?.plan !== "FREE" && <Crown size={11} color={planStyle.text} />}
                   <Text style={{ fontSize: 12, fontWeight: "600", color: planStyle.text }}>{PLAN_LABEL[user?.plan ?? "FREE"] ?? "Free"}</Text>
                 </View>
               </View>
@@ -379,7 +370,7 @@ export default function ProfileScreen() {
                 <CardHeader style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
                   <CardTitle>Plan & Usage</CardTitle>
                   <View style={{ backgroundColor: planStyle.bg, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, flexDirection: "row", alignItems: "center", gap: 4 }}>
-                    {user?.plan !== "FREE" && <HugeiconsIcon icon={Crown01Icon} size={10} color={planStyle.text} />}
+                    {user?.plan !== "FREE" && <Crown size={10} color={planStyle.text} />}
                     <Text style={{ fontSize: 11, fontWeight: "700", color: planStyle.text }}>
                       {PLAN_LABEL[user?.plan ?? "FREE"] ?? "Free"}
                     </Text>
@@ -413,7 +404,7 @@ export default function ProfileScreen() {
                       })}
                       {user?.plan === "FREE" && (
                         <View style={{ backgroundColor: "#FEF3C7", borderRadius: 10, padding: 12, flexDirection: "row", alignItems: "center", gap: 10 }}>
-                          <HugeiconsIcon icon={Crown01Icon} size={16} color="#D97706" />
+                          <Crown size={16} color="#D97706" />
                           <Text style={{ flex: 1, fontSize: 12, color: "#92400E", fontWeight: "500", lineHeight: 18 }}>
                             Upgrade to Study or Pass for more papers and projects each month.
                           </Text>
@@ -439,11 +430,10 @@ export default function ProfileScreen() {
                   <CardHeader style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                       <View style={{ width: 32, height: 32, borderRadius: 9, backgroundColor: subscription.renewalDue ? "#FCD34D" : "#DCFCE7", alignItems: "center", justifyContent: "center" }}>
-                        <HugeiconsIcon
-                          icon={subscription.renewalDue ? AlertCircleIcon : Crown01Icon}
-                          size={16}
-                          color={subscription.renewalDue ? "#D97706" : "#059669"}
-                        />
+                        {subscription.renewalDue
+                          ? <WarningCircle size={16} color="#D97706" />
+                          : <Crown size={16} color="#059669" />
+                        }
                       </View>
                       <CardTitle>Your subscription</CardTitle>
                     </View>
@@ -520,10 +510,10 @@ export default function ProfileScreen() {
                 })}
               >
                 <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: "#EEF2FF", alignItems: "center", justifyContent: "center" }}>
-                  <HugeiconsIcon icon={Edit01Icon} size={16} color={BRAND} />
+                  <PencilSimple size={16} color={BRAND} />
                 </View>
                 <Text style={{ flex: 1, fontSize: 14, fontWeight: "500", color: "#111827" }}>Edit profile</Text>
-                <HugeiconsIcon icon={ArrowRight01Icon} size={16} color="#D1D5DB" />
+                <ArrowRight size={16} color="#D1D5DB" />
               </Pressable>
 
               {/* Upgrade — only FREE plan */}
@@ -541,10 +531,10 @@ export default function ProfileScreen() {
                   })}
                 >
                   <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: "#FEF3C7", alignItems: "center", justifyContent: "center" }}>
-                    <HugeiconsIcon icon={Crown01Icon} size={16} color="#D97706" />
+                    <Crown size={16} color="#D97706" />
                   </View>
                   <Text style={{ flex: 1, fontSize: 14, fontWeight: "500", color: "#111827" }}>Upgrade plan</Text>
-                  <HugeiconsIcon icon={ArrowRight01Icon} size={16} color="#D1D5DB" />
+                  <ArrowRight size={16} color="#D1D5DB" />
                 </Pressable>
               )}
 
@@ -558,7 +548,7 @@ export default function ProfileScreen() {
                 })}
               >
                 <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: "#FEE2E2", alignItems: "center", justifyContent: "center" }}>
-                  <HugeiconsIcon icon={Logout01Icon} size={16} color="#DC2626" />
+                  <SignOut size={16} color="#DC2626" />
                 </View>
                 <Text style={{ flex: 1, fontSize: 14, fontWeight: "500", color: "#DC2626" }}>Sign out</Text>
               </Pressable>
