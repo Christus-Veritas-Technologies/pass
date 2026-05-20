@@ -278,7 +278,23 @@ export default function ProfileScreen() {
       <View style={{ flex: 1, position: "relative" }}>
 
         {/* Purple header band */}
-        <View style={{ height: HEADER_HEIGHT, backgroundColor: BRAND }} />
+        <View style={{ height: HEADER_HEIGHT, backgroundColor: BRAND, paddingHorizontal: 20, paddingTop: 18 }}>
+          <Text style={{ fontSize: 11, fontWeight: "700", color: "rgba(255,255,255,0.55)", letterSpacing: 0.8, textTransform: "uppercase" }}>
+            Your profile
+          </Text>
+          {user?.grade ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 10 }}>
+              <View style={{ backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 5 }}>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: "#FFFFFF" }}>{user.grade}</Text>
+              </View>
+              {user.school ? (
+                <Text style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", fontWeight: "500" }} numberOfLines={1}>
+                  {user.school}
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
+        </View>
 
         {/* White content sheet */}
         <View style={{
@@ -320,16 +336,32 @@ export default function ProfileScreen() {
               style={{ marginHorizontal: 20, marginTop: 12 }}
             >
               <Card style={{ backgroundColor: "#F9FAFB" }}>
-                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: "#F3F4F6" }}>
-                  <Text style={{ fontSize: 13, color: "#9CA3AF", fontWeight: "500" }}>Mail</Text>
-                  <Text style={{ fontSize: 13, color: "#374151", fontWeight: "500" }} numberOfLines={1}>{user?.email ?? "—"}</Text>
-                </View>
-                {user?.school ? (
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingVertical: 13 }}>
-                    <Text style={{ fontSize: 13, color: "#9CA3AF", fontWeight: "500" }}>School</Text>
-                    <Text style={{ fontSize: 13, color: "#374151", fontWeight: "500" }} numberOfLines={1}>{user.school}</Text>
+                {[
+                  { label: "Email", value: user?.email ?? "—" },
+                  { label: "Grade", value: user?.grade ?? "—" },
+                  { label: "School", value: user?.school ?? "—" },
+                ].map(({ label, value }, idx, arr) => (
+                  <View
+                    key={label}
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      paddingHorizontal: 16,
+                      paddingVertical: 13,
+                      borderBottomWidth: idx < arr.length - 1 ? 1 : 0,
+                      borderBottomColor: "#F3F4F6",
+                    }}
+                  >
+                    <Text style={{ fontSize: 13, color: "#9CA3AF", fontWeight: "500" }}>{label}</Text>
+                    <Text
+                      style={{ fontSize: 13, color: value === "—" ? "#D1D5DB" : "#374151", fontWeight: "500", maxWidth: "65%" }}
+                      numberOfLines={1}
+                    >
+                      {value}
+                    </Text>
                   </View>
-                ) : null}
+                ))}
               </Card>
             </MotiView>
 
