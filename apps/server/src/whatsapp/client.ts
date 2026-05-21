@@ -3,11 +3,31 @@
  * Manages the wwebjs lifecycle: QR → authenticated → ready → disconnected.
  */
 
+import { existsSync } from "fs";
 import { Client, LocalAuth } from "whatsapp-web.js";
 import qrcodeTerminal from "qrcode-terminal";
 import { env } from "@pass/env/server";
 import { setQr, setConnected } from "./admin/qrEndpoint";
 import { setBrowser } from "./media/renderProjectPdf";
+
+function resolveChromePath(): string | undefined {
+  if (process.env.CHROME_PATH) return process.env.CHROME_PATH;
+  const candidates = [
+    // Windows
+    "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+    process.env.LOCALAPPDATA
+      ? `${process.env.LOCALAPPDATA}\\Google\\Chrome\\Application\\chrome.exe`
+      : "",
+    // Linux
+    "/usr/bin/google-chrome",
+    "/usr/bin/google-chrome-stable",
+    "/usr/bin/chromium-browser",
+    "/usr/bin/chromium",
+    "/snap/bin/chromium",
+  ].filter(Boolean);
+  return candidates.find((p) => existsSync(p));
+}
 
 let _client: Client | null = null;
 
@@ -23,7 +43,7 @@ export function createClient(): Client {
     authStrategy: new LocalAuth({ dataPath: env.WHATSAPP_SESSION_DIR }),
     puppeteer: {
       headless: true,
-      ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}),
+      executablePath: resolveChromePath(),
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",
