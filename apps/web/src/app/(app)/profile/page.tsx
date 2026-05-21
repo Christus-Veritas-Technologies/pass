@@ -9,6 +9,8 @@ import {
   User02Icon,
   AlertCircleIcon,
   ArrowRight01Icon,
+  SmartPhone01Icon,
+  LinkSquare02Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useRouter } from "next/navigation";
@@ -60,6 +62,11 @@ interface SubscriptionInfo {
   renewalDue: boolean;
 }
 
+interface WhatsAppStatus {
+  linked: boolean;
+  phone?: string;
+}
+
 function getInitials(name: string) {
   return name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase();
 }
@@ -80,6 +87,13 @@ export default function ProfilePage() {
   const [saveOk, setSaveOk] = useState(false);
   const [saveErr, setSaveErr] = useState("");
 
+  const [whatsapp, setWhatsapp] = useState<WhatsAppStatus | null>(null);
+  const [linkCode, setLinkCode] = useState<string | null>(null);
+  const [linkExpiry, setLinkExpiry] = useState<Date | null>(null);
+  const [linkExpirySecs, setLinkExpirySecs] = useState(0);
+  const [linkLoading, setLinkLoading] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
+
   useEffect(() => {
     const token = getAccessToken();
 
@@ -92,6 +106,7 @@ export default function ProfilePage() {
         setUser(d.user ?? null);
         setStats(d.stats ?? null);
         setPlanUsage(d.planUsage ?? null);
+        setWhatsapp(d.whatsapp ?? null);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -110,6 +125,54 @@ export default function ProfilePage() {
         .catch(() => {});
     }
   }, []);
+
+  useEffect(() => {
+    if (!linkExpiry) return;
+    const id = setInterval(() => {
+      const secs = Math.max(0, Math.round((linkExpiry.getTime() - Date.now()) / 1000));
+      setLinkExpirySecs(secs);
+      if (secs === 0) clearInterval(id);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [linkExpiry]);
+
+  async function handleConnectWhatsApp() {
+    setLinkLoading(true);
+    try {
+      const token = getAccessToken();
+      const res = await fetch(`${API}/users/me/whatsapp/link-code`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const data = await res.json();
+      setLinkCode(data.code);
+      const expiry = new Date(data.expiresAt);
+      setLinkExpiry(expiry);
+      setLinkExpirySecs(Math.max(0, Math.round((expiry.getTime() - Date.now()) / 1000)));
+    } catch {
+      // silently ignore
+    } finally {
+      setLinkLoading(false);
+    }
+  }
+
+  async function handleDisconnectWhatsApp() {
+    setDisconnecting(true);
+    try {
+      const token = getAccessToken();
+      await fetch(`${API}/users/me/whatsapp`, {
+        method: "DELETE",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      setWhatsapp(null);
+      setLinkCode(null);
+      setLinkExpiry(null);
+    } catch {
+      // silently ignore
+    } finally {
+      setDisconnecting(false);
+    }
+  }
 
   function startEdit() {
     if (!user) return;
@@ -420,6 +483,79 @@ export default function ProfilePage() {
                 <a href="/pricing">
                   <Button size="sm" className="shrink-0 h-7 text-xs">Upgrade</Button>
                 </a>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Connect WhatsApp */}
+      {!editing && (
+        <Card className="rounded-xl">
+          <CardHeader className="pb-3 pt-5 px-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${whatsapp?.linked ? "bg-emerald-50" : "bg-blue-50"}`}>
+                  <HugeiconsIcon icon={SmartPhone01Icon} className={`h-4 w-4 ${whatsapp?.linked ? "text-emerald-600" : "text-blue-500"}`} />
+                </div>
+                <CardTitle className="text-sm font-semibold">WhatsApp</CardTitle>
+              </div>
+              {whatsapp?.linked && (
+                <Badge variant="success" className="text-xs">Connected</Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="px-5 pb-5">
+            {whatsapp?.linked ? (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Connected as <span className="font-medium text-foreground">{whatsapp.phone}</span>
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-destructive border-destructive/30 hover:bg-destructive/5 hover:text-destructive h-8 text-xs"
+                  onClick={handleDisconnectWhatsApp}
+                  disabled={disconnecting}
+                >
+                  {disconnecting ? "Disconnecting…" : "Disconnect"}
+                </Button>
+              </div>
+            ) : linkCode ? (
+              <div className="space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  Send this code to the WhatsApp bot to link your account:
+                </p>
+                <div className="rounded-lg bg-muted px-4 py-3 flex items-center justify-between">
+                  <span className="text-2xl font-bold tracking-widest text-foreground font-mono">{linkCode}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {linkExpirySecs > 0 ? `${linkExpirySecs}s` : "Expired"}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleConnectWhatsApp}
+                  className="flex items-center gap-1 text-xs text-primary hover:underline disabled:opacity-50"
+                  disabled={linkLoading}
+                >
+                  <HugeiconsIcon icon={LinkSquare02Icon} className="h-3 w-3" />
+                  Regenerate
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Link your WhatsApp number to study, generate projects, and ask questions via chat.
+                </p>
+                <Button
+                  size="sm"
+                  className="h-8 text-xs"
+                  onClick={handleConnectWhatsApp}
+                  disabled={linkLoading}
+                >
+                  <HugeiconsIcon icon={LinkSquare02Icon} className="mr-1.5 h-3.5 w-3.5" />
+                  {linkLoading ? "Generating…" : "Connect WhatsApp"}
+                </Button>
               </div>
             )}
           </CardContent>
