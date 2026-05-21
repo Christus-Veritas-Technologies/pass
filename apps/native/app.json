@@ -3,6 +3,7 @@
     "name": "Pass",
     "slug": "pass",
     "owner": "codewithkin",
+    "description": "Pass helps Zimbabwean students ace their ZIMSEC exams with AI-powered past paper practice, model answers, and personalised study plans.",
     "scheme": "pass",
     "version": "1.0.0",
     "orientation": "portrait",
