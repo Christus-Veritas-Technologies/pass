@@ -14,37 +14,30 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 import { env } from "@pass/env/native";
+import { PLANS as PLAN_DATA } from "@pass/pricing";
 
 const BRAND = "#4F46E5";
 const API = env.EXPO_PUBLIC_SERVER_URL;
 
+const PLAN_META = {
+  STUDY: { icon: Sparkle, color: "#7C3AED" },
+  PASS:  { icon: Crown,   color: "#D97706" },
+} as const;
+
 const PLANS = {
   STUDY: {
-    name: "Study",
-    price: "$2.99",
+    ...PLAN_META.STUDY,
+    name: PLAN_DATA.STUDY.name,
+    price: `$${PLAN_DATA.STUDY.prices.MONTHLY.toFixed(2)}`,
     period: "month",
-    icon: Sparkle,
-    color: "#7C3AED",
-    features: [
-      "12 past papers per month",
-      "7 AI projects per month",
-      "Detailed answer explanations",
-      "Email support",
-    ],
+    features: PLAN_DATA.STUDY.features,
   },
   PASS: {
-    name: "Pass",
-    price: "$5.99",
+    ...PLAN_META.PASS,
+    name: PLAN_DATA.PASS.name,
+    price: `$${PLAN_DATA.PASS.prices.MONTHLY.toFixed(2)}`,
     period: "month",
-    icon: Crown,
-    color: "#D97706",
-    features: [
-      "20 past papers per month",
-      "12 AI projects per month",
-      "Detailed worked solutions",
-      "Priority support",
-      "Full progress analytics",
-    ],
+    features: PLAN_DATA.PASS.features,
   },
 };
 
@@ -60,7 +53,7 @@ export default function CheckoutScreen() {
   const [showWebview, setShowWebview] = useState(false);
 
   const plan = PLANS[selectedPlan];
-  const amount = selectedPlan === "STUDY" ? 2.99 : 5.99;
+  const amount = PLAN_DATA[selectedPlan].prices.MONTHLY;
 
   async function getToken() {
     try {

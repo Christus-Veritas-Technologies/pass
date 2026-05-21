@@ -11,6 +11,7 @@
     "@hugeicons/core-free-icons": "^4.1.4",
     "@hugeicons/react": "^1.1.6",
     "@pass/env": "workspace:*",
+    "@pass/pricing": "workspace:*",
     "@pass/ui": "workspace:*",
     "babel-plugin-react-compiler": "^1.0.0",
     "clsx": "^2.1.1",

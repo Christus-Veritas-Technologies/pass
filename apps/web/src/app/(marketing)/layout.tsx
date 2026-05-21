@@ -2,6 +2,7 @@ import { Inter, Instrument_Serif } from "next/font/google";
 import type { ReactNode } from "react";
 import { MarketingNav } from "./_components/marketing-nav";
 import { MarketingFooter } from "./_components/marketing-footer";
+import { PLANS } from "@pass/pricing";
 
 const STRUCTURED_DATA = {
   "@context": "https://schema.org",
@@ -26,9 +27,9 @@ const STRUCTURED_DATA = {
       operatingSystem: "Web, Android",
       applicationCategory: "EducationalApplication",
       offers: [
-        { "@type": "Offer", name: "Free",  price: "0",    priceCurrency: "USD" },
-        { "@type": "Offer", name: "Study", price: "2.99", priceCurrency: "USD" },
-        { "@type": "Offer", name: "Pass",  price: "5.99", priceCurrency: "USD" },
+        { "@type": "Offer", name: PLANS.FREE.name,  price: String(PLANS.FREE.prices.MONTHLY),  priceCurrency: "USD" },
+        { "@type": "Offer", name: PLANS.STUDY.name, price: String(PLANS.STUDY.prices.MONTHLY), priceCurrency: "USD" },
+        { "@type": "Offer", name: PLANS.PASS.name,  price: String(PLANS.PASS.prices.MONTHLY),  priceCurrency: "USD" },
       ],
     },
   ],

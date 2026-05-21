@@ -15,95 +15,31 @@ import { Button } from "@pass/ui/components/button";
 import { Card, CardContent, CardHeader } from "@pass/ui/components/card";
 import { cn } from "@/lib/utils";
 import { isLoggedIn } from "@/lib/auth";
+import {
+  PLANS as PLAN_DATA,
+  COMPARISON_ROWS,
+  ANNUAL_SAVINGS_PCT,
+  type BillingCycle,
+} from "@pass/pricing";
 
-type Billing = "MONTHLY" | "ANNUAL";
+type Billing = BillingCycle;
 
-const PLAN_PRICES = {
-  FREE:  { MONTHLY: "$0",     ANNUAL: "$0"     },
-  STUDY: { MONTHLY: "$2.99",  ANNUAL: "$19.99" },
-  PASS:  { MONTHLY: "$5.99",  ANNUAL: "$39.99" },
-};
+const PLAN_META = {
+  FREE:  { icon: ZapIcon,      color: "text-muted-foreground", iconBg: "bg-muted"      },
+  STUDY: { icon: SparklesIcon, color: "text-primary",          iconBg: "bg-primary/10" },
+  PASS:  { icon: CrownIcon,    color: "text-amber-500",        iconBg: "bg-amber-50"   },
+} as const;
 
-const ANNUAL_EQUIV = {
-  STUDY: "$1.67/mo",
-  PASS:  "$3.33/mo",
-};
-
-const PLANS = [
-  {
-    id: "FREE",
-    name: "Free",
-    period: { MONTHLY: "forever", ANNUAL: "forever" },
-    tagline: "Start practising today",
-    icon: ZapIcon,
-    color: "text-muted-foreground",
-    badge: null as string | null,
-    features: [
-      "5 past papers per month",
-      "2 AI projects per month",
-      "Basic marking guidance",
-      "Resource downloads",
-    ],
-    missing: [
-      "12+ papers per month",
-      "AI answer explanations",
-      "Progress tracking",
-    ],
-  },
-  {
-    id: "STUDY",
-    name: "Study",
-    period: { MONTHLY: "per month", ANNUAL: "per year" },
-    tagline: "For serious exam prep",
-    icon: SparklesIcon,
-    color: "text-primary",
-    badge: "Most popular",
-    features: [
-      "12 past papers per month",
-      "7 AI projects per month",
-      "Detailed answer explanations",
-      "All resource downloads",
-      "Progress tracking",
-      "Email support",
-    ],
-    missing: [
-      "20 papers per month",
-      "12 projects per month",
-    ],
-  },
-  {
-    id: "PASS",
-    name: "Pass",
-    period: { MONTHLY: "per month", ANNUAL: "per year" },
-    tagline: "Maximum exam coverage",
-    icon: CrownIcon,
-    color: "text-amber-500",
-    badge: "Best value",
-    features: [
-      "20 past papers per month",
-      "12 AI projects per month",
-      "Detailed worked solutions",
-      "All resource downloads",
-      "Full progress analytics",
-      "Priority support",
-    ],
-    missing: [],
-  },
-];
-
-const COMPARISON_ROWS: Array<{ label: string; free: string; study: string; pass: string }> = [
-  { label: "Past papers / month",  free: "5",         study: "12",          pass: "20" },
-  { label: "AI projects / month",  free: "2",         study: "7",           pass: "12" },
-  { label: "AI answer marking",    free: "Basic",     study: "Detailed",    pass: "Full worked solutions" },
-  { label: "Resource downloads",   free: "Included",  study: "Included",    pass: "Included" },
-  { label: "Progress tracking",    free: "—",         study: "Included",    pass: "Full analytics" },
-  { label: "Support",              free: "Community", study: "Email",       pass: "Priority" },
-];
+const PLANS = (["FREE", "STUDY", "PASS"] as const).map((id) => ({
+  id,
+  ...PLAN_DATA[id],
+  ...PLAN_META[id],
+}));
 
 const FAQS = [
   {
     q: "Can I try before I buy?",
-    a: "Yes — the Free plan gives you 5 papers and 2 projects every month with no credit card required. Study is $2.99/mo and Pass is $5.99/mo.",
+    a: `Yes — the Free plan gives you 5 papers and 2 projects every month with no credit card required. Study is $${PLAN_DATA.STUDY.prices.MONTHLY}/mo and Pass is $${PLAN_DATA.PASS.prices.MONTHLY}/mo.`,
   },
   {
     q: "Which ZIMSEC subjects are covered?",
@@ -119,7 +55,7 @@ const FAQS = [
   },
   {
     q: "What is the annual plan?",
-    a: "Paying annually gives you 12 months for the price of roughly 7 (44% off). Your subscription runs for a full year from the payment date.",
+    a: `Paying annually gives you 12 months for the price of roughly 7 (${ANNUAL_SAVINGS_PCT}% off). Your subscription runs for a full year from the payment date.`,
   },
 ];
 
@@ -145,7 +81,7 @@ export default function MarketingPricing() {
             <span className="font-marketing-serif italic font-normal">Not a penny more.</span>
           </h1>
           <p className="mx-auto mt-5 max-w-xl text-base text-muted-foreground md:text-lg">
-            Free forever. Or unlock the full library from $2.99/month. Prices in USD, billed in your choice of ZWL or USD.
+            Free forever. Or unlock the full library from ${PLAN_DATA.STUDY.prices.MONTHLY}/month. Prices in USD, billed in your choice of ZWL or USD.
           </p>
 
           {/* Billing toggle */}
@@ -174,7 +110,7 @@ export default function MarketingPricing() {
             >
               Annual
               <span className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-600">
-                Save 44%
+                Save {ANNUAL_SAVINGS_PCT}%
               </span>
             </button>
           </div>
@@ -185,11 +121,9 @@ export default function MarketingPricing() {
       <section className="px-6 pb-24">
         <div className="mx-auto grid max-w-5xl gap-6 sm:grid-cols-3">
           {PLANS.map((plan) => {
-            const price = PLAN_PRICES[plan.id as keyof typeof PLAN_PRICES][billing];
+            const price = plan.prices[billing] === 0 ? "$0" : `$${plan.prices[billing].toFixed(2)}`;
             const period = plan.period[billing];
-            const annualEquiv = billing === "ANNUAL" && plan.id !== "FREE"
-              ? ANNUAL_EQUIV[plan.id as keyof typeof ANNUAL_EQUIV]
-              : null;
+            const annualEquiv = billing === "ANNUAL" ? plan.annualMonthlyEquiv : null;
 
             const ctaLabel = plan.id === "FREE"
               ? loggedIn ? "You're on Free" : "Start free"
@@ -217,16 +151,7 @@ export default function MarketingPricing() {
                 )}
 
                 <CardHeader className="pt-7 pb-4 px-6">
-                  <div
-                    className={cn(
-                      "flex h-11 w-11 items-center justify-center rounded-xl mb-3",
-                      plan.id === "PASS"
-                        ? "bg-amber-50"
-                        : plan.id === "STUDY"
-                        ? "bg-primary/10"
-                        : "bg-muted",
-                    )}
-                  >
+                  <div className={cn("flex h-11 w-11 items-center justify-center rounded-xl mb-3", plan.iconBg)}>
                     <HugeiconsIcon icon={plan.icon} className={cn("h-5 w-5", plan.color)} />
                   </div>
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">

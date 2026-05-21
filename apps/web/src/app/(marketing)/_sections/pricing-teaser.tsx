@@ -12,42 +12,26 @@ import { cn } from "@/lib/utils";
 import { SectionEyebrow } from "../_components/section-eyebrow";
 import { SectionHeading, SectionLede } from "../_components/section-heading";
 import { ScrollReveal } from "../_components/scroll-reveal";
+import { PLANS as PLAN_DATA } from "@pass/pricing";
 
-const PLANS = [
-  {
-    id: "FREE",
-    name: "Free",
-    price: "$0",
-    period: "forever",
-    icon: ZapIcon,
-    iconBg: "bg-muted",
-    iconColor: "text-muted-foreground",
-    highlights: ["5 past papers / month", "2 AI projects / month", "Basic marking"],
-    badge: null as string | null,
-  },
-  {
-    id: "STUDY",
-    name: "Study",
-    price: "$2.99",
-    period: "per month",
-    icon: SparklesIcon,
-    iconBg: "bg-primary/10",
-    iconColor: "text-primary",
-    highlights: ["12 papers / month", "Detailed AI explanations", "Progress tracking"],
-    badge: "Most popular",
-  },
-  {
-    id: "PASS",
-    name: "Pass",
-    price: "$5.99",
-    period: "per month",
-    icon: CrownIcon,
-    iconBg: "bg-amber-50",
-    iconColor: "text-amber-500",
-    highlights: ["20 papers / month", "Full worked solutions", "Priority support"],
-    badge: null,
-  },
-];
+const PLAN_META = {
+  FREE:  { icon: ZapIcon,      iconBg: "bg-muted",       iconColor: "text-muted-foreground" },
+  STUDY: { icon: SparklesIcon, iconBg: "bg-primary/10",  iconColor: "text-primary"          },
+  PASS:  { icon: CrownIcon,    iconBg: "bg-amber-50",    iconColor: "text-amber-500"        },
+} as const;
+
+const PLANS = (["FREE", "STUDY", "PASS"] as const).map((id) => {
+  const p = PLAN_DATA[id];
+  return {
+    id,
+    name: p.name,
+    price: p.prices.MONTHLY === 0 ? "$0" : `$${p.prices.MONTHLY.toFixed(2)}`,
+    period: p.period.MONTHLY,
+    highlights: p.highlights,
+    badge: p.badge,
+    ...PLAN_META[id],
+  };
+});
 
 export function PricingTeaser() {
   return (
@@ -60,7 +44,7 @@ export function PricingTeaser() {
             <span className="font-marketing-serif italic font-normal">Cancel anytime.</span>
           </SectionHeading>
           <SectionLede className="mx-auto mt-5 text-center">
-            Free forever for 5 papers a month. Or unlock the full library from $2.99/month.
+            {`Free forever for 5 papers a month. Or unlock the full library from $${PLAN_DATA.STUDY.prices.MONTHLY}/month.`}
           </SectionLede>
         </ScrollReveal>
 

@@ -24,6 +24,7 @@
         "@expo/vector-icons": "^15.1.1",
         "@gorhom/bottom-sheet": "^5.2.10",
         "@pass/env": "workspace:*",
+        "@pass/pricing": "workspace:*",
         "@react-native-async-storage/async-storage": "2.2.0",
         "@react-navigation/drawer": "^7.9.4",
         "@react-navigation/elements": "^2.9.14",
@@ -96,6 +97,7 @@
         "@mastra/core": "^0.10.0",
         "@pass/db": "workspace:*",
         "@pass/env": "workspace:*",
+        "@pass/pricing": "workspace:*",
         "ai": "^4.3.0",
         "dotenv": "catalog:",
         "hono": "^4.8.2",
@@ -119,6 +121,7 @@
         "@hugeicons/core-free-icons": "^4.1.4",
         "@hugeicons/react": "^1.1.6",
         "@pass/env": "workspace:*",
+        "@pass/pricing": "workspace:*",
         "@pass/ui": "workspace:*",
         "babel-plugin-react-compiler": "^1.0.0",
         "clsx": "^2.1.1",
@@ -185,6 +188,14 @@
         "@anthropic-ai/sdk": "^0.96.0",
         "@pass/db": "workspace:*",
         "unpdf": "^1.6.2",
+      },
+    },
+    "packages/pricing": {
+      "name": "@pass/pricing",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@pass/config": "workspace:*",
+        "typescript": "^6",
       },
     },
     "packages/ui": {
@@ -959,6 +970,8 @@
     "@pass/env": ["@pass/env@workspace:packages/env"],
 
     "@pass/papers": ["@pass/papers@workspace:packages/papers"],
+
+    "@pass/pricing": ["@pass/pricing@workspace:packages/pricing"],
 
     "@pass/ui": ["@pass/ui@workspace:packages/ui"],
 

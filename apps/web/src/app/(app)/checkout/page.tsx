@@ -8,40 +8,19 @@ import { Button } from "@pass/ui/components/button";
 import { Card, CardContent, CardHeader } from "@pass/ui/components/card";
 import { authedRequest } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { PLANS as PLAN_DATA, type BillingCycle } from "@pass/pricing";
 
-type Billing = "MONTHLY" | "ANNUAL";
+type Billing = BillingCycle;
 
-const PLAN_DATA = {
-  STUDY: {
-    name: "Study",
-    prices: { MONTHLY: 2.99, ANNUAL: 19.99 },
-    icon: SparklesIcon,
-    color: "text-primary",
-    iconBg: "bg-primary/10",
-    features: [
-      "12 past papers per month",
-      "7 AI projects per month",
-      "Detailed answer explanations",
-      "Email support",
-    ],
-    description: "Perfect for focused exam preparation",
-  },
-  PASS: {
-    name: "Pass",
-    prices: { MONTHLY: 5.99, ANNUAL: 39.99 },
-    icon: CrownIcon,
-    color: "text-amber-500",
-    iconBg: "bg-amber-50",
-    features: [
-      "20 past papers per month",
-      "12 AI projects per month",
-      "Detailed worked solutions",
-      "Priority support",
-      "Full progress analytics",
-    ],
-    description: "Maximum exam coverage and support",
-  },
-};
+const PLAN_META = {
+  STUDY: { icon: SparklesIcon, color: "text-primary",   iconBg: "bg-primary/10" },
+  PASS:  { icon: CrownIcon,    color: "text-amber-500", iconBg: "bg-amber-50"   },
+} as const;
+
+const CHECKOUT_PLANS = {
+  STUDY: { ...PLAN_DATA.STUDY, ...PLAN_META.STUDY },
+  PASS:  { ...PLAN_DATA.PASS,  ...PLAN_META.PASS  },
+} as const;
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -54,7 +33,7 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const plan = PLAN_DATA[selectedPlan];
+  const plan = CHECKOUT_PLANS[selectedPlan];
   const amount = plan.prices[billing];
 
   const handleCheckout = async () => {
@@ -128,7 +107,7 @@ export default function CheckoutPage() {
       {/* Plan selector */}
       <div className="grid gap-4 grid-cols-2">
         {(["STUDY", "PASS"] as const).map((planKey) => {
-          const p = PLAN_DATA[planKey];
+          const p = CHECKOUT_PLANS[planKey];
           return (
             <button
               key={planKey}
