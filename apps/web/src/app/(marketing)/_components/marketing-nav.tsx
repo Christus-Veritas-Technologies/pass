@@ -40,6 +40,14 @@ export function MarketingNav() {
     return () => { document.body.style.overflow = ""; };
   }, [open]);
 
+  // Close drawer on Esc
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
   return (
     <>
       <header
