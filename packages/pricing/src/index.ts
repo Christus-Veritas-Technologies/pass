@@ -98,11 +98,11 @@ export const PLAN_PRICES: Record<PayablePlanKey, Record<BillingCycle, number>> =
   PASS:  { MONTHLY: PLANS.PASS.prices.MONTHLY,  ANNUAL: PLANS.PASS.prices.ANNUAL  },
 };
 
-// Quota limits used by the server to gate paper/project usage
-export const PLAN_LIMITS: Record<PlanKey, { papers: number; projects: number }> = {
-  FREE:  PLANS.FREE.limits,
-  STUDY: PLANS.STUDY.limits,
-  PASS:  PLANS.PASS.limits,
+// Quota limits used by the server to gate paper/project/AI-message usage
+export const PLAN_LIMITS: Record<PlanKey, { papers: number; projects: number; aiMessages: number }> = {
+  FREE:  { ...PLANS.FREE.limits,  aiMessages: 100 },
+  STUDY: { ...PLANS.STUDY.limits, aiMessages: 500 },
+  PASS:  { ...PLANS.PASS.limits,  aiMessages: Infinity },
 };
 
 // Human-readable Paynow transaction descriptions
