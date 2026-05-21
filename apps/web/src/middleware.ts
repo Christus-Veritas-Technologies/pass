@@ -19,6 +19,8 @@ function isPublic(pathname: string): boolean {
   if (pathname.startsWith("/auth/")) return true;
   // Next.js API routes (server-side route handlers protect themselves)
   if (pathname.startsWith("/api/")) return true;
+  // Next.js internals — should already be excluded by matcher but belt-and-suspenders
+  if (pathname.startsWith("/_next/")) return true;
   return false;
 }
 
