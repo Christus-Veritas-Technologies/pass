@@ -9,13 +9,15 @@ import { progressBar, formatResetDate, nextResetDate } from "./format";
 
 export const WELCOME_UNLINKED = `Hi! I'm *Pass* 📚 — your ZIMSEC study buddy on WhatsApp.
 
-I can:
-  • walk you through past papers, question by question
-  • generate a full ZIMSEC project for any subject
-  • answer any study question you throw at me
+I can help you:
+  • study A-Level and O-Level past exam papers, question by question
+  • get AI explanations for any exam question or concept
+  • browse and download past-paper resources
+  • generate a full ZIMSEC project report for any subject
+  • upgrade your plan to unlock more papers and AI replies
 
 To get started I need to link this number to your Pass account.
-Don't have one? Sign up free at https://pass.app — takes 30 seconds.
+Don't have one? Sign up free at https://pass.co.zw — takes 30 seconds.
 
 When you're ready, reply *link* and I'll send you instructions.`;
 
@@ -87,7 +89,7 @@ Projects:  ${opts.projectsUsed} / ${opts.projectsLimit} used   ${projectsBar}
 AI chats:  ${opts.aiUsed} / ${aiLimitStr}     ${aiBar}
 
 Resets on ${reset}.
-Need more? https://pass.app/upgrade`;
+Need more? https://pass.co.zw/pricing`;
 }
 
 // ─── Quota walls ─────────────────────────────────────────────────────────────
@@ -100,7 +102,7 @@ Upgrade to:
   • *Study* — 12 papers + 7 projects / month
   • *Pass*  — 20 papers + 12 projects / month
 
-Tap https://pass.app/upgrade to choose a plan.
+Reply *UPGRADE* or visit https://pass.co.zw/pricing to choose a plan.
 
 You can still chat with me for free 👋`;
 }
@@ -113,14 +115,14 @@ Upgrade to:
   • *Study* — 7 projects / month
   • *Pass*  — 12 projects / month
 
-Tap https://pass.app/upgrade to choose a plan.`;
+Reply *UPGRADE* or visit https://pass.co.zw/pricing to choose a plan.`;
 }
 
 export function aiQuotaMessage(plan: string, limit: number): string {
   const reset = formatResetDate(nextResetDate());
   return `You've used all *${limit} AI replies* on the ${plan} plan this month (resets on ${reset}).
 
-Upgrade at https://pass.app/upgrade to keep chatting.`;
+Reply *UPGRADE* or visit https://pass.co.zw/pricing to keep chatting.`;
 }
 
 // ─── Usage footer (soft warning at ≥ 50 %) ───────────────────────────────────
@@ -224,10 +226,20 @@ It's a ${pages}-page report with title page, introduction, methodology, findings
 }
 
 export function projectFallbackMessage(projectId: string): string {
-  return `✅ Your project is ready — view it at https://pass.app/projects/${projectId}
+  return `✅ Your project is ready — view it at https://pass.co.zw/projects/${projectId}
 
 _(I couldn't attach the PDF right now, but the full text is saved in your Pass account.)_`;
 }
+
+// ─── Quota exhausted (hard limit — no further AI calls) ──────────────────────
+
+export const AI_QUOTA_EXHAUSTED = `You've used all your AI messages for this month.
+
+Upgrade to get more: reply *UPGRADE* or visit https://pass.co.zw/pricing
+
+You can still use:
+  • \`UPGRADE\` — upgrade your plan
+  • \`HELP\`    — see the menu`;
 
 // ─── Errors / misc ────────────────────────────────────────────────────────────
 

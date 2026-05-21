@@ -14,9 +14,9 @@ import {
 import { Easing } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AnimatedPressable } from "@/components/animated-pressable";
+import { useAppTheme } from "@/lib/theme-context";
 import { env } from "@pass/env/native";
 
-const BRAND = "#4F46E5";
 const API = env.EXPO_PUBLIC_SERVER_URL;
 
 interface Stats {
@@ -44,15 +44,15 @@ interface FeaturedResource {
   type: string;
 }
 
-function scoreColor(n: number) {
-  if (n >= 80) return "#059669";
-  if (n >= 60) return "#D97706";
-  return "#DC2626";
+function scoreColor(n: number, colors: ReturnType<typeof useAppTheme>["colors"]) {
+  if (n >= 80) return colors.success;
+  if (n >= 60) return colors.warning;
+  return colors.error;
 }
-function scoreBg(n: number) {
-  if (n >= 80) return "#ECFDF5";
-  if (n >= 60) return "#FFFBEB";
-  return "#FEF2F2";
+function scoreBg(n: number, colors: ReturnType<typeof useAppTheme>["colors"]) {
+  if (n >= 80) return colors.successBg;
+  if (n >= 60) return colors.warningBg;
+  return colors.errorBg;
 }
 
 function timeAgo(iso: string) {
@@ -63,11 +63,11 @@ function timeAgo(iso: string) {
   return `${days}d ago`;
 }
 
-function ProgressBar({ value, max }: { value: number; max: number }) {
+function ProgressBar({ value, max, color }: { value: number; max: number; color: string }) {
   const pct = Math.min(100, Math.max(0, (value / max) * 100));
   return (
     <View style={{ height: 6, backgroundColor: "#E5E7EB", borderRadius: 3, overflow: "hidden", marginTop: 8 }}>
-      <View style={{ height: "100%", width: `${pct}%`, backgroundColor: BRAND, borderRadius: 3 }} />
+      <View style={{ height: "100%", width: `${pct}%`, backgroundColor: color, borderRadius: 3 }} />
     </View>
   );
 }
@@ -77,6 +77,7 @@ async function getToken() {
 }
 
 export default function HomeScreen() {
+  const { colors } = useAppTheme();
   const router = useRouter();
   const [stats, setStats] = useState<Stats | null>(null);
   const [sessions, setSessions] = useState<RecentSession[]>([]);
@@ -120,27 +121,27 @@ export default function HomeScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center" }} edges={["top"]}>
-        <ActivityIndicator size="large" color={BRAND} />
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, alignItems: "center", justifyContent: "center" }} edges={["top"]}>
+        <ActivityIndicator size="large" color={colors.brand} />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#FFFFFF" }} edges={["top"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["top"]}>
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchAll(true)} tintColor={BRAND} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchAll(true)} tintColor={colors.brand} />}
       >
         {/* Header */}
         <MotiView from={{ opacity: 0, translateY: -6 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 250, easing: Easing.bezier(0.23, 1, 0.32, 1) }}>
           <View style={{ paddingTop: 24, paddingBottom: 20 }}>
-            <Text style={{ fontSize: 22, fontWeight: "700", color: "#111827", letterSpacing: -0.5 }}>
+            <Text style={{ fontSize: 22, fontWeight: "700", color: colors.text, letterSpacing: -0.5 }}>
               {userName ? `Hi, ${userName}` : "Dashboard"}
             </Text>
-            <Text style={{ fontSize: 13, color: "#6B7280", marginTop: 2 }}>Keep the streak going.</Text>
+            <Text style={{ fontSize: 13, color: colors.textTertiary, marginTop: 2 }}>Keep the streak going.</Text>
           </View>
         </MotiView>
 
@@ -148,9 +149,9 @@ export default function HomeScreen() {
         <MotiView from={{ opacity: 0, translateY: 6, scale: 0.97 }} animate={{ opacity: 1, translateY: 0, scale: 1 }} transition={{ type: "timing", duration: 250, delay: 50, easing: Easing.bezier(0.23, 1, 0.32, 1) }}>
           <View style={{ flexDirection: "row", gap: 10, marginBottom: 24 }}>
             {[
-              { Icon: Note,        label: "Papers",    value: String(stats?.papersAttempted ?? 0), bg: "#EEF2FF", border: "#C7D2FE", iconColor: "#4F46E5" },
-              { Icon: CheckCircle, label: "Questions", value: String(stats?.questionsAnswered ?? 0), bg: "#ECFDF5", border: "#6EE7B7", iconColor: "#059669" },
-              { Icon: Fire,        label: "Streak",    value: `${stats?.currentStreak ?? 0}d`,      bg: "#FFF7ED", border: "#FED7AA", iconColor: "#EA580C" },
+              { Icon: Note,        label: "Papers",    value: String(stats?.papersAttempted ?? 0), bg: colors.indigoBg, border: colors.indigoBorder, iconColor: colors.brand },
+              { Icon: CheckCircle, label: "Questions", value: String(stats?.questionsAnswered ?? 0), bg: colors.greenBg, border: colors.greenBorder, iconColor: colors.success },
+              { Icon: Fire,        label: "Streak",    value: `${stats?.currentStreak ?? 0}d`,      bg: colors.orangeBg, border: colors.orangeBorder, iconColor: colors.warning },
             ].map(({ Icon, label, value, bg, border, iconColor }) => (
               <View
                 key={label}
@@ -164,8 +165,8 @@ export default function HomeScreen() {
                 }}
               >
                 <Icon size={16} color={iconColor} />
-                <Text style={{ fontSize: 20, fontWeight: "700", color: "#111827", marginTop: 6 }}>{value}</Text>
-                <Text style={{ fontSize: 11, color: "#6B7280", marginTop: 1 }}>{label}</Text>
+                <Text style={{ fontSize: 20, fontWeight: "700", color: colors.text, marginTop: 6 }}>{value}</Text>
+                <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 1 }}>{label}</Text>
               </View>
             ))}
           </View>
@@ -175,25 +176,25 @@ export default function HomeScreen() {
         <MotiView from={{ opacity: 0, translateY: 6, scale: 0.97 }} animate={{ opacity: 1, translateY: 0, scale: 1 }} transition={{ type: "timing", duration: 250, delay: 100, easing: Easing.bezier(0.23, 1, 0.32, 1) }}>
           <View
             style={{
-              backgroundColor: "#EEF2FF",
+              backgroundColor: colors.indigoBg,
               borderRadius: 12,
               borderWidth: 1,
-              borderColor: "#C7D2FE",
+              borderColor: colors.indigoBorder,
               padding: 14,
               marginBottom: 28,
             }}
           >
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <TrendUp size={15} color="#4F46E5" />
-              <Text style={{ fontSize: 12, fontWeight: "500", color: "#4338CA" }}>Weekly goal</Text>
+              <TrendUp size={15} color={colors.brand} />
+              <Text style={{ fontSize: 12, fontWeight: "500", color: colors.brand }}>Weekly goal</Text>
             </View>
-            <Text style={{ fontSize: 18, fontWeight: "700", color: "#111827", marginTop: 4 }}>
+            <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text, marginTop: 4 }}>
               {stats?.weeklyProgress ?? 0}
-              <Text style={{ fontSize: 13, fontWeight: "400", color: "#9CA3AF" }}>
+              <Text style={{ fontSize: 13, fontWeight: "400", color: colors.textTertiary }}>
                 /{stats?.weeklyGoal ?? 5} papers
               </Text>
             </Text>
-            <ProgressBar value={stats?.weeklyProgress ?? 0} max={stats?.weeklyGoal ?? 5} />
+            <ProgressBar value={stats?.weeklyProgress ?? 0} max={stats?.weeklyGoal ?? 5} color={colors.brand} />
           </View>
         </MotiView>
 
@@ -201,19 +202,19 @@ export default function HomeScreen() {
         <MotiView from={{ opacity: 0, translateY: 6, scale: 0.97 }} animate={{ opacity: 1, translateY: 0, scale: 1 }} transition={{ type: "timing", duration: 250, delay: 150, easing: Easing.bezier(0.23, 1, 0.32, 1) }}>
           <View style={{ marginBottom: 28 }}>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <Text style={{ fontSize: 15, fontWeight: "600", color: "#111827" }}>Recent papers</Text>
+              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.text }}>Recent papers</Text>
               <Pressable onPress={() => router.push("/(drawer)/(tabs)/study" as never)}>
-                <Text style={{ fontSize: 12, color: BRAND }}>View all</Text>
+                <Text style={{ fontSize: 12, color: colors.brand }}>View all</Text>
               </Pressable>
             </View>
 
             {sessions.length === 0 ? (
-              <View style={{ alignItems: "center", paddingVertical: 28, gap: 8, backgroundColor: "#EEF2FF", borderRadius: 12, borderWidth: 1, borderColor: "#C7D2FE" }}>
-                <Note size={24} color="#A5B4FC" />
-                <Text style={{ fontSize: 13, fontWeight: "500", color: "#4338CA" }}>No papers attempted yet</Text>
+              <View style={{ alignItems: "center", paddingVertical: 28, gap: 8, backgroundColor: colors.indigoBg, borderRadius: 12, borderWidth: 1, borderColor: colors.indigoBorder }}>
+                <Note size={24} color={colors.brand} />
+                <Text style={{ fontSize: 13, fontWeight: "500", color: colors.brand }}>No papers attempted yet</Text>
                 <Pressable
                   onPress={() => router.push("/study/new" as never)}
-                  style={{ marginTop: 4, backgroundColor: BRAND, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 8 }}
+                  style={{ marginTop: 4, backgroundColor: colors.brand, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 8 }}
                 >
                   <Text style={{ fontSize: 13, fontWeight: "600", color: "#FFFFFF" }}>Start studying</Text>
                 </Pressable>
@@ -227,35 +228,35 @@ export default function HomeScreen() {
                     style={{
                       flexDirection: "row",
                       alignItems: "center",
-                      backgroundColor: "#FAFAFA",
+                      backgroundColor: colors.cardSubtle,
                       borderRadius: 12,
                       borderWidth: 1,
-                      borderColor: "#E5E7EB",
+                      borderColor: colors.border,
                       padding: 14,
                       gap: 12,
                     }}
                   >
-                    <View style={{ width: 36, height: 36, borderRadius: 9, backgroundColor: "#EEF2FF", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <Note size={18} color={BRAND} />
+                    <View style={{ width: 36, height: 36, borderRadius: 9, backgroundColor: colors.indigoBg, alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <Note size={18} color={colors.brand} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 13, fontWeight: "500", color: "#111827" }} numberOfLines={1}>
+                      <Text style={{ fontSize: 13, fontWeight: "500", color: colors.text }} numberOfLines={1}>
                         {s.paperTitle}
                       </Text>
-                      <Text style={{ fontSize: 11, color: "#6B7280", marginTop: 2 }}>
+                      <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 2 }}>
                         {s.subject} · {timeAgo(s.completedAt)}
                       </Text>
                     </View>
                     <View
                       style={{
-                        backgroundColor: scoreBg(s.questionsAnswered),
+                        backgroundColor: scoreBg(s.questionsAnswered, colors),
                         borderRadius: 20,
                         paddingHorizontal: 8,
                         paddingVertical: 3,
                         marginLeft: 10,
                       }}
                     >
-                      <Text style={{ fontSize: 12, fontWeight: "600", color: scoreColor(s.questionsAnswered) }}>
+                      <Text style={{ fontSize: 12, fontWeight: "600", color: scoreColor(s.questionsAnswered, colors) }}>
                         {s.questionsAnswered}q
                       </Text>
                     </View>
@@ -270,16 +271,16 @@ export default function HomeScreen() {
         <MotiView from={{ opacity: 0, translateY: 6, scale: 0.97 }} animate={{ opacity: 1, translateY: 0, scale: 1 }} transition={{ type: "timing", duration: 250, delay: 200, easing: Easing.bezier(0.23, 1, 0.32, 1) }}>
           <View>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <Text style={{ fontSize: 15, fontWeight: "600", color: "#111827" }}>Featured resources</Text>
+              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.text }}>Featured resources</Text>
               <Pressable onPress={() => router.push("/(drawer)/(tabs)/resources")}>
-                <Text style={{ fontSize: 12, color: BRAND }}>View all</Text>
+                <Text style={{ fontSize: 12, color: colors.brand }}>View all</Text>
               </Pressable>
             </View>
 
             {resources.length === 0 ? (
-              <View style={{ alignItems: "center", paddingVertical: 28, gap: 8, backgroundColor: "#F9FAFB", borderRadius: 12, borderWidth: 1, borderColor: "#F3F4F6" }}>
-                <BookOpen size={24} color="#D1D5DB" />
-                <Text style={{ fontSize: 13, fontWeight: "500", color: "#6B7280" }}>No resources yet</Text>
+              <View style={{ alignItems: "center", paddingVertical: 28, gap: 8, backgroundColor: colors.cardSubtle, borderRadius: 12, borderWidth: 1, borderColor: colors.borderSubtle }}>
+                <BookOpen size={24} color={colors.textPlaceholder} />
+                <Text style={{ fontSize: 13, fontWeight: "500", color: colors.textTertiary }}>No resources yet</Text>
               </View>
             ) : (
               <View style={{ gap: 10 }}>
@@ -289,20 +290,20 @@ export default function HomeScreen() {
                     style={{
                       flexDirection: "row",
                       alignItems: "center",
-                      backgroundColor: "#F9FAFB",
+                      backgroundColor: colors.cardSubtle,
                       borderRadius: 12,
                       borderWidth: 1,
-                      borderColor: "#F3F4F6",
+                      borderColor: colors.borderSubtle,
                       padding: 14,
                       gap: 12,
                     }}
                   >
-                    <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: "#EEF2FF", alignItems: "center", justifyContent: "center" }}>
-                      <BookOpen size={18} color={BRAND} />
+                    <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: colors.indigoBg, alignItems: "center", justifyContent: "center" }}>
+                      <BookOpen size={18} color={colors.brand} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 13, fontWeight: "500", color: "#111827" }} numberOfLines={1}>{r.title}</Text>
-                      <Text style={{ fontSize: 11, color: "#6B7280", marginTop: 1 }}>{r.subject} · {r.type}</Text>
+                      <Text style={{ fontSize: 13, fontWeight: "500", color: colors.text }} numberOfLines={1}>{r.title}</Text>
+                      <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 1 }}>{r.subject} · {r.type}</Text>
                     </View>
                   </View>
                 ))}

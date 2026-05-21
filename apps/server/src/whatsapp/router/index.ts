@@ -8,7 +8,6 @@ import prisma from "@pass/db";
 import { loadState, saveState } from "../state/repo";
 import { getLinkedUser } from "../middleware/ensureLinked";
 import { matchHardIntent } from "./hardIntents";
-import { classifyIntent } from "./softIntents";
 import { sendWelcomeUnlinked, sendHelp, sendUsageCard } from "../flows/welcome";
 import { startLinking, tryConsumeCode } from "../flows/linking";
 import { showPapers, setPaperListCache, getPaperFromCache } from "../flows/paperBrowse";
@@ -16,7 +15,10 @@ import { startPaper, poseNextQuestion, gradeStudentAnswer, explainQuestion } fro
 import { startProjectBrief, handleProjectBriefReply } from "../flows/projectBrief";
 import { generateProject } from "../flows/projectGenerate";
 import { handleAiChat } from "../flows/aiChat";
-import { CANCEL_OK, MEDIA_ONLY, RATE_LIMIT, UNCLEAR } from "../utils/messages";
+import { startUpgrade, handleUpgradeReply } from "../flows/upgrade";
+import { routeWithNL } from "../flows/nlRouter";
+import { getAiMessageUsage } from "../../lib/aiQuota";
+import { CANCEL_OK, MEDIA_ONLY, RATE_LIMIT, AI_QUOTA_EXHAUSTED } from "../utils/messages";
 
 const RATE_WINDOW_MS   = 60_000;
 const RATE_MAX_PER_MIN = 30;
@@ -114,7 +116,19 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
     return;
   }
 
+  if (hard.kind === "upgrade") {
+    state = await startUpgrade(msg, state);
+    await saveState(whatsappId, state);
+    return;
+  }
+
   // ── Mode-specific routing ─────────────────────────────────────────────────
+
+  if (state.mode.kind === "upgrading") {
+    state = await handleUpgradeReply(client, msg, text, whatsappId, userId, state);
+    await saveState(whatsappId, state);
+    return;
+  }
 
   if (state.mode.kind === "paper_study") {
     const s = state.mode;
@@ -174,14 +188,6 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
       await saveState(whatsappId, newState);
       return;
     }
-
-    const intent = await classifyIntent(text);
-    if (intent.kind === "study_paper") {
-      const { newState, paperIds } = await showPapers(msg, intent.hints ?? {}, 0, state);
-      setPaperListCache(whatsappId, paperIds);
-      await saveState(whatsappId, newState);
-      return;
-    }
   }
 
   if (state.mode.kind === "project_brief") {
@@ -202,19 +208,31 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
     return;
   }
 
-  // ── Idle / soft intent classification ────────────────────────────────────
+  // ── Natural-language AI routing (idle / browsing fallthrough) ─────────────
+  // Peek at quota without incrementing — the actual answer generation in
+  // handleAiChat will increment and enforce the limit.
 
-  const intent = await classifyIntent(text);
+  const quota = await getAiMessageUsage(userId);
 
-  if (intent.kind === "study_paper") {
-    const { newState, paperIds } = await showPapers(msg, intent.hints ?? {}, 0, state);
+  if (!quota.allowed) {
+    // Quota exhausted: show single canned message, no AI calls, no liability.
+    // UPGRADE and HELP are the only commands that still work (handled above).
+    await msg.reply(AI_QUOTA_EXHAUSTED);
+    await saveState(whatsappId, state);
+    return;
+  }
+
+  const action = await routeWithNL(text);
+
+  if (action.kind === "study_paper") {
+    const { newState, paperIds } = await showPapers(msg, action, 0, state);
     setPaperListCache(whatsappId, paperIds);
     await saveState(whatsappId, newState);
     return;
   }
 
-  if (intent.kind === "generate_project") {
-    state = await startProjectBrief(msg, state, intent.hints);
+  if (action.kind === "generate_project") {
+    state = await startProjectBrief(msg, state, action);
     if (
       state.mode.kind === "project_brief" &&
       state.mode.collected.subject &&
@@ -230,12 +248,20 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
     return;
   }
 
-  if (intent.kind === "ai_chat") {
-    state = await handleAiChat(msg, intent.question, userId, state);
+  if (action.kind === "show_usage") {
+    await sendUsageCard(msg, userId);
     await saveState(whatsappId, state);
     return;
   }
 
-  await msg.reply(UNCLEAR);
+  if (action.kind === "upgrade_plan") {
+    state = await startUpgrade(msg, state);
+    await saveState(whatsappId, state);
+    return;
+  }
+
+  // answer_question and unclear both go through handleAiChat which enforces quota
+  const question = action.kind === "answer_question" ? action.question : text;
+  state = await handleAiChat(msg, question, userId, state);
   await saveState(whatsappId, state);
 }

@@ -46,7 +46,16 @@ export type ConversationMode =
       };
     }
   | { kind: "project_generating"; projectId: string }
-  | { kind: "ai_chat" };
+  | { kind: "ai_chat" }
+  | {
+      kind: "upgrading";
+      step: "choose_plan" | "choose_method" | "enter_phone" | "awaiting_payment";
+      plan?: "STUDY" | "PASS";
+      method?: "ecocash" | "onemoney";
+      phone?: string;
+      pollUrl?: string;
+      transactionId?: string;
+    };
 
 export interface ConversationState {
   mode: ConversationMode;

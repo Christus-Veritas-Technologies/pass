@@ -1,11 +1,12 @@
 "use client";
 
-import { ArrowRight01Icon, Cancel01Icon, Menu01Icon } from "@hugeicons/core-free-icons";
+import { ArrowRight01Icon, Cancel01Icon, Menu01Icon, Moon01Icon, Sun01Icon, Computer01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useTheme } from "next-themes";
 import { Button } from "@pass/ui/components/button";
 import { cn } from "@/lib/utils";
 import { isLoggedIn } from "@/lib/auth";
@@ -22,6 +23,16 @@ export function MarketingNav() {
   const [authed, setAuthed] = useState(false);
   const [mounted, setMounted] = useState(false);
   const reduceMotion = useReducedMotion();
+  const { theme, setTheme } = useTheme();
+
+  function cycleTheme() {
+    if (theme === "system") setTheme("light");
+    else if (theme === "light") setTheme("dark");
+    else setTheme("system");
+  }
+
+  const themeIcon = !mounted ? Sun01Icon : theme === "dark" ? Moon01Icon : theme === "light" ? Sun01Icon : Computer01Icon;
+  const themeLabel = !mounted ? "Toggle theme" : theme === "dark" ? "Dark mode" : theme === "light" ? "Light mode" : "System theme";
 
   useEffect(() => {
     setMounted(true);
@@ -77,6 +88,16 @@ export function MarketingNav() {
           </div>
 
           <div className="hidden md:flex items-center gap-2">
+            {/* Theme toggle */}
+            <button
+              type="button"
+              onClick={cycleTheme}
+              aria-label={themeLabel}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-foreground/70 transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            >
+              <HugeiconsIcon icon={themeIcon} className="h-4 w-4" />
+            </button>
+
             {/* Hydration-safe: render neutral until mounted */}
             {mounted && authed ? (
               <Link href="/dashboard">
@@ -160,7 +181,28 @@ export function MarketingNav() {
                 ))}
               </nav>
 
-              <div className="mt-8 flex flex-col gap-2">
+              <div className="mt-6 flex items-center gap-3 px-3">
+                <span className="text-sm text-muted-foreground">Theme</span>
+                <div className="flex gap-1">
+                  {(["light", "dark", "system"] as const).map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setTheme(t)}
+                      className={cn(
+                        "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
+                        theme === t
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                      )}
+                    >
+                      {t.charAt(0).toUpperCase() + t.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-4 flex flex-col gap-2">
                 {authed ? (
                   <Link href="/dashboard" onClick={() => setOpen(false)}>
                     <Button className="w-full" size="lg">

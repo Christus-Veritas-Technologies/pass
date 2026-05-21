@@ -62,7 +62,7 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex force-light" style={{ colorScheme: "light" }}>
+    <div className="min-h-screen flex">
       <BrandPanel />
 
       <div className="flex-1 flex items-center justify-center px-6 py-12 bg-background">

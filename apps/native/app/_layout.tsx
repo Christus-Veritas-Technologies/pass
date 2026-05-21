@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { OfflineBanner } from "@/components/offline-banner";
+import { ThemeProvider } from "@/lib/theme-context";
 
 // Protects every screen inside (drawer) — the authenticated shell.
 // (auth) and (onboarding) routes are always reachable without a token.
@@ -19,7 +20,9 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (token === undefined) return; // still reading from secure store
+    // undefined = SecureStore read still in-flight; skip to prevent a flash of
+    // the protected (drawer) screen before the token is known.
+    if (token === undefined) return;
     if (!token && segments[0] === "(drawer)") {
       router.replace("/(auth)/login");
     }
@@ -36,17 +39,19 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <KeyboardProvider>
-          <AuthGuard>
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="index" />
-              <Stack.Screen name="(auth)" />
-              <Stack.Screen name="(onboarding)" />
-              <Stack.Screen name="(drawer)" />
-            </Stack>
-            <OfflineBanner />
-          </AuthGuard>
-        </KeyboardProvider>
+        <ThemeProvider>
+          <KeyboardProvider>
+            <AuthGuard>
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="index" />
+                <Stack.Screen name="(auth)" />
+                <Stack.Screen name="(onboarding)" />
+                <Stack.Screen name="(drawer)" />
+              </Stack>
+              <OfflineBanner />
+            </AuthGuard>
+          </KeyboardProvider>
+        </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

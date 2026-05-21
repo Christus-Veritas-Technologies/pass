@@ -17,7 +17,7 @@ import { PLANS as PLAN_DATA } from "@pass/pricing";
 const PLAN_META = {
   FREE:  { icon: ZapIcon,      iconBg: "bg-muted",       iconColor: "text-muted-foreground" },
   STUDY: { icon: SparklesIcon, iconBg: "bg-primary/10",  iconColor: "text-primary"          },
-  PASS:  { icon: CrownIcon,    iconBg: "bg-amber-50",    iconColor: "text-amber-500"        },
+  PASS:  { icon: CrownIcon,    iconBg: "bg-amber-50 dark:bg-amber-900/30",    iconColor: "text-amber-500 dark:text-amber-400"        },
 } as const;
 
 const PLANS = (["FREE", "STUDY", "PASS"] as const).map((id) => {

@@ -1,17 +1,21 @@
 import { BookOpen, Folder, GraduationCap, House, User } from "@vuduc0801/react-native-phosphor-icons";
 import { Tabs } from "expo-router";
-
-const BRAND = "#4F46E5";
-const MUTED = "#9CA3AF";
+import { useAppTheme } from "@/lib/theme-context";
 
 export default function TabsLayout() {
+  const { colors } = useAppTheme();
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: BRAND,
-        tabBarInactiveTintColor: MUTED,
-        tabBarStyle: { borderTopWidth: 1, borderTopColor: "#F3F4F6" },
+        tabBarActiveTintColor: colors.tabActive,
+        tabBarInactiveTintColor: colors.tabInactive,
+        tabBarStyle: {
+          borderTopWidth: 1,
+          borderTopColor: colors.tabBarBorder,
+          backgroundColor: colors.tabBarBg,
+        },
       }}
     >
       <Tabs.Screen

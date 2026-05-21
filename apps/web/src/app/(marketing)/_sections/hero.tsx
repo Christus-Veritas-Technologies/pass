@@ -116,7 +116,7 @@ export function Hero() {
               {/* Left: faux study screen */}
               <div className="border-r border-border bg-card p-6 md:p-8">
                 <div className="flex items-center gap-2">
-                  <span className="rounded-md bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
+                  <span className="rounded-md bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:text-blue-300">
                     Mathematics
                   </span>
                   <span className="rounded-md bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
@@ -150,7 +150,7 @@ export function Hero() {
               </div>
 
               {/* Right: AI panel */}
-              <div className="relative bg-gradient-to-br from-indigo-50 to-violet-50 p-6 md:p-8">
+              <div className="relative bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-indigo-950/60 dark:to-violet-950/60 p-6 md:p-8">
                 <div className="flex items-center gap-2 text-primary">
                   <HugeiconsIcon icon={SparklesIcon} className="h-3.5 w-3.5" />
                   <span className="text-[10px] font-semibold uppercase tracking-wider">

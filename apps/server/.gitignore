@@ -3,6 +3,9 @@ dist/
 /build
 /out/
 
+.wwebjs_auth
+.wwebjs_cache
+
 # dev
 .yarn/
 !.yarn/patches
