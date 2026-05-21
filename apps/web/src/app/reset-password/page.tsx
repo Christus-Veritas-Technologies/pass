@@ -69,8 +69,8 @@ function ResetForm() {
           className="space-y-5 text-center"
         >
           <div className="flex justify-center">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-              <HugeiconsIcon icon={CheckmarkCircle01Icon} className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+            <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center">
+              <HugeiconsIcon icon={CheckmarkCircle01Icon} className="w-8 h-8 text-emerald-600" />
             </div>
           </div>
           <div className="space-y-2">
@@ -154,7 +154,7 @@ function ResetForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center px-6 bg-background">
+    <div className="min-h-screen flex items-center justify-center px-6 bg-background force-light" style={{ colorScheme: "light" }}>
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}

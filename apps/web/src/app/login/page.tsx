@@ -53,7 +53,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex force-light" style={{ colorScheme: "light" }}>
       <BrandPanel />
 
       {/* Form panel */}
