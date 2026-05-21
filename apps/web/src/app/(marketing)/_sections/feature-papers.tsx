@@ -59,10 +59,10 @@ export function FeaturePapers() {
                       <span
                         className={`rounded-md px-1.5 py-0.5 text-[9px] font-semibold ${
                           p.tone === "blue"
-                            ? "bg-blue-50 text-blue-700"
+                            ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
                             : p.tone === "purple"
-                            ? "bg-purple-50 text-purple-700"
-                            : "bg-teal-50 text-teal-700"
+                            ? "bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
+                            : "bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300"
                         }`}
                       >
                         {p.subject}

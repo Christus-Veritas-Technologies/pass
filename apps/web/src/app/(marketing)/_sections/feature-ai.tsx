@@ -78,7 +78,7 @@ export function FeatureAi() {
                 apps/web/public/landing/feature-ai.png. */}
             <div className="relative">
               <div className="absolute -inset-4 rounded-3xl bg-white/5 blur-xl" />
-              <div className="relative rounded-2xl bg-white p-6 text-foreground shadow-2xl shadow-indigo-950/40 ring-1 ring-white/10 md:p-8">
+              <div className="relative rounded-2xl bg-white dark:bg-zinc-900 p-6 text-foreground shadow-2xl shadow-indigo-950/40 ring-1 ring-white/10 dark:ring-white/5 md:p-8">
                 <div className="flex items-center gap-2 text-primary">
                   <HugeiconsIcon icon={SparklesIcon} className="h-4 w-4" />
                   <span className="text-[10px] font-semibold uppercase tracking-wider">
@@ -113,7 +113,7 @@ export function FeatureAi() {
                     <li>Mashonaland East averages 750&ndash;1,000 mm/year &mdash; just enough</li>
                     <li>Dry spells in Jan/Feb stress the crop during tasselling</li>
                   </ul>
-                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                  <div className="rounded-lg border border-amber-200 dark:border-amber-700/50 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-xs text-amber-900 dark:text-amber-200">
                     <strong className="font-semibold">Exam tip:</strong> name a region <em>and</em>
                     {" "}give a number whenever you can. Examiners reward specificity.
                   </div>

@@ -52,8 +52,7 @@ const serif = Instrument_Serif({
 export default function MarketingLayout({ children }: { children: ReactNode }) {
   return (
     <div
-      className={`${inter.variable} ${serif.variable} font-marketing-sans min-h-screen bg-background text-foreground antialiased force-light`}
-      style={{ colorScheme: "light" }}
+      className={`${inter.variable} ${serif.variable} font-marketing-sans min-h-screen bg-background text-foreground antialiased`}
     >
       <a
         href="#main"
