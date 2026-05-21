@@ -12,7 +12,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Badge } from "@pass/ui/components/badge";
-import { buttonVariants } from "@pass/ui/components/button";
+import { Button, buttonVariants } from "@pass/ui/components/button";
 import { Card, CardContent } from "@pass/ui/components/card";
 import { Skeleton } from "@pass/ui/components/skeleton";
 import {
@@ -26,6 +26,52 @@ import {
 import { getAccessToken } from "@/lib/auth";
 
 const API = process.env.NEXT_PUBLIC_SERVER_URL;
+const PAGE_SIZE = 10;
+
+function Pagination({
+  page,
+  totalPages,
+  from,
+  to,
+  total,
+  onPrev,
+  onNext,
+}: {
+  page: number;
+  totalPages: number;
+  from: number;
+  to: number;
+  total: number;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  if (totalPages <= 1) return null;
+  return (
+    <div className="flex items-center justify-between mt-4 px-1">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onPrev}
+        disabled={page === 1}
+        className="text-xs h-8 px-3"
+      >
+        ‹ Prev
+      </Button>
+      <span className="text-xs text-muted-foreground">
+        {from}–{to} of {total}
+      </span>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onNext}
+        disabled={page === totalPages}
+        className="text-xs h-8 px-3"
+      >
+        Next ›
+      </Button>
+    </div>
+  );
+}
 
 interface StudyStats {
   sessionsCompleted: number;
@@ -101,6 +147,7 @@ export default function StudyPage() {
   const router = useRouter();
   const [data, setData] = useState<StudyStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     const token = getAccessToken();
@@ -187,49 +234,68 @@ export default function StudyPage() {
               <Link href="/study/new" className={buttonVariants({ size: "sm" })}>Study new paper</Link>
             </CardContent>
           </Card>
-        ) : (
-          <Card className="rounded-xl overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/30">
-                  <TableHead className="font-semibold text-foreground">Paper</TableHead>
-                  <TableHead className="font-semibold text-foreground">Subject</TableHead>
-                  <TableHead className="font-semibold text-foreground">Mode</TableHead>
-                  <TableHead className="text-right font-semibold text-foreground">Questions</TableHead>
-                  <TableHead className="text-right font-semibold text-foreground">When</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.sessions.map((s) => (
-                  <TableRow
-                    key={s.id}
-                    className="cursor-pointer transition-colors duration-100 hover:bg-muted/40"
-                    onClick={() => router.push(`/papers/${s.paperId}`)}
-                  >
-                    <TableCell className="font-medium max-w-[240px]">
-                      <span className="line-clamp-1">{s.paperTitle}</span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium">{s.subject}</span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={s.mode === "GUIDE" ? "default" : "outline"}
-                        className={`text-xs ${s.mode === "GUIDE" ? "bg-violet-100 text-violet-700 border-violet-200 hover:bg-violet-100" : ""}`}
+        ) : (() => {
+          const sessions = data.sessions;
+          const totalPages = Math.ceil(sessions.length / PAGE_SIZE);
+          const safePage = Math.min(page, Math.max(1, totalPages));
+          const from = (safePage - 1) * PAGE_SIZE + 1;
+          const to = Math.min(safePage * PAGE_SIZE, sessions.length);
+          const paged = sessions.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+          return (
+            <>
+              <Card className="rounded-xl overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/30">
+                      <TableHead className="font-semibold text-foreground">Paper</TableHead>
+                      <TableHead className="font-semibold text-foreground">Subject</TableHead>
+                      <TableHead className="font-semibold text-foreground">Mode</TableHead>
+                      <TableHead className="text-right font-semibold text-foreground">Questions</TableHead>
+                      <TableHead className="text-right font-semibold text-foreground">When</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paged.map((s) => (
+                      <TableRow
+                        key={s.id}
+                        className="cursor-pointer transition-colors duration-100 hover:bg-muted/40"
+                        onClick={() => router.push(`/papers/${s.paperId}`)}
                       >
-                        {s.mode === "GUIDE" ? "Guide" : "Free"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right text-sm font-medium">{s.questionsAnswered}</TableCell>
-                    <TableCell className="text-right text-xs text-muted-foreground">
-                      {timeAgo(s.completedAt)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Card>
-        )}
+                        <TableCell className="font-medium max-w-[240px]">
+                          <span className="line-clamp-1">{s.paperTitle}</span>
+                        </TableCell>
+                        <TableCell>
+                          <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium">{s.subject}</span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={s.mode === "GUIDE" ? "default" : "outline"}
+                            className={`text-xs ${s.mode === "GUIDE" ? "bg-violet-100 text-violet-700 border-violet-200 hover:bg-violet-100" : ""}`}
+                          >
+                            {s.mode === "GUIDE" ? "Guide" : "Free"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right text-sm font-medium">{s.questionsAnswered}</TableCell>
+                        <TableCell className="text-right text-xs text-muted-foreground">
+                          {timeAgo(s.completedAt)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Card>
+              <Pagination
+                page={safePage}
+                totalPages={totalPages}
+                from={from}
+                to={to}
+                total={sessions.length}
+                onPrev={() => setPage((p) => Math.max(1, p - 1))}
+                onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
+              />
+            </>
+          );
+        })()}
       </div>
     </div>
   );
