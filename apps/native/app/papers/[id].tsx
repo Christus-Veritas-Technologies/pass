@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { env } from "@pass/env/native";
 import { Button } from "@/components/ui/button";
 import { PdfViewerModal } from "@/components/pdf-viewer";
+import { FormattedQuestionText } from "@/lib/format-question";
 
 const BRAND = "#4F46E5";
 const API = env.EXPO_PUBLIC_SERVER_URL;
@@ -380,7 +381,7 @@ export default function PaperSessionScreen() {
                   <Text style={{ fontSize: 11, color: BRAND, fontWeight: "600" }}>{mode === "GUIDE" ? "Guide" : "Free"}</Text>
                 </View>
               </View>
-              <Text style={{ fontSize: 15, color: "#111827", lineHeight: 24 }}>{currentQ.text}</Text>
+              <FormattedQuestionText text={currentQ.text} />
 
               {/* Diagram-dependent question — link to the original PDF page */}
               {currentQ.hasDiagram && (
