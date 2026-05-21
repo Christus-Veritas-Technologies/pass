@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
-import Image from "next/image";
-import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
+import {
+  AiBrain01Icon,
+  ArrowRight01Icon,
+  GraduationScrollIcon,
+} from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { CtaButton } from "../_components/cta-button";
+import { IllustrationPanel } from "../_components/illustration-panel";
 import { SectionEyebrow } from "../_components/section-eyebrow";
 import { SectionHeading, SectionLede } from "../_components/section-heading";
 import { ScrollReveal } from "../_components/scroll-reveal";
@@ -72,17 +76,14 @@ export default function MarketingAbout() {
 
         <ScrollReveal as="section" className="mt-20">
           <div className="grid items-center gap-10 md:grid-cols-[1fr_1.4fr]">
-            <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-muted">
-              {/* TODO landing-images: replace with apps/web/public/landing/stock/networks.jpg
-                  from Unsplash query "harare cbd street market mobile phone". */}
-              <Image
-                src="/landing/stock/networks.jpg"
-                alt="A student in Harare using their phone outdoors"
-                fill
-                className="object-cover"
-                sizes="(min-width: 768px) 40vw, 100vw"
-              />
-            </div>
+            <IllustrationPanel
+              icon={AiBrain01Icon}
+              caption="Built for the phone you have, on the network you actually use."
+              gradient="from-indigo-600 via-indigo-700 to-violet-700"
+            />
+            {/* TODO landing-images: swap IllustrationPanel for a real licensed
+                photograph saved at apps/web/public/landing/stock/networks.jpg.
+                Unsplash query: "harare cbd street market mobile phone". */}
             <div>
               <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
                 Built for our networks
@@ -111,17 +112,14 @@ export default function MarketingAbout() {
                 to a Lower 6 study group at midnight.
               </p>
             </div>
-            <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-muted">
-              {/* TODO landing-images: replace with apps/web/public/landing/stock/team.jpg
-                  from Unsplash query "african tech team office laptop". */}
-              <Image
-                src="/landing/stock/team.jpg"
-                alt="A small tech team working together at a desk"
-                fill
-                className="object-cover"
-                sizes="(min-width: 768px) 40vw, 100vw"
-              />
-            </div>
+            <IllustrationPanel
+              icon={GraduationScrollIcon}
+              caption="Zimbabwean engineers, teachers, and designers — who grew up writing ZIMSEC."
+              gradient="from-violet-600 via-fuchsia-600 to-rose-500"
+            />
+            {/* TODO landing-images: swap IllustrationPanel for a real licensed
+                photograph saved at apps/web/public/landing/stock/team.jpg.
+                Unsplash query: "african tech team office laptop". */}
           </div>
         </ScrollReveal>
 
