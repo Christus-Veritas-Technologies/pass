@@ -92,13 +92,6 @@ export default function ProfilePage() {
   const [saveOk, setSaveOk] = useState(false);
   const [saveErr, setSaveErr] = useState("");
 
-  const [whatsapp, setWhatsapp] = useState<WhatsAppStatus | null>(null);
-  const [linkCode, setLinkCode] = useState<string | null>(null);
-  const [linkExpiry, setLinkExpiry] = useState<Date | null>(null);
-  const [linkExpirySecs, setLinkExpirySecs] = useState(0);
-  const [linkLoading, setLinkLoading] = useState(false);
-  const [disconnecting, setDisconnecting] = useState(false);
-
   useEffect(() => {
     const token = getAccessToken();
 
@@ -130,54 +123,6 @@ export default function ProfilePage() {
         .catch(() => {});
     }
   }, []);
-
-  useEffect(() => {
-    if (!linkExpiry) return;
-    const id = setInterval(() => {
-      const secs = Math.max(0, Math.round((linkExpiry.getTime() - Date.now()) / 1000));
-      setLinkExpirySecs(secs);
-      if (secs === 0) clearInterval(id);
-    }, 1000);
-    return () => clearInterval(id);
-  }, [linkExpiry]);
-
-  async function handleConnectWhatsApp() {
-    setLinkLoading(true);
-    try {
-      const token = getAccessToken();
-      const res = await fetch(`${API}/users/me/whatsapp/link-code`, {
-        method: "POST",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      const data = await res.json();
-      setLinkCode(data.code);
-      const expiry = new Date(data.expiresAt);
-      setLinkExpiry(expiry);
-      setLinkExpirySecs(Math.max(0, Math.round((expiry.getTime() - Date.now()) / 1000)));
-    } catch {
-      // silently ignore
-    } finally {
-      setLinkLoading(false);
-    }
-  }
-
-  async function handleDisconnectWhatsApp() {
-    setDisconnecting(true);
-    try {
-      const token = getAccessToken();
-      await fetch(`${API}/users/me/whatsapp`, {
-        method: "DELETE",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      setWhatsapp(null);
-      setLinkCode(null);
-      setLinkExpiry(null);
-    } catch {
-      // silently ignore
-    } finally {
-      setDisconnecting(false);
-    }
-  }
 
   function startEdit() {
     if (!user) return;
