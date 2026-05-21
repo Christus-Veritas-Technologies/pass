@@ -20,7 +20,9 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (token === undefined) return; // still reading from secure store
+    // undefined = SecureStore read still in-flight; skip to prevent a flash of
+    // the protected (drawer) screen before the token is known.
+    if (token === undefined) return;
     if (!token && segments[0] === "(drawer)") {
       router.replace("/(auth)/login");
     }
