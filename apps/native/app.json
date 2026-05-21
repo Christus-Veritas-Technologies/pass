@@ -18,6 +18,8 @@
     },
     "android": {
       "package": "com.pass.app",
+      "versionCode": 1,
+      "privacyPolicyUrl": "https://pass.co.zw/privacy",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#4F46E5"
@@ -33,6 +35,11 @@
     },
     "web": {
       "bundler": "metro"
+    },
+    "splash": {
+      "backgroundColor": "#FFFFFF",
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain"
     },
     "plugins": [
       "expo-font",
