@@ -125,11 +125,14 @@ export function apiUpdateProfile(data: { grade?: string; school?: string; name?:
 export function storeTokens(tokens: AuthTokens) {
   localStorage.setItem("pass_access_token", tokens.accessToken);
   localStorage.setItem("pass_refresh_token", tokens.refreshToken);
+  // Mirror a cookie so the edge middleware can check auth state without reading localStorage
+  document.cookie = "pass_session=1; path=/; max-age=604800; SameSite=Lax";
 }
 
 export function clearTokens() {
   localStorage.removeItem("pass_access_token");
   localStorage.removeItem("pass_refresh_token");
+  document.cookie = "pass_session=; path=/; max-age=0; SameSite=Lax";
 }
 
 export function getAccessToken(): string | null {
