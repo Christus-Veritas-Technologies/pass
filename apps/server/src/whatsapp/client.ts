@@ -23,6 +23,7 @@ export function createClient(): Client {
     authStrategy: new LocalAuth({ dataPath: env.WHATSAPP_SESSION_DIR }),
     puppeteer: {
       headless: true,
+      ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}),
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",
