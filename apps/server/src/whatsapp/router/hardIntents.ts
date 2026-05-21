@@ -10,6 +10,7 @@ const HELP      = /^(help|menu|what can you do|commands)\b/i;
 const CANCEL    = /^(cancel|exit|stop|quit|back)\b/i;
 const LINK      = /^link(\s+my\s+account)?\s*$/i;
 const USAGE     = /^(usage|plan|limits?|quota)\s*$/i;
+const UPGRADE   = /^upgrade\s*$/i;
 const PAPERS    = /^papers?\s*$/i;
 const MORE      = /^more\s*$/i;
 const START     = /^start\s*$/i;
@@ -25,6 +26,7 @@ export interface HardIntentResult {
     | "cancel"
     | "link"
     | "usage"
+    | "upgrade"
     | "papers"
     | "more"
     | "start"
@@ -47,6 +49,7 @@ export function matchHardIntent(text: string, mode: ConversationMode): HardInten
   if (CANCEL.test(t))                             return { kind: "cancel" };
   if (LINK.test(t))                               return { kind: "link" };
   if (USAGE.test(t))                              return { kind: "usage" };
+  if (UPGRADE.test(t))                            return { kind: "upgrade" };
   if (PAPERS.test(t))                             return { kind: "papers" };
 
   if (mode.kind === "browsing_papers") {

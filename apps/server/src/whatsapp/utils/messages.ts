@@ -231,6 +231,16 @@ export function projectFallbackMessage(projectId: string): string {
 _(I couldn't attach the PDF right now, but the full text is saved in your Pass account.)_`;
 }
 
+// ─── Quota exhausted (hard limit — no further AI calls) ──────────────────────
+
+export const AI_QUOTA_EXHAUSTED = `You've used all your AI messages for this month.
+
+Upgrade to get more: reply *UPGRADE* or visit https://pass.co.zw/pricing
+
+You can still use:
+  • \`UPGRADE\` — upgrade your plan
+  • \`HELP\`    — see the menu`;
+
 // ─── Errors / misc ────────────────────────────────────────────────────────────
 
 export const AI_ERROR         = `I'm having trouble thinking right now — try again in a minute 🙏`;
