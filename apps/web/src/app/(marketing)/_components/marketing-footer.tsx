@@ -17,22 +17,22 @@ const COLUMNS: Array<{ heading: string; links: Array<{ label: string; href: stri
     heading: "Company",
     links: [
       { label: "About", href: "/about" },
-      { label: "Privacy", href: "/about" },
-      { label: "Terms", href: "/about" },
+      { label: "Privacy", href: "/privacy" },
+      { label: "Terms", href: "/terms" },
     ],
   },
   {
     heading: "Resources",
     links: [
-      { label: "Help centre", href: "/about" },
-      { label: "Contact", href: "/about" },
-      { label: "Changelog", href: "/about" },
+      { label: "Help centre", href: "/contact" },
+      { label: "Contact", href: "/contact" },
+      { label: "Changelog", href: "/changelog" },
     ],
   },
   {
     heading: "Get the app",
     links: [
-      { label: "Android", href: "/about" },
+      { label: "Android", href: "https://play.google.com/store/apps/details?id=co.pass.app", external: true },
       { label: "iOS (coming)", href: "/about" },
       { label: "Web", href: "/login" },
     ],
@@ -69,16 +69,29 @@ export function MarketingFooter() {
                 {col.heading}
               </p>
               <ul className="mt-4 space-y-2.5">
-                {col.links.map((link) => (
-                  <li key={link.label}>
-                    <Link
-                      href={link.href as never}
-                      className="text-sm text-background/80 transition-colors hover:text-background"
-                    >
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
+                {col.links.map((link) =>
+                  link.external ? (
+                    <li key={link.label}>
+                      <a
+                        href={link.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-background/80 transition-colors hover:text-background"
+                      >
+                        {link.label}
+                      </a>
+                    </li>
+                  ) : (
+                    <li key={link.label}>
+                      <Link
+                        href={link.href as never}
+                        className="text-sm text-background/80 transition-colors hover:text-background"
+                      >
+                        {link.label}
+                      </Link>
+                    </li>
+                  )
+                )}
               </ul>
             </div>
           ))}
