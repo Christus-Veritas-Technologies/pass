@@ -22,6 +22,8 @@
       "targetSdkVersion": 34,
       "minSdkVersion": 24,
       "compileSdkVersion": 34,
+      "allowBackup": false,
+      "usesCleartextTraffic": false,
       "privacyPolicyUrl": "https://pass.co.zw/privacy",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
