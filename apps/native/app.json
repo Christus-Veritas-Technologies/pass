@@ -19,6 +19,9 @@
     "android": {
       "package": "com.pass.app",
       "versionCode": 1,
+      "targetSdkVersion": 34,
+      "minSdkVersion": 24,
+      "compileSdkVersion": 34,
       "privacyPolicyUrl": "https://pass.co.zw/privacy",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
