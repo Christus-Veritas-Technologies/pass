@@ -2,9 +2,12 @@
 
 import {
   BookOpen01Icon,
+  Computer01Icon,
   Folder01Icon,
   GraduationScrollIcon,
   Home01Icon,
+  Moon01Icon,
+  Sun01Icon,
   Tag01Icon,
   UserIcon,
 } from "@hugeicons/core-free-icons";
@@ -12,6 +15,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTheme } from "next-themes";
 import { Separator } from "@pass/ui/components/separator";
 import { cn } from "@/lib/utils";
 
@@ -28,8 +32,15 @@ interface SidebarProps {
   onClose?: () => void;
 }
 
+const THEME_OPTIONS = [
+  { value: "light", icon: Sun01Icon, label: "Light" },
+  { value: "dark", icon: Moon01Icon, label: "Dark" },
+  { value: "system", icon: Computer01Icon, label: "System" },
+] as const;
+
 export function Sidebar({ onClose }: SidebarProps) {
   const pathname = usePathname();
+  const { theme, setTheme } = useTheme();
 
   return (
     <div className="flex h-full flex-col">
@@ -63,6 +74,33 @@ export function Sidebar({ onClose }: SidebarProps) {
           );
         })}
       </nav>
+
+      {/* Theme toggle */}
+      <div className="px-3 pb-4 pt-2">
+        <Separator className="mb-3" />
+        <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Theme
+        </p>
+        <div className="flex gap-1">
+          {THEME_OPTIONS.map(({ value, icon, label }) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setTheme(value)}
+              aria-label={`${label} theme`}
+              className={cn(
+                "flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-medium transition-colors",
+                theme === value
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              )}
+            >
+              <HugeiconsIcon icon={icon} className="h-3.5 w-3.5 shrink-0" />
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
