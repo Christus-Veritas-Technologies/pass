@@ -16,12 +16,27 @@ import whatsappRoutes from "./routes/whatsapp.routes";
 
 const app = new Hono();
 
+// Allowed web origins (exact match)
+const WEB_ORIGINS = new Set([
+  "https://pass.co.zw",
+  "https://www.pass.co.zw",
+  "http://localhost:3000",
+  "http://localhost:8081",
+]);
+
 app.use(logger());
 app.use(
   "/*",
   cors({
-    origin: env.CORS_ORIGIN,
-    allowMethods: ["GET", "POST", "PATCH", "OPTIONS"],
+    // Mobile apps send requests with a null or absent Origin header.
+    // Web requests get reflected back only if in the allow-list.
+    origin: (origin) => {
+      if (!origin || origin === "null") return "*";
+      return WEB_ORIGINS.has(origin) ? origin : null;
+    },
+    allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allowHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
   }),
 );
 
