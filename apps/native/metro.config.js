@@ -1,3 +1,8 @@
+// Patch Node's fs with graceful-fs before Metro opens any file handles.
+// This queues concurrent open() calls instead of failing with EMFILE on Windows.
+const fs = require("fs");
+require("graceful-fs").gracefulify(fs);
+
 const { getDefaultConfig } = require("expo/metro-config");
 const { withUniwindConfig } = require("uniwind/metro");
 const { wrapWithReanimatedMetroConfig } = require("react-native-reanimated/metro-config");
@@ -5,10 +10,8 @@ const { wrapWithReanimatedMetroConfig } = require("react-native-reanimated/metro
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname);
 
-// Limit concurrent transform workers to avoid EMFILE (too many open files) on Windows.
-// Without this cap every worker calls readFileSync on uniwind-types.d.ts simultaneously,
-// exhausting the process file-handle pool during large bundling runs.
-config.maxWorkers = 4;
+// Keep worker count low to reduce simultaneous file handles on Windows.
+config.maxWorkers = 2;
 
 const uniwindConfig = withUniwindConfig(wrapWithReanimatedMetroConfig(config), {
   cssEntryFile: "./global.css",
