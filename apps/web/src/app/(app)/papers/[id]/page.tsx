@@ -18,6 +18,7 @@ import { Progress } from "@pass/ui/components/progress";
 import { Skeleton } from "@pass/ui/components/skeleton";
 import { cn } from "@/lib/utils";
 import { getAccessToken } from "@/lib/auth";
+import { FormattedQuestionText } from "@/lib/format-question";
 
 const API = process.env.NEXT_PUBLIC_SERVER_URL;
 
@@ -354,7 +355,7 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
                   </span>
                   <Badge variant="outline">{mode === "GUIDE" ? "Guide" : "Free"}</Badge>
                 </div>
-                <p className="text-sm leading-relaxed">{currentQ.text}</p>
+                <FormattedQuestionText text={currentQ.text} />
 
                 {/* Diagram-dependent question — link to the original PDF page */}
                 {currentQ.hasDiagram && (
