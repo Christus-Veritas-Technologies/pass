@@ -2,12 +2,20 @@
   "expo": {
     "name": "Pass",
     "slug": "pass",
+    "owner": "codewithkin",
     "scheme": "pass",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "icon": "./assets/images/icon.png",
+    "updates": {
+      "enabled": true,
+      "url": "https://u.expo.dev/31966f37-762e-44f9-9da4-2aa43d262227"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "android": {
       "package": "com.pass.app",
       "adaptiveIcon": {
@@ -30,6 +38,7 @@
       "expo-font",
       "expo-image",
       "expo-sharing",
+      "expo-updates",
       [
         "expo-splash-screen",
         {
