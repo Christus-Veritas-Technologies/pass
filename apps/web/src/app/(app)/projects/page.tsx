@@ -22,6 +22,52 @@ const SUBJECTS = [
 const GRADES = ["Form 1", "Form 2", "Form 3", "Form 4", "Form 5", "Form 6"];
 
 const API = process.env.NEXT_PUBLIC_SERVER_URL;
+const PAGE_SIZE = 10;
+
+function Pagination({
+  page,
+  totalPages,
+  from,
+  to,
+  total,
+  onPrev,
+  onNext,
+}: {
+  page: number;
+  totalPages: number;
+  from: number;
+  to: number;
+  total: number;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  if (totalPages <= 1) return null;
+  return (
+    <div className="flex items-center justify-between mt-2 px-1">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onPrev}
+        disabled={page === 1}
+        className="text-xs h-8 px-3"
+      >
+        ‹ Prev
+      </Button>
+      <span className="text-xs text-muted-foreground">
+        {from}–{to} of {total}
+      </span>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onNext}
+        disabled={page === totalPages}
+        className="text-xs h-8 px-3"
+      >
+        Next ›
+      </Button>
+    </div>
+  );
+}
 
 interface Project {
   id: string;
@@ -56,6 +102,7 @@ export default function ProjectsPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [selected, setSelected] = useState<Project | null>(null);
+  const [page, setPage] = useState(1);
 
   // Form state
   const [subject, setSubject] = useState(SUBJECTS[0]);
@@ -274,29 +321,47 @@ export default function ProjectsPage() {
                 Generate guide
               </button>
             </div>
-          ) : (
-            projects.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => { setSelected(p); setShowForm(false); setStreamedContent(""); }}
-                className="w-full text-left"
-              >
-                <Card className={`rounded-xl transition-[transform,box-shadow] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] cursor-pointer hover:-translate-y-0.5 hover:shadow-sm active:scale-[0.98] ${selected?.id === p.id ? "ring-2 ring-primary shadow-sm" : ""}`}>
-                  <CardContent className="py-3 px-4">
-                    <p className="text-sm font-medium truncate">{p.topic}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {p.subject} · {p.grade}
-                    </p>
-                    <div className="flex items-center justify-between mt-2">
-                      <Badge variant="outline" className="text-xs">{p.grade}</Badge>
-                      <span className="text-xs text-muted-foreground">{timeAgo(p.createdAt)}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              </button>
-            ))
-          )}
+          ) : (() => {
+            const totalPages = Math.ceil(projects.length / PAGE_SIZE);
+            const safePage = Math.min(page, Math.max(1, totalPages));
+            const from = (safePage - 1) * PAGE_SIZE + 1;
+            const to = Math.min(safePage * PAGE_SIZE, projects.length);
+            const paged = projects.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+            return (
+              <>
+                {paged.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => { setSelected(p); setShowForm(false); setStreamedContent(""); }}
+                    className="w-full text-left"
+                  >
+                    <Card className={`rounded-xl transition-[transform,box-shadow] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] cursor-pointer hover:-translate-y-0.5 hover:shadow-sm active:scale-[0.98] ${selected?.id === p.id ? "ring-2 ring-primary shadow-sm" : ""}`}>
+                      <CardContent className="py-3 px-4">
+                        <p className="text-sm font-medium truncate">{p.topic}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {p.subject} · {p.grade}
+                        </p>
+                        <div className="flex items-center justify-between mt-2">
+                          <Badge variant="outline" className="text-xs">{p.grade}</Badge>
+                          <span className="text-xs text-muted-foreground">{timeAgo(p.createdAt)}</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </button>
+                ))}
+                <Pagination
+                  page={safePage}
+                  totalPages={totalPages}
+                  from={from}
+                  to={to}
+                  total={projects.length}
+                  onPrev={() => setPage((p) => Math.max(1, p - 1))}
+                  onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
+                />
+              </>
+            );
+          })()}
         </div>
 
         {/* Right: content viewer */}

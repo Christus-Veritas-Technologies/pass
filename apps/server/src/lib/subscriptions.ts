@@ -1,5 +1,6 @@
 import prisma from "@pass/db";
-import { type PlanKey as Plan } from "./planLimits";
+import type { Plan, SubscriptionStatus } from "@pass/db";
+import { PLAN_LIMITS } from "./planLimits";
 import { sendEmail } from "./emails";
 
 /**
@@ -78,7 +79,15 @@ export async function checkSubscriptionExpiry() {
 /**
  * Get subscription info for a user.
  */
-export async function getSubscriptionInfo(userId: string) {
+export async function getSubscriptionInfo(userId: string): Promise<{
+  plan: Plan;
+  status: SubscriptionStatus;
+  startDate: Date;
+  expiryDate: Date;
+  daysRemaining: number;
+  isExpired: boolean;
+  renewalDue: boolean;
+} | null> {
   const subscription = await prisma.subscription.findUnique({
     where: { userId },
   });
@@ -120,13 +129,8 @@ export async function checkPlanLimit(userId: string, resource: "paper" | "projec
     where: { userId_month: { userId, month } },
   });
 
-  const LIMITS: Record<Plan, Record<"paper" | "project", number>> = {
-    FREE: { paper: 3, project: 1 },
-    STUDY: { paper: 12, project: 7 },
-    PASS: { paper: 20, project: 12 },
-  };
-
-  const limit = LIMITS[user.plan][resource];
+  const planLimits = PLAN_LIMITS[user.plan];
+  const limit = resource === "paper" ? planLimits.papers : planLimits.projects;
   const used = resource === "paper" ? (usage?.papersUsed || 0) : (usage?.projectsUsed || 0);
 
   return used < limit;
@@ -135,7 +139,15 @@ export async function checkPlanLimit(userId: string, resource: "paper" | "projec
 /**
  * Get remaining usage for a user's current plan.
  */
-export async function getPlanUsage(userId: string) {
+export async function getPlanUsage(userId: string): Promise<{
+  plan: Plan;
+  papersUsed: number;
+  papersLimit: number;
+  papersRemaining: number;
+  projectsUsed: number;
+  projectsLimit: number;
+  projectsRemaining: number;
+} | null> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
   });
@@ -151,21 +163,15 @@ export async function getPlanUsage(userId: string) {
     where: { userId_month: { userId, month } },
   });
 
-  const LIMITS: Record<Plan, Record<"paper" | "project", number>> = {
-    FREE: { paper: 3, project: 1 },
-    STUDY: { paper: 12, project: 7 },
-    PASS: { paper: 20, project: 12 },
-  };
-
-  const limits = LIMITS[user.plan];
+  const limits = PLAN_LIMITS[user.plan];
 
   return {
     plan: user.plan,
     papersUsed: usage?.papersUsed || 0,
-    papersLimit: limits.paper,
-    papersRemaining: limits.paper - (usage?.papersUsed || 0),
+    papersLimit: limits.papers,
+    papersRemaining: limits.papers - (usage?.papersUsed || 0),
     projectsUsed: usage?.projectsUsed || 0,
-    projectsLimit: limits.project,
-    projectsRemaining: limits.project - (usage?.projectsUsed || 0),
+    projectsLimit: limits.projects,
+    projectsRemaining: limits.projects - (usage?.projectsUsed || 0),
   };
 }

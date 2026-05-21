@@ -50,6 +50,12 @@ enum SubscriptionStatus {
   CANCELLED
 }
 
+// Whether a subscription was purchased monthly or annually.
+enum BillingCycle {
+  MONTHLY
+  ANNUAL
+}
+
 // ─── Models ───────────────────────────────────────────────────────────────────
 
 model User {
@@ -62,16 +68,23 @@ model User {
   grade        String?
   plan         Plan    @default(FREE)
 
+  // WhatsApp linking
+  phone            String?   @unique        // E.164, e.g. "+263771234567"
+  whatsappId       String?   @unique        // wwebjs chat id, e.g. "263771234567@c.us"
+  whatsappLinkedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  authSessions        Session[]
-  passwordResetTokens PasswordResetToken[]
-  paperSessions       PaperSession[]
-  projects            Project[]
-  monthlyUsages       MonthlyUsage[]
-  subscription        Subscription?
-  paymentTransactions PaymentTransaction[]
+  authSessions         Session[]
+  passwordResetTokens  PasswordResetToken[]
+  paperSessions        PaperSession[]
+  projects             Project[]
+  monthlyUsages        MonthlyUsage[]
+  subscription         Subscription?
+  paymentTransactions  PaymentTransaction[]
+  whatsappConversation WhatsappConversation?
+  whatsappLinkCodes    WhatsappLinkCode[]
 }
 
 // Stores one row per active refresh token. Deleting a row = revoking that session.
@@ -189,15 +202,45 @@ model Project {
 }
 
 model MonthlyUsage {
-  id           String @id @default(cuid())
-  userId       String
-  month        String
-  papersUsed   Int    @default(0)
-  projectsUsed Int    @default(0)
+  id             String @id @default(cuid())
+  userId         String
+  month          String
+  papersUsed     Int    @default(0)
+  projectsUsed   Int    @default(0)
+  aiMessagesUsed Int    @default(0)
 
   user User @relation(fields: [userId], references: [id])
 
   @@unique([userId, month])
+}
+
+// One row per WhatsApp chat. Holds the multi-turn conversation state machine.
+model WhatsappConversation {
+  id            String   @id @default(cuid())
+  userId        String?  @unique             // null until account is linked
+  whatsappId    String   @unique             // wwebjs chat id, e.g. "263771234567@c.us"
+  state         Json     @default("{}")      // ConversationState JSON
+  lastMessageAt DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([whatsappId])
+}
+
+// Short-lived one-time codes for linking a WhatsApp number to a web/native account.
+model WhatsappLinkCode {
+  id         String    @id @default(cuid())
+  userId     String
+  code       String    @unique            // 6-digit numeric string
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 // Tracks active subscriptions for users on paid plans (STUDY, PASS).
@@ -208,6 +251,7 @@ model Subscription {
   status     SubscriptionStatus   @default(ACTIVE)
 
   // Billing & Renewal
+  billingCycle BillingCycle @default(MONTHLY)
   startDate  DateTime
   expiryDate DateTime             // When subscription expires
   renewalDue Boolean              @default(false)  // Prompt user to renew
@@ -233,6 +277,8 @@ model PaymentTransaction {
   amount      Float          // In ZWL
   currency    String   @default("ZWL")
   plan        Plan           // Which plan being purchased
+
+  billingCycle BillingCycle @default(MONTHLY)
 
   // Paynow Details
   paynowRef   String?  @unique  // Transaction reference from Paynow (set after Paynow responds)

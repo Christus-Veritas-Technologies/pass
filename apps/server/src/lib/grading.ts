@@ -9,6 +9,7 @@
 import { generateText } from "ai";
 import { z } from "zod";
 import prisma from "@pass/db";
+import type { PaperSession, PaperQuestion, Resource } from "@pass/db";
 import { anthropic, CLAUDE_GRADING_MODEL } from "./anthropic";
 
 export const evaluationSchema = z.object({
@@ -43,7 +44,7 @@ export async function getSessionQuestion(
   sessionId: string,
   userId: string,
   questionNumber: number,
-) {
+): Promise<{ session: PaperSession & { resource: Resource }; question: PaperQuestion } | null> {
   const session = await prisma.paperSession.findFirst({
     where: { id: sessionId, userId },
     include: { resource: true },

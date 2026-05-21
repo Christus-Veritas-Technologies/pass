@@ -40,6 +40,12 @@ export const env = createEnv({
     PAYNOW_INTEGRATION_KEY: z.string().optional(),
     PAYNOW_RESULT_URL: z.string().optional(),
     PAYNOW_RETURN_URL: z.string().optional(),
+
+    // WhatsApp bot — optional (bot disabled when WHATSAPP_ENABLED != "true")
+    WHATSAPP_ENABLED:     z.enum(["true", "false"]).default("false"),
+    WHATSAPP_SESSION_DIR: z.string().default("./.wwebjs_auth"),
+    WHATSAPP_ADMIN_TOKEN: z.string().optional(), // gates GET /whatsapp/qr
+    WHATSAPP_BOT_NUMBER:  z.string().optional(), // E.164, shown in welcome message
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,

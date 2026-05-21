@@ -8,50 +8,33 @@ import { Button } from "@pass/ui/components/button";
 import { Card, CardContent, CardHeader } from "@pass/ui/components/card";
 import { authedRequest } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { PLANS as PLAN_DATA, type BillingCycle } from "@pass/pricing";
 
-const PLANS = {
-  STUDY: {
-    name: "Study",
-    price: "$2.99",
-    period: "month",
-    icon: SparklesIcon,
-    color: "text-primary",
-    features: [
-      "12 past papers per month",
-      "7 AI projects per month",
-      "Detailed answer explanations",
-      "Email support",
-    ],
-    description: "Perfect for focused exam preparation",
-  },
-  PASS: {
-    name: "Pass",
-    price: "$5.99",
-    period: "month",
-    icon: CrownIcon,
-    color: "text-amber-500",
-    features: [
-      "20 past papers per month",
-      "12 AI projects per month",
-      "Detailed worked solutions",
-      "Priority support",
-      "Full progress analytics",
-    ],
-    description: "Maximum exam coverage and support",
-  },
-};
+type Billing = BillingCycle;
+
+const PLAN_META = {
+  STUDY: { icon: SparklesIcon, color: "text-primary",   iconBg: "bg-primary/10" },
+  PASS:  { icon: CrownIcon,    color: "text-amber-500", iconBg: "bg-amber-50"   },
+} as const;
+
+const CHECKOUT_PLANS = {
+  STUDY: { ...PLAN_DATA.STUDY, ...PLAN_META.STUDY },
+  PASS:  { ...PLAN_DATA.PASS,  ...PLAN_META.PASS  },
+} as const;
 
 export default function CheckoutPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const planParam = searchParams.get("plan") as "STUDY" | "PASS" || "STUDY";
+  const planParam = (searchParams.get("plan") as "STUDY" | "PASS") || "STUDY";
+  const billingParam = (searchParams.get("billing") as Billing) || "MONTHLY";
 
   const [selectedPlan, setSelectedPlan] = useState<"STUDY" | "PASS">(planParam);
+  const [billing, setBilling] = useState<Billing>(billingParam);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const plan = PLANS[selectedPlan];
-  const amount = selectedPlan === "STUDY" ? 2.99 : 5.99;
+  const plan = CHECKOUT_PLANS[selectedPlan];
+  const amount = plan.prices[billing];
 
   const handleCheckout = async () => {
     setLoading(true);
@@ -64,11 +47,10 @@ export default function CheckoutPage() {
         paynowRef: string;
       }>("/payments/create", {
         method: "POST",
-        body: JSON.stringify({ plan: selectedPlan }),
+        body: JSON.stringify({ plan: selectedPlan, billingCycle: billing }),
       });
 
       if (response.success && response.redirectUrl) {
-        // Store reference for later use if needed, then redirect to Paynow
         sessionStorage.setItem("paynow_ref", response.paynowRef);
         window.location.href = response.redirectUrl;
       } else {
@@ -97,10 +79,35 @@ export default function CheckoutPage() {
         </div>
       </div>
 
+      {/* Billing toggle */}
+      <div className="inline-flex items-center rounded-lg border bg-muted/50 p-1 gap-1">
+        <button
+          onClick={() => setBilling("MONTHLY")}
+          className={cn(
+            "rounded-md px-4 py-1.5 text-sm font-medium transition-all",
+            billing === "MONTHLY" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          Monthly
+        </button>
+        <button
+          onClick={() => setBilling("ANNUAL")}
+          className={cn(
+            "rounded-md px-4 py-1.5 text-sm font-medium transition-all flex items-center gap-1.5",
+            billing === "ANNUAL" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          Annual
+          <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">
+            Save 44%
+          </span>
+        </button>
+      </div>
+
       {/* Plan selector */}
       <div className="grid gap-4 grid-cols-2">
         {(["STUDY", "PASS"] as const).map((planKey) => {
-          const p = PLANS[planKey];
+          const p = CHECKOUT_PLANS[planKey];
           return (
             <button
               key={planKey}
@@ -113,10 +120,12 @@ export default function CheckoutPage() {
               )}
             >
               <div className="flex items-start justify-between mb-2">
-                <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center", planKey === "PASS" ? "bg-amber-50" : "bg-primary/10")}>
+                <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center", p.iconBg)}>
                   <HugeiconsIcon icon={p.icon} className={cn("h-4 w-4", p.color)} />
                 </div>
-                <span className="text-xs font-semibold text-primary">{p.price}</span>
+                <span className="text-xs font-semibold text-primary">
+                  ${p.prices[billing].toFixed(2)}
+                </span>
               </div>
               <p className="text-sm font-semibold">{p.name}</p>
               <p className="text-xs text-muted-foreground">{p.description}</p>
@@ -133,12 +142,20 @@ export default function CheckoutPage() {
         <CardContent className="space-y-3">
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">{plan.name} plan</span>
-            <span className="font-medium">${amount.toFixed(2)}</span>
+            <span className="font-medium">USD {amount.toFixed(2)}</span>
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Billing period</span>
-            <span className="font-medium">1 month</span>
+            <span className="font-medium">{billing === "ANNUAL" ? "1 year" : "1 month"}</span>
           </div>
+          {billing === "ANNUAL" && (
+            <div className="flex items-center justify-between text-xs text-emerald-600">
+              <span>Annual saving</span>
+              <span className="font-medium">
+                USD {((plan.prices.MONTHLY * 12) - amount).toFixed(2)}
+              </span>
+            </div>
+          )}
           <div className="border-t pt-3 flex items-center justify-between text-sm font-semibold">
             <span>Total</span>
             <span>USD {amount.toFixed(2)}</span>
@@ -149,7 +166,7 @@ export default function CheckoutPage() {
       {/* Features */}
       <Card className="rounded-xl">
         <CardHeader className="pb-3">
-          <p className="text-sm font-semibold">What's included</p>
+          <p className="text-sm font-semibold">What&apos;s included</p>
         </CardHeader>
         <CardContent>
           <ul className="space-y-2">
@@ -187,7 +204,7 @@ export default function CheckoutPage() {
           )}
         </Button>
         <p className="text-xs text-center text-muted-foreground">
-          You'll be redirected to Paynow to complete your payment securely. Cancel anytime from your settings.
+          You&apos;ll be redirected to Paynow to complete your payment securely. Cancel anytime from your settings.
         </p>
       </div>
 

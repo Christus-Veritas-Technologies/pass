@@ -7,19 +7,20 @@ import { sendEmail } from "../lib/emails";
 
 const createPaymentSchema = z.object({
   plan: z.enum(["STUDY", "PASS"]),
+  billingCycle: z.enum(["MONTHLY", "ANNUAL"]).default("MONTHLY"),
 });
 
 /**
  * Create a Paynow payment for upgrading to a paid plan.
  * POST /api/payments/create
  */
-export async function createPayment(c: Context) {
+export async function createPayment(c: Context): Promise<Response> {
   try {
     const userId = c.get("userId") as string;
     const body = await c.req.json();
 
     // Validate request
-    const { plan } = createPaymentSchema.parse(body);
+    const { plan, billingCycle } = createPaymentSchema.parse(body);
 
     // Get user
     const user = await prisma.user.findUnique({
@@ -31,7 +32,7 @@ export async function createPayment(c: Context) {
     }
 
     // Get price
-    const amount = PLAN_PRICES[plan];
+    const amount = PLAN_PRICES[plan]?.[billingCycle];
     if (!amount) {
       return c.json({ error: "Invalid plan" }, 400);
     }
@@ -42,13 +43,14 @@ export async function createPayment(c: Context) {
         userId,
         amount,
         plan,
+        billingCycle,
         status: "pending",
       },
     });
 
     // Create Paynow payment
     const payment = paynow.createPayment(transaction.id, user.email);
-    payment.add(PLAN_DESCRIPTIONS[plan] ?? plan, amount);
+    payment.add(PLAN_DESCRIPTIONS[plan]?.[billingCycle] ?? plan, amount);
 
     // Send to Paynow
     const response = await paynow.send(payment);
@@ -96,7 +98,7 @@ export async function createPayment(c: Context) {
  * POST /api/payments/webhook
  * Public endpoint (no auth required).
  */
-export async function handlePaymentWebhook(c: Context) {
+export async function handlePaymentWebhook(c: Context): Promise<Response> {
   try {
     const body = await c.req.text();
 
@@ -130,15 +132,17 @@ export async function handlePaymentWebhook(c: Context) {
         },
       });
 
-      // Create subscription
+      // Create subscription — expiry depends on billing cycle
       const startDate = new Date();
-      const expiryDate = new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days
+      const days = transaction.billingCycle === "ANNUAL" ? 365 : 30;
+      const expiryDate = new Date(startDate.getTime() + days * 24 * 60 * 60 * 1000);
 
       await prisma.subscription.upsert({
         where: { userId: transaction.userId },
         create: {
           userId: transaction.userId,
           plan: transaction.plan,
+          billingCycle: transaction.billingCycle,
           startDate,
           expiryDate,
           paynowRef: reference,
@@ -146,6 +150,7 @@ export async function handlePaymentWebhook(c: Context) {
         },
         update: {
           plan: transaction.plan,
+          billingCycle: transaction.billingCycle,
           status: "ACTIVE",
           startDate,
           expiryDate,
@@ -192,7 +197,7 @@ export async function handlePaymentWebhook(c: Context) {
  * Poll transaction status.
  * GET /api/payments/status/:transactionRef
  */
-export async function pollTransactionStatus(c: Context) {
+export async function pollTransactionStatus(c: Context): Promise<Response> {
   try {
     const ref = c.req.param("transactionRef") as string;
 
@@ -230,12 +235,14 @@ export async function pollTransactionStatus(c: Context) {
 
       if (!sub) {
         const startDate = new Date();
-        const expiryDate = new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+        const days = transaction.billingCycle === "ANNUAL" ? 365 : 30;
+        const expiryDate = new Date(startDate.getTime() + days * 24 * 60 * 60 * 1000);
 
         await prisma.subscription.create({
           data: {
             userId: transaction.userId,
             plan: transaction.plan,
+            billingCycle: transaction.billingCycle,
             startDate,
             expiryDate,
             paynowRef: transaction.paynowRef,
@@ -264,7 +271,7 @@ export async function pollTransactionStatus(c: Context) {
  * Get subscription renewal status.
  * GET /api/payments/renewal-status
  */
-export async function getRenewalStatus(c: Context) {
+export async function getRenewalStatus(c: Context): Promise<Response> {
   try {
     const userId = c.get("userId") as string;
 
@@ -285,7 +292,7 @@ export async function getRenewalStatus(c: Context) {
  * Initiate renewal payment.
  * POST /api/payments/renew
  */
-export async function renewSubscription(c: Context) {
+export async function renewSubscription(c: Context): Promise<Response> {
   try {
     const userId = c.get("userId") as string;
 
@@ -297,9 +304,8 @@ export async function renewSubscription(c: Context) {
       return c.json({ error: "No active subscription" }, 404);
     }
 
-    // Redirect to create payment with the same plan
     return c.json({
-      redirectTo: `/checkout?plan=${sub.plan}`,
+      redirectTo: `/checkout?plan=${sub.plan}&billing=${sub.billingCycle}`,
     });
   } catch (error) {
     console.error("Error initiating renewal:", error);
@@ -311,7 +317,7 @@ export async function renewSubscription(c: Context) {
  * Get payment history for a user.
  * GET /api/payments/history
  */
-export async function getPaymentHistory(c: Context) {
+export async function getPaymentHistory(c: Context): Promise<Response> {
   try {
     const userId = c.get("userId") as string;
 

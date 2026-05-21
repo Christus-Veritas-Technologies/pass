@@ -1,13 +1,14 @@
+import { randomInt } from "node:crypto";
 import type { Context } from "hono";
 import { z } from "zod";
 import prisma from "@pass/db";
-import { PLAN_LIMITS, type PlanKey } from "../lib/planLimits";
+import { PLAN_LIMITS, type PlanKey, currentMonthKey } from "../lib/planLimits";
 
 const USER_SELECT = {
   id: true, email: true, name: true, grade: true, school: true, plan: true,
 } as const;
 
-export async function getMe(c: Context) {
+export async function getMe(c: Context): Promise<Response> {
   const userId = c.get("userId") as string;
   const user = await prisma.user.findUnique({ where: { id: userId }, select: USER_SELECT });
   if (!user) return c.json({ error: "User not found" }, 404);
@@ -49,7 +50,29 @@ export async function getMe(c: Context) {
     weeklyProgress,
   };
 
-  return c.json({ user, stats, planUsage });
+  // WhatsApp link status
+  const userFull = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { whatsappId: true, whatsappLinkedAt: true, phone: true },
+  });
+
+  // AI messages usage this month
+  const month = currentMonthKey();
+  const monthlyUsage = await prisma.monthlyUsage.findUnique({
+    where: { userId_month: { userId, month } },
+  });
+  const planUsageWithAi = {
+    ...planUsage,
+    aiMessages: { used: monthlyUsage?.aiMessagesUsed ?? 0, limit: limits.aiMessages },
+  };
+
+  const whatsapp = {
+    linked:   !!userFull?.whatsappId,
+    phone:    userFull?.phone ?? null,
+    linkedAt: userFull?.whatsappLinkedAt ?? null,
+  };
+
+  return c.json({ user, stats, planUsage: planUsageWithAi, whatsapp });
 }
 
 const updateMeSchema = z.object({
@@ -58,7 +81,7 @@ const updateMeSchema = z.object({
   school: z.string().optional(),
 });
 
-export async function updateMe(c: Context) {
+export async function updateMe(c: Context): Promise<Response> {
   const userId = c.get("userId") as string;
   const body = await c.req.json().catch(() => null);
   const parsed = updateMeSchema.safeParse(body);
@@ -71,4 +94,47 @@ export async function updateMe(c: Context) {
   });
 
   return c.json({ user });
+}
+
+// ─── WhatsApp linking ─────────────────────────────────────────────────────────
+
+/**
+ * POST /users/me/whatsapp/link-code
+ * Issues a fresh 6-digit one-time code the student sends to the bot.
+ * TTL: 10 minutes. Invalidates any previous unused code first.
+ */
+export async function issueWhatsappLinkCode(c: Context): Promise<Response> {
+  const userId = c.get("userId") as string;
+
+  // Invalidate any existing unused codes
+  await prisma.whatsappLinkCode.deleteMany({ where: { userId, consumedAt: null } });
+
+  const code      = String(randomInt(100_000, 1_000_000));
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1_000);
+
+  await prisma.whatsappLinkCode.create({ data: { userId, code, expiresAt } });
+
+  return c.json({ code, expiresAt: expiresAt.toISOString() }, 201);
+}
+
+/**
+ * DELETE /users/me/whatsapp
+ * Unlinks the WhatsApp number; orphans the conversation so state is
+ * preserved if the user re-links later.
+ */
+export async function unlinkWhatsapp(c: Context): Promise<Response> {
+  const userId = c.get("userId") as string;
+
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: userId },
+      data: { phone: null, whatsappId: null, whatsappLinkedAt: null },
+    }),
+    prisma.whatsappConversation.updateMany({
+      where: { userId },
+      data: { userId: null },
+    }),
+  ]);
+
+  return c.json({ success: true });
 }

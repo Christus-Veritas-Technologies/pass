@@ -3,6 +3,7 @@ import "../index.css";
 import Providers from "@/components/providers";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://pass.co.zw"),
   title: "Pass — Study smarter. Pass faster.",
   description: "AI-powered ZIMSEC exam preparation for Zimbabwean students.",
   icons: { icon: "/icon.png", apple: "/icon.png" },

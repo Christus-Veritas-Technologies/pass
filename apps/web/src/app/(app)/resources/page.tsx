@@ -51,6 +51,52 @@ interface Resource {
 }
 
 const API = process.env.NEXT_PUBLIC_SERVER_URL;
+const PAGE_SIZE = 10;
+
+function Pagination({
+  page,
+  totalPages,
+  from,
+  to,
+  total,
+  onPrev,
+  onNext,
+}: {
+  page: number;
+  totalPages: number;
+  from: number;
+  to: number;
+  total: number;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  if (totalPages <= 1) return null;
+  return (
+    <div className="flex items-center justify-between mt-4 px-1">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onPrev}
+        disabled={page === 1}
+        className="text-xs h-8 px-3"
+      >
+        ‹ Prev
+      </Button>
+      <span className="text-xs text-muted-foreground">
+        {from}–{to} of {total}
+      </span>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onNext}
+        disabled={page === totalPages}
+        className="text-xs h-8 px-3"
+      >
+        Next ›
+      </Button>
+    </div>
+  );
+}
 
 function ResourceSkeleton() {
   return (
@@ -73,6 +119,7 @@ export default function ResourcesPage() {
   const [subject, setSubject] = useState("All");
   const [type, setType] = useState("All");
   const [year, setYear] = useState("All");
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -82,6 +129,7 @@ export default function ResourcesPage() {
     if (year !== "All") params.set("year", year);
 
     setLoading(true);
+    setPage(1);
     fetch(`${API}/resources?${params}`)
       .then((r) => r.json())
       .then((d) => setResources(d.resources ?? []))
@@ -95,6 +143,12 @@ export default function ResourcesPage() {
         r.subject.toLowerCase().includes(search.toLowerCase()),
       )
     : resources;
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const safePage = Math.min(page, Math.max(1, totalPages));
+  const from = filtered.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
+  const to = Math.min(safePage * PAGE_SIZE, filtered.length);
+  const pagedFiltered = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   const hasFilters = level !== "All" || subject !== "All" || type !== "All" || year !== "All" || !!search;
 
@@ -118,7 +172,7 @@ export default function ResourcesPage() {
           type="text"
           placeholder="Search by title or subject…"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           className="w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-4 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-[box-shadow] duration-150"
         />
       </div>
@@ -175,7 +229,7 @@ export default function ResourcesPage() {
             <Button
               variant="ghost"
               className="text-xs px-3 py-1.5 h-auto text-muted-foreground"
-              onClick={() => { setLevel("All"); setSubject("All"); setType("All"); setYear("All"); setSearch(""); }}
+              onClick={() => { setLevel("All"); setSubject("All"); setType("All"); setYear("All"); setSearch(""); setPage(1); }}
             >
               Clear filters
             </Button>
@@ -205,7 +259,7 @@ export default function ResourcesPage() {
           </p>
           {hasFilters && (
             <button
-              onClick={() => { setLevel("All"); setSubject("All"); setType("All"); setYear("All"); setSearch(""); }}
+              onClick={() => { setLevel("All"); setSubject("All"); setType("All"); setYear("All"); setSearch(""); setPage(1); }}
               className="mt-4 text-xs text-primary hover:underline transition-colors duration-100"
             >
               Clear all filters
@@ -214,9 +268,15 @@ export default function ResourcesPage() {
         </div>
       ) : (
         <div className="animate-fade-up">
-          <p className="text-xs text-muted-foreground mb-3">{filtered.length} result{filtered.length !== 1 ? "s" : ""}</p>
+          <p className="text-xs text-muted-foreground mb-3">
+            {filtered.length === 0
+              ? "0 results"
+              : totalPages > 1
+              ? `${from}–${to} of ${filtered.length} result${filtered.length !== 1 ? "s" : ""}`
+              : `${filtered.length} result${filtered.length !== 1 ? "s" : ""}`}
+          </p>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((r) => (
+            {pagedFiltered.map((r) => (
               <Card
                 key={r.id}
                 className="rounded-xl transition-[transform,box-shadow] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-0.5 hover:shadow-sm"
@@ -248,6 +308,15 @@ export default function ResourcesPage() {
               </Card>
             ))}
           </div>
+          <Pagination
+            page={safePage}
+            totalPages={totalPages}
+            from={from}
+            to={to}
+            total={filtered.length}
+            onPrev={() => setPage((p) => Math.max(1, p - 1))}
+            onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
+          />
         </div>
       )}
     </div>

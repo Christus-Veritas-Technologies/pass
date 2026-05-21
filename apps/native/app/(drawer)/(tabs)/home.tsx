@@ -148,22 +148,22 @@ export default function HomeScreen() {
         <MotiView from={{ opacity: 0, translateY: 6, scale: 0.97 }} animate={{ opacity: 1, translateY: 0, scale: 1 }} transition={{ type: "timing", duration: 250, delay: 50, easing: Easing.bezier(0.23, 1, 0.32, 1) }}>
           <View style={{ flexDirection: "row", gap: 10, marginBottom: 24 }}>
             {[
-              { Icon: Note, label: "Papers", value: String(stats?.papersAttempted ?? 0) },
-              { Icon: CheckCircle, label: "Questions", value: String(stats?.questionsAnswered ?? 0) },
-              { Icon: Fire, label: "Streak", value: `${stats?.currentStreak ?? 0}d` },
-            ].map(({ Icon, label, value }) => (
+              { Icon: Note,        label: "Papers",    value: String(stats?.papersAttempted ?? 0), bg: "#EEF2FF", border: "#C7D2FE", iconColor: "#4F46E5" },
+              { Icon: CheckCircle, label: "Questions", value: String(stats?.questionsAnswered ?? 0), bg: "#ECFDF5", border: "#6EE7B7", iconColor: "#059669" },
+              { Icon: Fire,        label: "Streak",    value: `${stats?.currentStreak ?? 0}d`,      bg: "#FFF7ED", border: "#FED7AA", iconColor: "#EA580C" },
+            ].map(({ Icon, label, value, bg, border, iconColor }) => (
               <View
                 key={label}
                 style={{
                   flex: 1,
-                  backgroundColor: "#F9FAFB",
+                  backgroundColor: bg,
                   borderRadius: 12,
                   borderWidth: 1,
-                  borderColor: "#F3F4F6",
+                  borderColor: border,
                   padding: 12,
                 }}
               >
-                <Icon size={16} color="#6B7280" />
+                <Icon size={16} color={iconColor} />
                 <Text style={{ fontSize: 20, fontWeight: "700", color: "#111827", marginTop: 6 }}>{value}</Text>
                 <Text style={{ fontSize: 11, color: "#6B7280", marginTop: 1 }}>{label}</Text>
               </View>
@@ -175,17 +175,17 @@ export default function HomeScreen() {
         <MotiView from={{ opacity: 0, translateY: 6, scale: 0.97 }} animate={{ opacity: 1, translateY: 0, scale: 1 }} transition={{ type: "timing", duration: 250, delay: 100, easing: Easing.bezier(0.23, 1, 0.32, 1) }}>
           <View
             style={{
-              backgroundColor: "#F9FAFB",
+              backgroundColor: "#EEF2FF",
               borderRadius: 12,
               borderWidth: 1,
-              borderColor: "#F3F4F6",
+              borderColor: "#C7D2FE",
               padding: 14,
               marginBottom: 28,
             }}
           >
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <TrendUp size={15} color="#6B7280" />
-              <Text style={{ fontSize: 12, fontWeight: "500", color: "#6B7280" }}>Weekly goal</Text>
+              <TrendUp size={15} color="#4F46E5" />
+              <Text style={{ fontSize: 12, fontWeight: "500", color: "#4338CA" }}>Weekly goal</Text>
             </View>
             <Text style={{ fontSize: 18, fontWeight: "700", color: "#111827", marginTop: 4 }}>
               {stats?.weeklyProgress ?? 0}
@@ -202,20 +202,20 @@ export default function HomeScreen() {
           <View style={{ marginBottom: 28 }}>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
               <Text style={{ fontSize: 15, fontWeight: "600", color: "#111827" }}>Recent papers</Text>
-              <Pressable onPress={() => router.push("/(drawer)/(tabs)/papers")}>
+              <Pressable onPress={() => router.push("/(drawer)/(tabs)/study" as never)}>
                 <Text style={{ fontSize: 12, color: BRAND }}>View all</Text>
               </Pressable>
             </View>
 
             {sessions.length === 0 ? (
-              <View style={{ alignItems: "center", paddingVertical: 28, gap: 8, backgroundColor: "#F9FAFB", borderRadius: 12, borderWidth: 1, borderColor: "#F3F4F6" }}>
-                <Note size={24} color="#D1D5DB" />
-                <Text style={{ fontSize: 13, fontWeight: "500", color: "#6B7280" }}>No papers attempted yet</Text>
+              <View style={{ alignItems: "center", paddingVertical: 28, gap: 8, backgroundColor: "#EEF2FF", borderRadius: 12, borderWidth: 1, borderColor: "#C7D2FE" }}>
+                <Note size={24} color="#A5B4FC" />
+                <Text style={{ fontSize: 13, fontWeight: "500", color: "#4338CA" }}>No papers attempted yet</Text>
                 <Pressable
-                  onPress={() => router.push("/(drawer)/(tabs)/papers")}
+                  onPress={() => router.push("/study/new" as never)}
                   style={{ marginTop: 4, backgroundColor: BRAND, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 8 }}
                 >
-                  <Text style={{ fontSize: 13, fontWeight: "600", color: "#FFFFFF" }}>Browse papers</Text>
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: "#FFFFFF" }}>Start studying</Text>
                 </Pressable>
               </View>
             ) : (
@@ -227,13 +227,17 @@ export default function HomeScreen() {
                     style={{
                       flexDirection: "row",
                       alignItems: "center",
-                      backgroundColor: "#F9FAFB",
+                      backgroundColor: "#FAFAFA",
                       borderRadius: 12,
                       borderWidth: 1,
-                      borderColor: "#F3F4F6",
+                      borderColor: "#E5E7EB",
                       padding: 14,
+                      gap: 12,
                     }}
                   >
+                    <View style={{ width: 36, height: 36, borderRadius: 9, backgroundColor: "#EEF2FF", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <Note size={18} color={BRAND} />
+                    </View>
                     <View style={{ flex: 1 }}>
                       <Text style={{ fontSize: 13, fontWeight: "500", color: "#111827" }} numberOfLines={1}>
                         {s.paperTitle}
