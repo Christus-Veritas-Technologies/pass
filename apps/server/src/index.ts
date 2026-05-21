@@ -12,6 +12,7 @@ import resourcesRoutes from "./routes/resources.routes";
 import studyRoutes from "./routes/study.routes";
 import uploadRoutes from "./routes/upload.routes";
 import usersRoutes from "./routes/users.routes";
+import whatsappRoutes from "./routes/whatsapp.routes";
 
 const app = new Hono();
 
@@ -64,5 +65,17 @@ app.route("/projects", projectsRoutes);
 app.route("/study", studyRoutes);
 app.route("/upload", uploadRoutes);
 app.route("/users", usersRoutes);
+app.route("/whatsapp", whatsappRoutes);
+
+// ─── WhatsApp bot (opt-in via env flag) ──────────────────────────────────────
+if (env.WHATSAPP_ENABLED === "true") {
+  import("./whatsapp/start")
+    .then(({ startWhatsappBot }) =>
+      startWhatsappBot(app).catch((err) =>
+        console.error("[whatsapp] Startup error:", err),
+      ),
+    )
+    .catch((err) => console.error("[whatsapp] Import error:", err));
+}
 
 export default app;

@@ -3,8 +3,22 @@ import { createAnthropic } from "@ai-sdk/anthropic";
 import { env } from "@pass/env/server";
 import { lookupResourceTool, getSessionProgressTool } from "../tools/study.tools";
 
+/** Minimal interface covering all callsites — avoids TS2883 from Mastra internals. */
+export interface PassAgentInterface {
+  stream: (
+    messages: Array<{ role: "user" | "assistant"; content: string }>,
+    options?: Record<string, unknown>,
+  ) => Promise<{ textStream: AsyncIterable<string> }>;
+  generate: (
+    messages: Array<{ role: "user" | "assistant"; content: string }>,
+    options?: Record<string, unknown>,
+  ) => Promise<{ text: string }>;
+}
+
 const anthropic = createAnthropic({ apiKey: env.ANTHROPIC_API_KEY ?? "" });
 
+// Cast avoids TS2883 — the inferred Agent generic references Mastra internal types
+// that cannot be named in the composite project's generated .d.ts output.
 export const passAgent = new Agent({
   name: "Pass",
   instructions: `You are Pass, an AI tutor specialised in ZIMSEC (Zimbabwe School Examinations Council) exam preparation for Zimbabwean O-Level and A-Level students.
@@ -42,4 +56,4 @@ Always maintain an encouraging, patient tone. Never mock or belittle a student's
     lookupResource: lookupResourceTool,
     getSessionProgress: getSessionProgressTool,
   },
-});
+}) as unknown as PassAgentInterface;
