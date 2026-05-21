@@ -3,6 +3,37 @@ import type { ReactNode } from "react";
 import { MarketingNav } from "./_components/marketing-nav";
 import { MarketingFooter } from "./_components/marketing-footer";
 
+const STRUCTURED_DATA = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "EducationalOrganization",
+      name: "Pass",
+      url: "https://pass.co.zw",
+      logo: "https://pass.co.zw/icon.png",
+      description:
+        "AI-powered ZIMSEC exam preparation for Zimbabwean students.",
+      address: { "@type": "PostalAddress", addressCountry: "ZW" },
+      sameAs: [
+        "https://twitter.com/passcozw",
+        "https://www.facebook.com/passcozw",
+        "https://www.instagram.com/passcozw",
+      ],
+    },
+    {
+      "@type": "SoftwareApplication",
+      name: "Pass",
+      operatingSystem: "Web, Android",
+      applicationCategory: "EducationalApplication",
+      offers: [
+        { "@type": "Offer", name: "Free",  price: "0",    priceCurrency: "USD" },
+        { "@type": "Offer", name: "Study", price: "2.99", priceCurrency: "USD" },
+        { "@type": "Offer", name: "Pass",  price: "5.99", priceCurrency: "USD" },
+      ],
+    },
+  ],
+};
+
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-marketing-sans",
@@ -31,6 +62,11 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
       <MarketingNav />
       <main id="main">{children}</main>
       <MarketingFooter />
+      <script
+        type="application/ld+json"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: structured data
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(STRUCTURED_DATA) }}
+      />
     </div>
   );
 }
