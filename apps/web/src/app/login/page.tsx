@@ -53,7 +53,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div className="light min-h-screen flex bg-background">
       <BrandPanel />
 
       {/* Form panel */}

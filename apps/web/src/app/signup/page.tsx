@@ -62,7 +62,7 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div className="light min-h-screen flex bg-background">
       <BrandPanel />
 
       <div className="flex-1 flex items-center justify-center px-6 py-12 bg-background">
