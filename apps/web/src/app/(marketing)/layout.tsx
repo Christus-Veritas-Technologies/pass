@@ -1,5 +1,7 @@
 import { Inter, Instrument_Serif } from "next/font/google";
 import type { ReactNode } from "react";
+import { MarketingNav } from "./_components/marketing-nav";
+import { MarketingFooter } from "./_components/marketing-footer";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -26,7 +28,9 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
       >
         Skip to content
       </a>
+      <MarketingNav />
       <main id="main">{children}</main>
+      <MarketingFooter />
     </div>
   );
 }
