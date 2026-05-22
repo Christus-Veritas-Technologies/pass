@@ -22,18 +22,28 @@ import { env } from "@pass/env/native";
 
 const API = env.EXPO_PUBLIC_SERVER_URL;
 
-const SUBJECTS = [
-  "Mathematics", "English Language", "Combined Science", "Chemistry",
-  "Biology", "History", "Geography", "English Literature", "Shona", "Physics",
-];
-const GRADES = ["Form 1", "Form 2", "Form 3", "Form 4", "Form 5", "Form 6"];
+const GRADES = ["Grade 7", "Form 4", "Form 6"] as const;
+
+const SUBJECTS_BY_GRADE: Record<string, string[]> = {
+  "Grade 7": ["Heritage Studies", "Mathematics", "English", "Science", "Shona/Ndebele"],
+  "Form 4": ["History", "Combined Science", "Agriculture", "Biology", "Chemistry", "Geography", "Shona", "English Literature"],
+  "Form 6": ["History", "Geography", "Sociology", "Agriculture", "Biology", "Chemistry", "Physics"],
+};
+
+const CATEGORIES = [
+  { id: "Culture & History", emoji: "🏺", title: "Culture & History", desc: "Totems, liberation struggle, customs, languages" },
+  { id: "Indigenous Sciences", emoji: "🌿", title: "Indigenous Sciences", desc: "Traditional medicine, farming, energy systems" },
+  { id: "Arts & Lifestyle", emoji: "🎭", title: "Arts & Lifestyle", desc: "Music, architecture, food, traditional games" },
+] as const;
 
 interface Project {
   id: string;
   grade: string;
   subject: string;
   topic: string;
+  category: string;
   content: string;
+  studentName: string;
   createdAt: string;
 }
 
@@ -53,13 +63,20 @@ export default function ProjectsScreen() {
   const [showModal, setShowModal] = useState(false);
   const [selected, setSelected] = useState<Project | null>(null);
 
-  const [subject, setSubject] = useState(SUBJECTS[0]);
-  const [grade, setGrade]     = useState(GRADES[3]);
-  const [topic, setTopic]     = useState("");
+  // Step 1 form state
+  const [step, setStep] = useState<1 | 2>(1);
+  const [studentName, setStudentName] = useState("");
+  const [centreNumber, setCentreNumber] = useState("");
+  const [candidateNumber, setCandidateNumber] = useState("");
+  const [grade, setGrade] = useState<string>(GRADES[1]);
+  const [subject, setSubject] = useState<string>(SUBJECTS_BY_GRADE["Form 4"][0]);
+  const [category, setCategory] = useState<string>("");
 
+  // Step 2 generation state
   const [generating, setGenerating] = useState(false);
   const [streamedContent, setStreamedContent] = useState("");
-  const [genError, setGenError]     = useState("");
+  const [genDone, setGenDone] = useState(false);
+  const [genError, setGenError] = useState("");
   const abortRef = useRef<AbortController | null>(null);
 
   async function getToken() {
@@ -86,11 +103,30 @@ export default function ProjectsScreen() {
 
   useEffect(() => { fetchProjects(); }, []);
 
-  async function handleGenerate() {
-    if (!topic.trim()) return;
+  function handleGradeChange(g: string) {
+    setGrade(g);
+    setSubject(SUBJECTS_BY_GRADE[g][0]);
+  }
+
+  function resetModal() {
+    setStep(1);
+    setStudentName("");
+    setCentreNumber("");
+    setCandidateNumber("");
+    setGrade(GRADES[1]);
+    setSubject(SUBJECTS_BY_GRADE["Form 4"][0]);
+    setCategory("");
+    setStreamedContent("");
+    setGenError("");
+    setGenDone(false);
+    setGenerating(false);
+  }
+
+  async function startGeneration() {
     setGenerating(true);
     setStreamedContent("");
     setGenError("");
+    setGenDone(false);
 
     const abort = new AbortController();
     abortRef.current = abort;
@@ -103,7 +139,7 @@ export default function ProjectsScreen() {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ subject, grade, topic: topic.trim() }),
+        body: JSON.stringify({ studentName, centreNumber, candidateNumber, grade, subject, category }),
         signal: abort.signal,
       });
 
@@ -112,6 +148,7 @@ export default function ProjectsScreen() {
       const reader = res.body?.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
+      let currentEvent = "";
 
       while (reader) {
         const { done, value } = await reader.read();
@@ -119,25 +156,24 @@ export default function ProjectsScreen() {
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split("\n");
         buffer = lines.pop() ?? "";
+
         for (const line of lines) {
-          if (line.startsWith("event: done")) {
-            await fetchProjects();
-            break;
-          }
-          if (line.startsWith("event: error")) {
-            setGenError("AI generation failed. Please try again.");
-          }
-          if (line.startsWith("data: ")) {
-            const chunk = line.slice(6);
-            if (!chunk.startsWith("proj_")) {
-              setStreamedContent((prev) => prev + chunk);
+          if (line.startsWith("event: ")) {
+            currentEvent = line.slice(7).trim();
+          } else if (line.startsWith("data: ")) {
+            const data = line.slice(6);
+            if (currentEvent === "chunk") {
+              setStreamedContent((prev) => prev + data);
+            } else if (currentEvent === "done") {
+              setGenDone(true);
+              await fetchProjects();
+              break;
+            } else if (currentEvent === "error") {
+              setGenError("AI generation failed. Please try again.");
             }
           }
         }
       }
-
-      setShowModal(false);
-      setTopic("");
     } catch (err: unknown) {
       if ((err as Error).name !== "AbortError") {
         setGenError("Something went wrong. Please try again.");
@@ -148,39 +184,7 @@ export default function ProjectsScreen() {
     }
   }
 
-  function renderProject({ item }: { item: Project }) {
-    return (
-      <Pressable
-        onPress={() => setSelected(item)}
-        style={({ pressed }) => ({
-          backgroundColor: pressed ? colors.cardSubtle : colors.card,
-          borderRadius: 12,
-          borderWidth: 1,
-          borderColor: colors.borderSubtle,
-          padding: 14,
-          marginBottom: 10,
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 12,
-        })}
-      >
-        <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: colors.indigoBg, alignItems: "center", justifyContent: "center" }}>
-          <Folder size={20} color={colors.brand} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 13, fontWeight: "500", color: colors.text }} numberOfLines={1}>
-            {item.topic}
-          </Text>
-          <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 2 }}>
-            {item.subject} · {item.grade} · {timeAgo(item.createdAt)}
-          </Text>
-        </View>
-        <View style={{ backgroundColor: colors.indigoBg, borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3 }}>
-          <Text style={{ fontSize: 11, fontWeight: "600", color: colors.brand }}>{item.grade}</Text>
-        </View>
-      </Pressable>
-    );
-  }
+  const canContinue = !!(studentName.trim() && centreNumber.trim() && candidateNumber.trim() && grade && subject && category);
 
   function renderContent(content: string) {
     return content.split("\n").map((line, i) => {
@@ -221,20 +225,56 @@ export default function ProjectsScreen() {
     });
   }
 
+  function renderProject({ item }: { item: Project }) {
+    return (
+      <Pressable
+        onPress={() => setSelected(item)}
+        style={({ pressed }) => ({
+          backgroundColor: pressed ? colors.cardSubtle : colors.card,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: colors.borderSubtle,
+          padding: 14,
+          marginBottom: 10,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 12,
+        })}
+      >
+        <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: colors.indigoBg, alignItems: "center", justifyContent: "center" }}>
+          <Folder size={20} color={colors.brand} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 13, fontWeight: "500", color: colors.text }} numberOfLines={1}>
+            {item.topic}
+          </Text>
+          <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 2 }}>
+            {item.subject} · {item.grade} · {timeAgo(item.createdAt)}
+          </Text>
+        </View>
+        <View style={{ backgroundColor: colors.indigoBg, borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3 }}>
+          <Text style={{ fontSize: 11, fontWeight: "600", color: colors.brand }}>
+            {item.category || item.grade}
+          </Text>
+        </View>
+      </Pressable>
+    );
+  }
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.cardSubtle }} edges={["top"]}>
       {/* Header */}
       <View style={{ backgroundColor: colors.card, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
         <View>
           <Text style={{ fontSize: 22, fontWeight: "700", color: colors.text, letterSpacing: -0.5 }}>Projects</Text>
-          <Text style={{ fontSize: 13, color: colors.textTertiary, marginTop: 2 }}>AI-generated study guides</Text>
+          <Text style={{ fontSize: 13, color: colors.textTertiary, marginTop: 2 }}>ZIMSEC Heritage-Based Curriculum projects</Text>
         </View>
         <Pressable
-          onPress={() => { setShowModal(true); setStreamedContent(""); setGenError(""); }}
+          onPress={() => { resetModal(); setShowModal(true); }}
           style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: colors.brand, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 9 }}
         >
           <Sparkle size={15} color="#FFFFFF" />
-          <Text style={{ fontSize: 13, fontWeight: "600", color: "#FFFFFF" }}>Generate</Text>
+          <Text style={{ fontSize: 13, fontWeight: "600", color: "#FFFFFF" }}>New Project</Text>
         </Pressable>
       </View>
 
@@ -264,14 +304,14 @@ export default function ProjectsScreen() {
               </View>
               <Text style={{ fontSize: 15, fontWeight: "600", color: colors.textSecondary }}>No projects yet</Text>
               <Text style={{ fontSize: 13, color: colors.textTertiary, textAlign: "center", paddingHorizontal: 24 }}>
-                Tap Generate to create your first AI study guide.
+                Your generated HBC projects will appear here.
               </Text>
               <Pressable
-                onPress={() => { setShowModal(true); setStreamedContent(""); setGenError(""); }}
+                onPress={() => { resetModal(); setShowModal(true); }}
                 style={{ marginTop: 4, flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: colors.brand, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10 }}
               >
                 <Sparkle size={14} color="#FFFFFF" />
-                <Text style={{ fontSize: 13, fontWeight: "600", color: "#FFFFFF" }}>Generate guide</Text>
+                <Text style={{ fontSize: 13, fontWeight: "600", color: "#FFFFFF" }}>Start New Project</Text>
               </Pressable>
             </MotiView>
           }
@@ -300,137 +340,206 @@ export default function ProjectsScreen() {
         </SafeAreaView>
       </Modal>
 
-      {/* Generate modal */}
-      <Modal visible={showModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => !generating && setShowModal(false)}>
+      {/* Generate modal — multi-step */}
+      <Modal visible={showModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => !generating && (resetModal(), setShowModal(false))}>
         <SafeAreaView style={{ flex: 1, backgroundColor: colors.card }}>
           <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
+            {/* Modal header */}
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                 <Sparkle size={18} color={colors.brand} />
-                <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text }}>Generate Study Guide</Text>
+                <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text }}>New Project</Text>
               </View>
-              {!generating && (
-                <Pressable onPress={() => setShowModal(false)} style={{ padding: 8 }}>
-                  <X size={20} color={colors.textTertiary} />
-                </Pressable>
-              )}
-            </View>
-
-            <ScrollView contentContainerStyle={{ padding: 20 }} keyboardShouldPersistTaps="handled">
-              <Text style={{ fontSize: 12, fontWeight: "500", color: colors.textTertiary, marginBottom: 8, marginTop: 4 }}>SUBJECT</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 20 }}>
-                {SUBJECTS.map((s) => (
-                  <Pressable
-                    key={s}
-                    onPress={() => setSubject(s)}
-                    style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: subject === s ? colors.brand : colors.borderSubtle }}
-                  >
-                    <Text style={{ fontSize: 13, fontWeight: "500", color: subject === s ? "#FFFFFF" : colors.textTertiary }}>
-                      {s}
-                    </Text>
-                  </Pressable>
-                ))}
-              </ScrollView>
-
-              <Text style={{ fontSize: 12, fontWeight: "500", color: colors.textTertiary, marginBottom: 8 }}>GRADE</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 20 }}>
-                {GRADES.map((g) => (
-                  <Pressable
-                    key={g}
-                    onPress={() => setGrade(g)}
-                    style={{
-                      paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
-                      borderWidth: 1,
-                      borderColor: grade === g ? colors.brand : colors.border,
-                      backgroundColor: grade === g ? colors.indigoBg : colors.card,
-                    }}
-                  >
-                    <Text style={{ fontSize: 13, fontWeight: "500", color: grade === g ? colors.brand : colors.textTertiary }}>
-                      {g}
-                    </Text>
-                  </Pressable>
-                ))}
-              </ScrollView>
-
-              <Text style={{ fontSize: 12, fontWeight: "500", color: colors.textTertiary, marginBottom: 8 }}>TOPIC</Text>
-              <TextInput
-                placeholder="e.g. Quadratic Equations"
-                placeholderTextColor={colors.textPlaceholder}
-                value={topic}
-                onChangeText={setTopic}
-                style={{
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  borderRadius: 10,
-                  paddingHorizontal: 14,
-                  paddingVertical: 12,
-                  fontSize: 14,
-                  color: colors.text,
-                  marginBottom: 24,
-                  backgroundColor: colors.cardSubtle,
-                }}
-              />
-
-              {genError ? (
-                <Text style={{ fontSize: 12, color: colors.error, marginBottom: 12 }}>{genError}</Text>
-              ) : null}
-
-              {generating && streamedContent ? (
-                <View style={{ backgroundColor: colors.cardSubtle, borderRadius: 12, padding: 14, marginBottom: 20 }}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                    <Sparkle size={14} color={colors.brand} />
-                    <Text style={{ fontSize: 12, color: colors.brand, fontWeight: "500" }}>Writing…</Text>
-                  </View>
-                  <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 20 }} numberOfLines={10}>
-                    {streamedContent}
-                  </Text>
-                </View>
-              ) : generating ? (
-                <View style={{ alignItems: "center", paddingVertical: 24, gap: 12 }}>
-                  <ActivityIndicator size="large" color={colors.brand} />
-                  <Text style={{ fontSize: 13, color: colors.textTertiary }}>Generating your study guide…</Text>
-                </View>
-              ) : null}
-
-              <View style={{ flexDirection: "row", gap: 10 }}>
-                <Pressable
-                  onPress={handleGenerate}
-                  disabled={generating || !topic.trim()}
-                  style={{
-                    flex: 1,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 8,
-                    backgroundColor: generating || !topic.trim() ? `${colors.brand}80` : colors.brand,
-                    borderRadius: 12,
-                    paddingVertical: 14,
-                  }}
-                >
-                  {generating ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Sparkle size={16} color="#FFFFFF" />
-                  )}
-                  <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFFFFF" }}>
-                    {generating ? "Generating…" : "Generate"}
-                  </Text>
-                </Pressable>
-                {generating && (
-                  <Pressable
-                    onPress={() => abortRef.current?.abort()}
-                    style={{ alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 16 }}
-                  >
-                    <X size={18} color={colors.textTertiary} />
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                <Text style={{ fontSize: 12, color: colors.textTertiary }}>Step {step} of 2</Text>
+                {!generating && (
+                  <Pressable onPress={() => { resetModal(); setShowModal(false); }} style={{ padding: 8 }}>
+                    <X size={20} color={colors.textTertiary} />
                   </Pressable>
                 )}
               </View>
+            </View>
 
-              {!generating && streamedContent && (
-                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 12 }}>
-                  <SealCheck size={16} color={colors.success} />
-                  <Text style={{ fontSize: 13, color: colors.success, fontWeight: "500" }}>Project saved to your list</Text>
-                </View>
+            {/* Step progress bar */}
+            <View style={{ height: 3, backgroundColor: colors.borderSubtle }}>
+              <View style={{ height: 3, backgroundColor: colors.brand, width: step === 1 ? "50%" : "100%" }} />
+            </View>
+
+            <ScrollView contentContainerStyle={{ padding: 20 }} keyboardShouldPersistTaps="handled">
+
+              {/* ── Step 1: Candidate Information ─────────────────────────────── */}
+              {step === 1 && (
+                <>
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: colors.textTertiary, marginBottom: 6, marginTop: 4 }}>YOUR NAME</Text>
+                  <TextInput
+                    placeholder="e.g. Tendai Moyo"
+                    placeholderTextColor={colors.textPlaceholder}
+                    value={studentName}
+                    onChangeText={setStudentName}
+                    style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: colors.text, marginBottom: 16, backgroundColor: colors.cardSubtle }}
+                  />
+
+                  <View style={{ flexDirection: "row", gap: 12, marginBottom: 16 }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 12, fontWeight: "600", color: colors.textTertiary, marginBottom: 6 }}>CENTRE NUMBER</Text>
+                      <TextInput
+                        placeholder="e.g. 1234"
+                        placeholderTextColor={colors.textPlaceholder}
+                        value={centreNumber}
+                        onChangeText={setCentreNumber}
+                        keyboardType="numeric"
+                        style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: colors.text, backgroundColor: colors.cardSubtle }}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 12, fontWeight: "600", color: colors.textTertiary, marginBottom: 6 }}>CANDIDATE NUMBER</Text>
+                      <TextInput
+                        placeholder="e.g. 5678"
+                        placeholderTextColor={colors.textPlaceholder}
+                        value={candidateNumber}
+                        onChangeText={setCandidateNumber}
+                        keyboardType="numeric"
+                        style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: colors.text, backgroundColor: colors.cardSubtle }}
+                      />
+                    </View>
+                  </View>
+
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: colors.textTertiary, marginBottom: 8 }}>GRADE</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 20 }}>
+                    {GRADES.map((g) => (
+                      <Pressable
+                        key={g}
+                        onPress={() => handleGradeChange(g)}
+                        style={{
+                          paddingHorizontal: 16, paddingVertical: 9, borderRadius: 20,
+                          borderWidth: 1,
+                          borderColor: grade === g ? colors.brand : colors.border,
+                          backgroundColor: grade === g ? colors.indigoBg : colors.card,
+                        }}
+                      >
+                        <Text style={{ fontSize: 13, fontWeight: "600", color: grade === g ? colors.brand : colors.textTertiary }}>
+                          {g}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: colors.textTertiary, marginBottom: 8 }}>SUBJECT</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 20 }}>
+                    {(SUBJECTS_BY_GRADE[grade] ?? []).map((s) => (
+                      <Pressable
+                        key={s}
+                        onPress={() => setSubject(s)}
+                        style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: subject === s ? colors.brand : colors.borderSubtle }}
+                      >
+                        <Text style={{ fontSize: 13, fontWeight: "500", color: subject === s ? "#FFFFFF" : colors.textTertiary }}>
+                          {s}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: colors.textTertiary, marginBottom: 8 }}>CATEGORY</Text>
+                  {CATEGORIES.map((cat) => (
+                    <Pressable
+                      key={cat.id}
+                      onPress={() => setCategory(cat.id)}
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 12,
+                        borderWidth: 1,
+                        borderColor: category === cat.id ? colors.brand : colors.border,
+                        borderRadius: 12,
+                        padding: 14,
+                        marginBottom: 10,
+                        backgroundColor: category === cat.id ? colors.indigoBg : colors.card,
+                      }}
+                    >
+                      <Text style={{ fontSize: 24 }}>{cat.emoji}</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontWeight: "600", color: category === cat.id ? colors.brand : colors.text }}>
+                          {cat.title}
+                        </Text>
+                        <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: 2 }}>
+                          {cat.desc}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  ))}
+
+                  <Pressable
+                    onPress={() => {
+                      if (canContinue) {
+                        setStep(2);
+                        startGeneration();
+                      }
+                    }}
+                    disabled={!canContinue}
+                    style={{
+                      marginTop: 8,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 8,
+                      backgroundColor: canContinue ? colors.brand : `${colors.brand}60`,
+                      borderRadius: 12,
+                      paddingVertical: 14,
+                    }}
+                  >
+                    <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFFFFF" }}>Continue</Text>
+                  </Pressable>
+                </>
+              )}
+
+              {/* ── Step 2: Generating ──────────────────────────────────────────── */}
+              {step === 2 && (
+                <>
+                  {genError ? (
+                    <View style={{ alignItems: "center", paddingVertical: 32, gap: 12 }}>
+                      <Text style={{ fontSize: 13, color: colors.error, textAlign: "center" }}>{genError}</Text>
+                      <Pressable
+                        onPress={() => setStep(1)}
+                        style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 20, paddingVertical: 10 }}
+                      >
+                        <Text style={{ fontSize: 14, color: colors.text, fontWeight: "500" }}>Try Again</Text>
+                      </Pressable>
+                    </View>
+                  ) : genDone ? (
+                    <View style={{ alignItems: "center", paddingVertical: 24, gap: 12 }}>
+                      <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: colors.indigoBg, alignItems: "center", justifyContent: "center" }}>
+                        <SealCheck size={28} color={colors.success} />
+                      </View>
+                      <Text style={{ fontSize: 15, fontWeight: "600", color: colors.text }}>Project Generated!</Text>
+                      <Pressable
+                        onPress={() => { resetModal(); setShowModal(false); }}
+                        style={{ backgroundColor: colors.brand, borderRadius: 10, paddingHorizontal: 24, paddingVertical: 12, marginTop: 4 }}
+                      >
+                        <Text style={{ fontSize: 14, fontWeight: "600", color: "#FFFFFF" }}>Done</Text>
+                      </Pressable>
+                    </View>
+                  ) : (
+                    <View style={{ alignItems: "center", paddingVertical: 24, gap: 12 }}>
+                      <ActivityIndicator size="large" color={colors.brand} />
+                      <Text style={{ fontSize: 14, fontWeight: "500", color: colors.text }}>Generating your project…</Text>
+                      <Text style={{ fontSize: 12, color: colors.textTertiary }}>This takes about 30–60 seconds</Text>
+                    </View>
+                  )}
+
+                  {streamedContent ? (
+                    <View style={{ backgroundColor: colors.cardSubtle, borderRadius: 12, padding: 14, marginTop: 8 }}>
+                      {generating && (
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 }}>
+                          <Sparkle size={14} color={colors.brand} />
+                          <Text style={{ fontSize: 12, color: colors.brand, fontWeight: "500" }}>Writing…</Text>
+                        </View>
+                      )}
+                      <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 20 }} numberOfLines={15}>
+                        {streamedContent.slice(0, 600)}
+                      </Text>
+                    </View>
+                  ) : null}
+                </>
               )}
             </ScrollView>
           </KeyboardAvoidingView>
