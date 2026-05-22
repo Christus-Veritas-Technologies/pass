@@ -2,7 +2,7 @@
 
 import {
   BookOpen01Icon,
-  Computer01Icon,
+  ComputerIcon,
   Folder01Icon,
   GraduationScrollIcon,
   Home01Icon,
@@ -35,7 +35,7 @@ interface SidebarProps {
 const THEME_OPTIONS = [
   { value: "light", icon: Sun01Icon, label: "Light" },
   { value: "dark", icon: Moon01Icon, label: "Dark" },
-  { value: "system", icon: Computer01Icon, label: "System" },
+  { value: "system", icon: ComputerIcon, label: "System" },
 ] as const;
 
 export function Sidebar({ onClose }: SidebarProps) {
