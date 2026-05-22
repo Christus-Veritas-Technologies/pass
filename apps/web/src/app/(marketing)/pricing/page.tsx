@@ -85,12 +85,12 @@ export default function MarketingPricing() {
           </p>
 
           {/* Billing toggle */}
-          <div className="mt-8 inline-flex items-center gap-1 rounded-lg border bg-muted/50 p-1">
+          <div className="mt-8 inline-flex items-center gap-1 rounded-xl border bg-muted/50 p-1">
             <button
               type="button"
               onClick={() => setBilling("MONTHLY")}
               className={cn(
-                "rounded-md px-4 py-1.5 text-sm font-medium transition-all",
+                "rounded-lg px-4 py-1.5 text-sm font-medium transition-all",
                 billing === "MONTHLY"
                   ? "bg-background shadow-sm text-foreground"
                   : "text-muted-foreground hover:text-foreground",
@@ -102,7 +102,7 @@ export default function MarketingPricing() {
               type="button"
               onClick={() => setBilling("ANNUAL")}
               className={cn(
-                "flex items-center gap-1.5 rounded-md px-4 py-1.5 text-sm font-medium transition-all",
+                "flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-sm font-medium transition-all",
                 billing === "ANNUAL"
                   ? "bg-background shadow-sm text-foreground"
                   : "text-muted-foreground hover:text-foreground",

@@ -69,7 +69,7 @@ export default function CheckoutPage() {
       <div className="flex items-center gap-4">
         <button
           onClick={() => router.back()}
-          className="p-2 hover:bg-muted rounded-lg transition-colors"
+          className="p-2 hover:bg-muted rounded-xl transition-colors"
         >
           <HugeiconsIcon icon={ArrowLeft01Icon} className="h-5 w-5" />
         </button>
@@ -80,11 +80,11 @@ export default function CheckoutPage() {
       </div>
 
       {/* Billing toggle */}
-      <div className="inline-flex items-center rounded-lg border bg-muted/50 p-1 gap-1">
+      <div className="inline-flex items-center rounded-xl border bg-muted/50 p-1 gap-1">
         <button
           onClick={() => setBilling("MONTHLY")}
           className={cn(
-            "rounded-md px-4 py-1.5 text-sm font-medium transition-all",
+            "rounded-lg px-4 py-1.5 text-sm font-medium transition-all",
             billing === "MONTHLY" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
           )}
         >
@@ -93,7 +93,7 @@ export default function CheckoutPage() {
         <button
           onClick={() => setBilling("ANNUAL")}
           className={cn(
-            "rounded-md px-4 py-1.5 text-sm font-medium transition-all flex items-center gap-1.5",
+            "rounded-lg px-4 py-1.5 text-sm font-medium transition-all flex items-center gap-1.5",
             billing === "ANNUAL" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
           )}
         >

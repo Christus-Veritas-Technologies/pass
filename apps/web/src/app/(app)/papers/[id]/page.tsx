@@ -386,7 +386,7 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
                     setAnswers((prev) => ({ ...prev, [currentQ.questionNumber]: e.target.value }))
                   }
                   rows={5}
-                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent resize-none"
                 />
                 <Button
                   onClick={handleSubmit}

@@ -183,12 +183,12 @@ export default function StudyNewPage() {
             placeholder="Search papers…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-4 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+            className="w-full rounded-xl border border-input bg-background hover:border-primary/40 py-2.5 pl-10 pr-4 text-sm placeholder:text-muted-foreground/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent"
           />
         </div>
 
         {/* Level tabs */}
-        <div className="flex rounded-lg border border-border overflow-hidden w-fit">
+        <div className="flex rounded-xl border border-border overflow-hidden w-fit">
           {LEVELS.map((l) => (
             <button
               key={l.value}

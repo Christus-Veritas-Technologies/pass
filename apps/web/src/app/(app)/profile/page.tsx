@@ -250,34 +250,34 @@ export default function ProfilePage() {
             <form onSubmit={handleSave} className="space-y-4 mt-2">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Full name</label>
+                  <label className="text-sm font-medium text-foreground/90">Full name</label>
                   <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent"
                     required
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Grade</label>
+                  <label className="text-sm font-medium text-foreground/90">Grade</label>
                   <select
                     value={grade}
                     onChange={(e) => setGrade(e.target.value)}
-                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent"
                   >
                     <option value="">Select grade</option>
                     {GRADES.map((g) => <option key={g}>{g}</option>)}
                   </select>
                 </div>
                 <div className="space-y-1.5 sm:col-span-2">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">School</label>
+                  <label className="text-sm font-medium text-foreground/90">School</label>
                   <input
                     type="text"
                     placeholder="Your school name"
                     value={school}
                     onChange={(e) => setSchool(e.target.value)}
-                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm hover:border-primary/40 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent"
                   />
                 </div>
               </div>

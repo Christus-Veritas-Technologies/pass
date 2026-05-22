@@ -89,7 +89,7 @@ export function Sidebar({ onClose }: SidebarProps) {
               onClick={() => setTheme(value)}
               aria-label={`${label} theme`}
               className={cn(
-                "flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-medium transition-colors",
+                "flex flex-1 items-center justify-center gap-1.5 rounded-xl py-1.5 text-xs font-medium transition-colors",
                 theme === value
                   ? "bg-primary/10 text-primary"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground",

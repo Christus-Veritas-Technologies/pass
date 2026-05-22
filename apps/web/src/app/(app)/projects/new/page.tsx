@@ -218,7 +218,7 @@ export default function NewProjectPage() {
         <button
           type="button"
           onClick={() => router.push("/projects")}
-          className="flex items-center justify-center h-9 w-9 rounded-lg border border-border hover:bg-muted transition-colors"
+          className="flex items-center justify-center h-9 w-9 rounded-xl border border-border hover:bg-muted transition-colors"
           disabled={step === 2 && generating}
         >
           <HugeiconsIcon icon={ArrowLeft01Icon} className="h-4 w-4" />
@@ -250,13 +250,13 @@ export default function NewProjectPage() {
         <div className="space-y-5">
           {/* Name */}
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Full Name</label>
+            <label className="text-sm font-medium text-foreground/90">Full Name</label>
             <input
               type="text"
               placeholder="e.g. Tendai Moyo"
               value={studentName}
               onChange={(e) => { setStudentName(e.target.value); setErrors((p) => ({ ...p, studentName: undefined })); }}
-              className={`w-full rounded-lg border bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 ${errors.studentName ? "border-destructive" : "border-border"}`}
+              className={`w-full rounded-xl border bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground/50 hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent ${errors.studentName ? "border-destructive" : "border-border"}`}
             />
             {errors.studentName && <p className="text-xs text-destructive mt-0.5">{errors.studentName}</p>}
           </div>
@@ -264,26 +264,26 @@ export default function NewProjectPage() {
           {/* Centre + Candidate numbers */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Centre Number</label>
+              <label className="text-sm font-medium text-foreground/90">Centre Number</label>
               <input
                 type="text"
                 inputMode="numeric"
                 placeholder="e.g. 1234"
                 value={centreNumber}
                 onChange={(e) => { setCentreNumber(e.target.value); setErrors((p) => ({ ...p, centreNumber: undefined })); }}
-                className={`w-full rounded-lg border bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 ${errors.centreNumber ? "border-destructive" : "border-border"}`}
+                className={`w-full rounded-xl border bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground/50 hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent ${errors.centreNumber ? "border-destructive" : "border-border"}`}
               />
               {errors.centreNumber && <p className="text-xs text-destructive mt-0.5">{errors.centreNumber}</p>}
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Candidate Number</label>
+              <label className="text-sm font-medium text-foreground/90">Candidate Number</label>
               <input
                 type="text"
                 inputMode="numeric"
                 placeholder="e.g. 5678"
                 value={candidateNumber}
                 onChange={(e) => { setCandidateNumber(e.target.value); setErrors((p) => ({ ...p, candidateNumber: undefined })); }}
-                className={`w-full rounded-lg border bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 ${errors.candidateNumber ? "border-destructive" : "border-border"}`}
+                className={`w-full rounded-xl border bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground/50 hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent ${errors.candidateNumber ? "border-destructive" : "border-border"}`}
               />
               {errors.candidateNumber && <p className="text-xs text-destructive mt-0.5">{errors.candidateNumber}</p>}
             </div>
@@ -291,14 +291,14 @@ export default function NewProjectPage() {
 
           {/* Grade */}
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Grade</label>
+            <label className="text-sm font-medium text-foreground/90">Grade</label>
             <div className="flex gap-2">
               {GRADES.map((g) => (
                 <button
                   key={g}
                   type="button"
                   onClick={() => setGrade(g)}
-                  className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                  className={`flex-1 rounded-xl border px-3 py-2 text-sm font-medium transition-colors ${
                     grade === g
                       ? "border-primary bg-primary text-primary-foreground"
                       : "border-border bg-background hover:bg-muted"
@@ -312,13 +312,13 @@ export default function NewProjectPage() {
 
           {/* Subject — free text */}
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Subject</label>
+            <label className="text-sm font-medium text-foreground/90">Subject</label>
             <input
               type="text"
               placeholder="e.g. Biology, History, Shona…"
               value={subject}
               onChange={(e) => { setSubject(e.target.value); setErrors((p) => ({ ...p, subject: undefined })); }}
-              className={`w-full rounded-lg border bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 ${errors.subject ? "border-destructive" : "border-border"}`}
+              className={`w-full rounded-xl border bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground/50 hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent ${errors.subject ? "border-destructive" : "border-border"}`}
             />
             {errors.subject ? (
               <p className="text-xs text-destructive mt-0.5">{errors.subject}</p>
@@ -398,14 +398,4 @@ export default function NewProjectPage() {
                     Writing…
                   </div>
                 )}
-                <div className="prose prose-sm max-w-none dark:prose-invert text-foreground">
-                  {renderMarkdown(streamedContent)}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
+                <div

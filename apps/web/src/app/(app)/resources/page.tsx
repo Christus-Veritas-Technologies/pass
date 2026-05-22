@@ -173,14 +173,14 @@ export default function ResourcesPage() {
           placeholder="Search by title or subject…"
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          className="w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-4 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-[box-shadow] duration-150"
+          className="w-full rounded-xl border border-input bg-background hover:border-primary/40 py-2.5 pl-10 pr-4 text-sm placeholder:text-muted-foreground/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent transition-[box-shadow] duration-150"
         />
       </div>
 
       {/* Filters */}
       <div className="space-y-2.5">
         {/* Level tabs — first row */}
-        <div className="flex rounded-lg border border-border overflow-hidden w-fit">
+        <div className="flex rounded-xl border border-border overflow-hidden w-fit">
           {LEVELS.map((l) => (
             <Button
               key={l.value}
@@ -196,7 +196,7 @@ export default function ResourcesPage() {
         {/* Type + subject + year — second row */}
         <div className="flex flex-wrap gap-2.5">
           {/* Type tabs */}
-          <div className="flex rounded-lg border border-border overflow-hidden">
+          <div className="flex rounded-xl border border-border overflow-hidden">
             {TYPES.map((t) => (
               <Button
                 key={t}
@@ -212,7 +212,7 @@ export default function ResourcesPage() {
           <select
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
-            className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+            className="rounded-xl border border-input bg-background px-3 py-1.5 text-xs text-foreground hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent"
           >
             {SUBJECTS.map((s) => <option key={s}>{s}</option>)}
           </select>
@@ -220,7 +220,7 @@ export default function ResourcesPage() {
           <select
             value={year}
             onChange={(e) => setYear(e.target.value)}
-            className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+            className="rounded-xl border border-input bg-background px-3 py-1.5 text-xs text-foreground hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent"
           >
             {YEARS.map((y) => <option key={y}>{y}</option>)}
           </select>

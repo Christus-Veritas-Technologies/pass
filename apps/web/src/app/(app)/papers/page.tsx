@@ -120,7 +120,7 @@ export default function PapersPage() {
           placeholder="Search by title or subject…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-4 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-[box-shadow] duration-150"
+          className="w-full rounded-xl border border-input bg-background hover:border-primary/40 py-2.5 pl-10 pr-4 text-sm placeholder:text-muted-foreground/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent transition-[box-shadow] duration-150"
         />
       </div>
 
@@ -129,7 +129,7 @@ export default function PapersPage() {
         <select
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
-          className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+          className="rounded-xl border border-input bg-background px-3 py-1.5 text-xs text-foreground hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent"
         >
           {SUBJECTS.map((s) => <option key={s}>{s}</option>)}
         </select>
@@ -137,7 +137,7 @@ export default function PapersPage() {
         <select
           value={grade}
           onChange={(e) => setGrade(e.target.value)}
-          className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+          className="rounded-xl border border-input bg-background px-3 py-1.5 text-xs text-foreground hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent"
         >
           {GRADES.map((g) => <option key={g}>{g}</option>)}
         </select>
@@ -145,7 +145,7 @@ export default function PapersPage() {
         <select
           value={year}
           onChange={(e) => setYear(e.target.value)}
-          className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+          className="rounded-xl border border-input bg-background px-3 py-1.5 text-xs text-foreground hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent"
         >
           {YEARS.map((y) => <option key={y}>{y}</option>)}
         </select>

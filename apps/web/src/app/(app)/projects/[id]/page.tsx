@@ -86,7 +86,7 @@ export default function ProjectDetailPage() {
         <button
           type="button"
           onClick={() => router.push("/projects")}
-          className="flex items-center justify-center h-9 w-9 rounded-lg border border-border hover:bg-muted transition-colors"
+          className="flex items-center justify-center h-9 w-9 rounded-xl border border-border hover:bg-muted transition-colors"
         >
           <HugeiconsIcon icon={ArrowLeft01Icon} className="h-4 w-4" />
         </button>
