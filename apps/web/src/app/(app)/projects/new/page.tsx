@@ -7,7 +7,7 @@ import {
   Folder01Icon,
   Leaf01Icon,
   SparklesIcon,
-  Theater01Icon,
+  TheaterIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useEffect, useRef, useState } from "react";
@@ -29,7 +29,7 @@ const GRADES = ["Grade 7", "Form 4", "Form 6"] as const;
 const CATEGORIES = [
   { id: "Culture & History", icon: BookOpen01Icon, title: "Culture & History", desc: "Totems, liberation struggle, customs, languages" },
   { id: "Indigenous Sciences", icon: Leaf01Icon, title: "Indigenous Sciences", desc: "Traditional medicine, farming, energy systems" },
-  { id: "Arts & Lifestyle", icon: Theater01Icon, title: "Arts & Lifestyle", desc: "Music, architecture, food, traditional games" },
+  { id: "Arts & Lifestyle", icon: TheaterIcon, title: "Arts & Lifestyle", desc: "Music, architecture, food, traditional games" },
 ] as const;
 
 function renderMarkdown(content: string) {
