@@ -1,6 +1,5 @@
 import { Hono } from "hono";
 import {
-  exportProjectHtml,
   generateProject,
   getProject,
   getProjectHtml,
@@ -10,12 +9,12 @@ import { requireAuth } from "../middleware/auth";
 
 const router = new Hono();
 
-// HTML export handles its own auth (supports ?token= query param for new-tab opens)
+// HTML export validates its own token (Authorization header OR ?token= query param)
+// so it must be registered BEFORE requireAuth.
 router.get("/:id/html", getProjectHtml);
 
 router.use("/*", requireAuth);
 router.get("/", getProjects);
-router.get("/:id/html", exportProjectHtml);
 router.get("/:id", getProject);
 router.post("/generate", generateProject);
 
