@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import {
+  exportProjectHtml,
   generateProject,
   getProject,
   getProjects,
@@ -10,6 +11,7 @@ const router = new Hono();
 
 router.use("/*", requireAuth);
 router.get("/", getProjects);
+router.get("/:id/html", exportProjectHtml);
 router.get("/:id", getProject);
 router.post("/generate", generateProject);
 
