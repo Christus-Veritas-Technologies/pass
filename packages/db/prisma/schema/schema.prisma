@@ -189,14 +189,18 @@ model QuestionAttempt {
 }
 
 model Project {
-  id        String   @id @default(cuid())
-  userId    String
-  grade     String
-  subject   String
-  topic     String
-  content   String
-  pdfUrl    String?
-  createdAt DateTime @default(now())
+  id              String   @id @default(cuid())
+  userId          String
+  grade           String
+  subject         String
+  topic           String
+  content         String
+  pdfUrl          String?
+  centreNumber    String   @default("")
+  candidateNumber String   @default("")
+  category        String   @default("")
+  studentName     String   @default("")
+  createdAt       DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id])
 }
