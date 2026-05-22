@@ -2,9 +2,12 @@
 
 import {
   ArrowLeft01Icon,
+  BookOpen01Icon,
   CheckmarkCircle01Icon,
   Folder01Icon,
+  Leaf01Icon,
   SparklesIcon,
+  Theater01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useEffect, useRef, useState } from "react";
@@ -24,9 +27,9 @@ const SUBJECTS_BY_GRADE: Record<string, string[]> = {
 const GRADES = ["Grade 7", "Form 4", "Form 6"] as const;
 
 const CATEGORIES = [
-  { id: "Culture & History", emoji: "🏺", title: "Culture & History", desc: "Totems, liberation struggle, customs, languages" },
-  { id: "Indigenous Sciences", emoji: "🌿", title: "Indigenous Sciences", desc: "Traditional medicine, farming, energy systems" },
-  { id: "Arts & Lifestyle", emoji: "🎭", title: "Arts & Lifestyle", desc: "Music, architecture, food, traditional games" },
+  { id: "Culture & History", icon: BookOpen01Icon, title: "Culture & History", desc: "Totems, liberation struggle, customs, languages" },
+  { id: "Indigenous Sciences", icon: Leaf01Icon, title: "Indigenous Sciences", desc: "Traditional medicine, farming, energy systems" },
+  { id: "Arts & Lifestyle", icon: Theater01Icon, title: "Arts & Lifestyle", desc: "Music, architecture, food, traditional games" },
 ] as const;
 
 function renderMarkdown(content: string) {
@@ -277,7 +280,11 @@ export default function NewProjectPage() {
                       : "border-border hover:border-primary/40 hover:bg-muted/50"
                   }`}
                 >
-                  <span className="text-2xl leading-none mt-0.5">{cat.emoji}</span>
+                  <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+                    category === cat.id ? "bg-primary/10" : "bg-muted"
+                  }`}>
+                    <HugeiconsIcon icon={cat.icon} className={`h-5 w-5 ${category === cat.id ? "text-primary" : "text-muted-foreground"}`} />
+                  </div>
                   <div>
                     <p className="text-sm font-semibold">{cat.title}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">{cat.desc}</p>

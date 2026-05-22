@@ -60,46 +60,88 @@ export async function generateProject(c: Context) {
   const year = new Date().getFullYear();
   const displayName = studentName || "Student";
 
-  const prompt = `You are an expert in ZIMSEC Heritage-Based Education 5.0. Generate a complete, formal ZIMSEC HBC project document for a ${grade} student.
+  const prompt = `You are an expert in ZIMSEC Heritage-Based Education (HBC) 5.0. Generate a complete, authentic ZIMSEC HBC project document for a ${grade} student. Follow the exact stage-based structure used in real ZIMSEC submissions.
 
-Student: ${displayName}
-Centre Number: ${centreNumber}
-Candidate Number: ${candidateNumber}
-Subject: ${subject}
-Category: ${category}
-Grade: ${grade}
-Year: ${year}
+Candidate Details:
+- Name: ${displayName}
+- Centre Number: ${centreNumber}
+- Candidate Number: ${candidateNumber}
+- Level: ${grade}
+- Learning Area: ${subject}
+- Category: ${category}
+- Year: ${year}
 
-First, choose a specific, authentic topic within the "${category}" category for ${subject} at ${grade} level. The topic must be grounded in Zimbabwean heritage and align with the HBC 5.0 curriculum.
+First, select a specific, authentic project topic within the "${category}" category for ${subject} at ${grade} level. The topic must be rooted in Zimbabwean heritage and align with the HBC 5.0 curriculum.
 
-Then write the complete project with these exact sections:
+Then produce the complete project using EXACTLY this structure:
 
 # [Your chosen project title]
 
-## Candidate Information
-Centre Number: ${centreNumber}
-Candidate Number: ${candidateNumber}
-Name: ${displayName}
-Grade: ${grade}
-Subject: ${subject}
-Year: ${year}
+## Cover Page
+**Name:** ${displayName}
+**Centre Number:** ${centreNumber}
+**Candidate Number:** ${candidateNumber}
+**Level:** ${grade}
+**Learning Area:** ${subject}
+**Category:** ${category}
+**Year:** ${year}
 
-## Introduction
-[Background, rationale, objectives — 200-300 words. Ground it in Zimbabwean heritage context.]
+## Stage 1: Problem Identification
 
-## Methodology
-[How data was collected — interviews with community elders, field visits, library research, surveys. 150-200 words. Must be realistic for a Zimbabwean student.]
+### 1.1 Description of the Problem/Need
+[Clearly describe the heritage-based problem or need being investigated. Explain what exists currently, what gap or challenge is present, and why this topic matters within the Zimbabwean context. 120–180 words.]
 
-## Data Presentation and Analysis
-[Findings presented in structured sections with clear headings. Include tables or lists where appropriate. 400-600 words. This is the main body.]
+### 1.2 Statement of Intent
+[State precisely what the project aims to achieve. Write as a clear, measurable objective. For example: "The aim of this project is to document and preserve…" 60–100 words.]
 
-## Recommendations and Conclusion
-[Practical recommendations for preserving the heritage/practice. Concluding remarks tying back to Heritage-Based Education. 150-200 words.]
+### 1.3 Specifications and Constraints
+[List 4–6 specific requirements the final solution or outcome must meet. Include practical constraints such as available materials, community acceptance, cost, and alignment with heritage values. Use numbered points.]
+
+## Stage 2: Investigation of Related Ideas
+
+### 2.1 Research Findings
+[Present findings from research — community elder interviews, field visits, library sources, or surveys. Organise under 2–3 clear sub-headings relevant to the topic. 250–350 words total.]
+
+### 2.2 Analysis of Existing Approaches (Merits and Demerits)
+
+**Existing Approach A: [Name a relevant traditional or modern method]**
+- Merits: [2–3 specific advantages]
+- Demerits: [2–3 specific disadvantages]
+
+**Existing Approach B: [Name a second relevant method]**
+- Merits: [2–3 specific advantages]
+- Demerits: [2–3 specific disadvantages]
+
+## Stage 3: Generation of Possible Solutions
+
+[Propose 3 distinct possible solutions or approaches to address the problem identified in Stage 1. For each, briefly describe the concept and how it addresses the specifications. Number them clearly.]
+
+**Solution 1:** [Title and description — 60–80 words]
+
+**Solution 2:** [Title and description — 60–80 words]
+
+**Solution 3:** [Title and description — 60–80 words]
+
+## Stage 4: Development and Refinement
+
+### 4.1 Indication of Chosen Solution
+[State clearly which of the three solutions was selected.]
+
+### 4.2 Justification of Choice
+[Explain why this solution was chosen over the others. Reference the specifications from Stage 1 and the Merits/Demerits from Stage 2. 100–150 words.]
+
+### 4.3 Development Details
+[Describe how the chosen solution was developed, refined, or implemented. Include any steps taken, materials or methods used, and any modifications made during development. 150–200 words.]
+
+## Evaluation
+
+[Assess how well the completed project meets the specifications set in Stage 1. Comment on what worked well, what could be improved, and what was learned. Reference the original objectives. 120–160 words.]
 
 ## References
-[3-5 realistic references: textbooks, interviews with named community members, government publications]
+[List 4–6 realistic references including: ZIMSEC or government curriculum documents, named community elders with village/area, school library textbooks with author and year, and any field visit locations. Use a consistent citation format.]
 
-Write formally and academically. Use British English. Make the content authentic, detailed, and specific to Zimbabwe.`;
+Write formally and academically throughout. Use British English. Every section must contain real, specific Zimbabwean content — names of places, people, cultural practices, plants, historical events, or scientific knowledge authentic to Zimbabwe. Do not use generic placeholder text.`;
+
 
   let projectId: string | null = null;
   let accumulatedContent = "";
@@ -126,7 +168,7 @@ Write formally and academically. Use British English. Make the content authentic
       const result = streamText({
         model: anthropic(CLAUDE_MODEL),
         prompt,
-        maxTokens: 2500,
+        maxTokens: 4000,
       });
 
       for await (const chunk of result.textStream) {
