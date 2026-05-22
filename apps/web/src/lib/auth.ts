@@ -140,6 +140,24 @@ export function getAccessToken(): string | null {
   return localStorage.getItem("pass_access_token");
 }
 
+/** Decode the JWT payload and check whether exp is in the past. */
+export function isTokenExpired(token: string): boolean {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    // exp is in seconds; compare against ms timestamp
+    return typeof payload.exp === "number" && payload.exp * 1000 < Date.now();
+  } catch {
+    return true; // malformed token → treat as expired
+  }
+}
+
 export function isLoggedIn(): boolean {
-  return !!getAccessToken();
+  const token = getAccessToken();
+  if (!token) return false;
+  if (isTokenExpired(token)) {
+    // Purge stale data so the next check is instant and the guard redirects
+    clearTokens();
+    return false;
+  }
+  return true;
 }

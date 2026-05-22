@@ -23,7 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@pass/ui/components/table";
-import { getAccessToken } from "@/lib/auth";
+import { clearTokens, getAccessToken } from "@/lib/auth";
 
 const API = process.env.NEXT_PUBLIC_SERVER_URL;
 const PAGE_SIZE = 10;
@@ -154,11 +154,18 @@ export default function StudyPage() {
     fetch(`${API}/study/stats`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
-      .then((r) => r.json())
-      .then((d) => setData(d?.sessions !== undefined ? d : null))
+      .then((r) => {
+        if (r.status === 401) {
+          clearTokens();
+          router.replace("/login");
+          return null;
+        }
+        return r.json();
+      })
+      .then((d) => { if (d) setData(d?.sessions !== undefined ? d : null); })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [router]);
 
   return (
     <div className="mx-auto max-w-4xl space-y-8 animate-fade-up">

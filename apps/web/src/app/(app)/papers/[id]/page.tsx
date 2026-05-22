@@ -11,13 +11,14 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react";
 import Link from "next/link";
 import { use, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Badge } from "@pass/ui/components/badge";
 import { Button } from "@pass/ui/components/button";
 import { Card, CardContent } from "@pass/ui/components/card";
 import { Progress } from "@pass/ui/components/progress";
 import { Skeleton } from "@pass/ui/components/skeleton";
 import { cn } from "@/lib/utils";
-import { getAccessToken } from "@/lib/auth";
+import { clearTokens, getAccessToken } from "@/lib/auth";
 import { FormattedQuestionText } from "@/lib/format-question";
 
 const API = process.env.NEXT_PUBLIC_SERVER_URL;
@@ -48,6 +49,7 @@ type Mode = "GUIDE" | "FREE";
 
 export default function PaperSessionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const router = useRouter();
 
   const [paper, setPaper] = useState<Paper | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -105,6 +107,11 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
         body: JSON.stringify({ mode }),
       });
       const data = await res.json();
+      if (res.status === 401) {
+        clearTokens();
+        router.replace("/login");
+        return;
+      }
       if (!res.ok) throw new Error(data.error ?? "Failed to start session");
       setSessionId(data.session?.id ?? null);
       setStarted(true);
