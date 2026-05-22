@@ -1,18 +1,16 @@
 "use client";
 
 import {
-  BookOpen01Icon,
-  Calendar01Icon,
   Folder01Icon,
   PlusSignIcon,
-  Tag01Icon,
+  SparklesIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Badge } from "@pass/ui/components/badge";
 import { Button } from "@pass/ui/components/button";
+import { Card, CardContent } from "@pass/ui/components/card";
 import { Skeleton } from "@pass/ui/components/skeleton";
 import { getAccessToken } from "@/lib/auth";
 
@@ -24,32 +22,26 @@ interface Project {
   subject: string;
   topic: string;
   category: string;
-  studentName: string;
-  centreNumber: string;
-  candidateNumber: string;
   createdAt: string;
 }
 
-const CATEGORY_COLORS: Record<string, { bg: string; text: string; badge: "default" | "success" | "warning" | "outline" }> = {
-  "Culture & History":    { bg: "bg-amber-50 dark:bg-amber-950/30",   text: "text-amber-600 dark:text-amber-400",   badge: "warning" },
-  "Indigenous Sciences":  { bg: "bg-emerald-50 dark:bg-emerald-950/30", text: "text-emerald-600 dark:text-emerald-400", badge: "success" },
-  "Arts & Lifestyle":     { bg: "bg-violet-50 dark:bg-violet-950/30",  text: "text-violet-600 dark:text-violet-400",  badge: "default" },
-};
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-ZW", { day: "numeric", month: "short", year: "numeric" });
+function timeAgo(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const days = Math.floor(diff / 86400000);
+  if (days === 0) return "today";
+  if (days === 1) return "yesterday";
+  return `${days} days ago`;
 }
 
-function ProjectCardSkeleton() {
+function ProjectSkeleton() {
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
-      <Skeleton className="h-4 w-2/3 rounded-lg" />
-      <Skeleton className="h-3 w-1/2 rounded-lg" />
-      <div className="flex gap-2 pt-1">
-        <Skeleton className="h-5 w-20 rounded-full" />
-        <Skeleton className="h-5 w-16 rounded-full" />
-      </div>
-    </div>
+    <Card className="rounded-xl">
+      <CardContent className="py-4 space-y-2">
+        <Skeleton className="h-4 w-3/4" />
+        <Skeleton className="h-3 w-1/2" />
+        <Skeleton className="h-3 w-1/3" />
+      </CardContent>
+    </Card>
   );
 }
 
@@ -70,79 +62,66 @@ export default function ProjectsPage() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 animate-fade-up">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+    <div className="mx-auto max-w-5xl animate-fade-up">
+      <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Projects</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Your ZIMSEC Heritage-Based Curriculum projects
           </p>
         </div>
-        <Button onClick={() => router.push("/projects/new")} className="shrink-0">
+        <Button onClick={() => router.push("/projects/new")}>
           <HugeiconsIcon icon={PlusSignIcon} className="mr-2 h-4 w-4" />
           New Project
         </Button>
       </div>
 
-      {/* List */}
       {loading ? (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <ProjectCardSkeleton />
-          <ProjectCardSkeleton />
-          <ProjectCardSkeleton />
+        <div className="grid gap-4 md:grid-cols-2">
+          <ProjectSkeleton />
+          <ProjectSkeleton />
+          <ProjectSkeleton />
         </div>
       ) : projects.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-24 text-center animate-fade-up">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/8 mb-5">
-            <HugeiconsIcon icon={Folder01Icon} className="h-7 w-7 text-primary/40" />
+        <div className="flex flex-col items-center py-20 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 mb-4">
+            <HugeiconsIcon icon={Folder01Icon} className="h-6 w-6 text-primary/40" />
           </div>
           <p className="text-base font-semibold">No projects yet</p>
-          <p className="mt-2 text-sm text-muted-foreground max-w-xs leading-relaxed">
-            Generate your first ZIMSEC HBC project. The AI writes a complete, formally structured document — you just provide your candidate details.
+          <p className="mt-1 text-sm text-muted-foreground">
+            Your generated HBC projects will appear here.
           </p>
-          <Button onClick={() => router.push("/projects/new")} className="mt-6">
-            <HugeiconsIcon icon={PlusSignIcon} className="mr-2 h-4 w-4" />
+          <Button className="mt-4" onClick={() => router.push("/projects/new")}>
+            <HugeiconsIcon icon={SparklesIcon} className="mr-2 h-4 w-4" />
             Start New Project
           </Button>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {projects.map((p) => {
-            const style = CATEGORY_COLORS[p.category] ?? CATEGORY_COLORS["Culture & History"]!;
-            return (
-              <Link
-                key={p.id}
-                href={`/projects/${p.id}`}
-                className="group rounded-2xl border border-border bg-card p-5 transition-[transform,box-shadow] duration-200 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-0.5 hover:shadow-md block"
-              >
-                {/* Category icon strip */}
-                <div className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 mb-3 ${style.bg}`}>
-                  <HugeiconsIcon icon={BookOpen01Icon} className={`h-3.5 w-3.5 ${style.text}`} />
-                  <span className={`text-xs font-semibold ${style.text}`}>{p.category || "Heritage Project"}</span>
-                </div>
-
-                {/* Title */}
-                <p className="font-semibold text-foreground leading-snug line-clamp-2 mb-1">
-                  {p.topic}
-                </p>
-
-                {/* Subject + grade */}
-                <p className="text-xs text-muted-foreground mb-3">
-                  {p.subject} · {p.grade}
-                </p>
-
-                {/* Footer row */}
-                <div className="flex items-center justify-between">
-                  <Badge variant="outline" className="text-xs font-medium">{p.grade}</Badge>
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <HugeiconsIcon icon={Calendar01Icon} className="h-3 w-3" />
-                    {formatDate(p.createdAt)}
-                  </span>
-                </div>
-              </Link>
-            );
-          })}
+        <div className="grid gap-4 md:grid-cols-2">
+          {projects.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => router.push(`/projects/${p.id}`)}
+              className="w-full text-left"
+            >
+              <Card className="rounded-xl transition-[transform,box-shadow] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] cursor-pointer hover:-translate-y-0.5 hover:shadow-sm active:scale-[0.98]">
+                <CardContent className="py-4 px-4">
+                  <p className="text-sm font-semibold truncate">{p.topic}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{p.subject}</p>
+                  <div className="flex items-center justify-between mt-3">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-xs">{p.grade}</Badge>
+                      {p.category && (
+                        <Badge variant="secondary" className="text-xs">{p.category}</Badge>
+                      )}
+                    </div>
+                    <span className="text-xs text-muted-foreground">{timeAgo(p.createdAt)}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            </button>
+          ))}
         </div>
       )}
     </div>
