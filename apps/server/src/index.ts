@@ -20,6 +20,7 @@ const app = new Hono();
 const WEB_ORIGINS = new Set([
   "https://pass.co.zw",
   "https://www.pass.co.zw",
+  "http://localhost:3001", // Next.js web dev server
   "http://localhost:3000",
   "http://localhost:8081",
 ]);
