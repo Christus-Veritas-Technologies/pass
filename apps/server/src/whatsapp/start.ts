@@ -4,6 +4,7 @@
  * Wires message events → per-chat mutex → central handler.
  */
 
+import { execSync } from "node:child_process";
 import { existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import type { Hono } from "hono";
@@ -11,31 +12,69 @@ import { createClient } from "./client";
 import { withChatLock } from "./middleware/mutex";
 import { handleMessage } from "./router/index";
 
-const MAX_INIT_RETRIES = 3;
-const RETRY_DELAY_MS   = 5_000;
+const MAX_INIT_RETRIES = 4;
+const RETRY_DELAY_MS   = 3_000;
 
 /**
- * Puppeteer leaves a lockfile when the process dies without a clean shutdown
- * (hot-reload, crash, SIGKILL). On the next start the lockfile makes Chrome
- * think another instance is already running and it throws. We delete it first
- * so every start is clean.
+ * On Windows, when bun hot-reloads it kills the JS process but leaves the
+ * puppeteer-launched Chromium orphaned and still holding the lockfile open
+ * (EBUSY). rmSync can't delete a file that an open process has locked.
+ *
+ * Fix: before touching the lockfile, find and kill any Chrome process whose
+ * command line contains our specific session dir, wait a moment for the OS
+ * to release the file handle, then delete it.
  */
-function clearPuppeteerLockfile(sessionDir: string): void {
-  // LocalAuth stores sessions under <sessionDir>/session-<name>/Default/
-  // The lockfile itself can appear at several paths depending on the OS.
+function killOrphanedChrome(sessionDir: string): void {
+  if (process.platform !== "win32") return;
+
+  // Normalise to forward slashes so the PowerShell -like pattern is simpler
+  const needle = sessionDir.replace(/\\/g, "/");
+  try {
+    execSync(
+      `powershell -NoProfile -Command "` +
+      `Get-CimInstance Win32_Process -Filter 'Name = \\"chrome.exe\\"' | ` +
+      `Where-Object { $_.CommandLine -like '*wwebjs_auth*' } | ` +
+      `ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"`,
+      { stdio: "ignore", timeout: 8_000 }
+    );
+    console.log(`[whatsapp] Killed orphaned Chrome processes for: ${needle}`);
+  } catch {
+    // No matching processes or powershell unavailable — safe to continue
+  }
+}
+
+async function clearPuppeteerLockfile(sessionDir: string): Promise<void> {
+  // LocalAuth stores sessions under <sessionDir>/session/
+  // The lockfile can appear at several paths depending on Chrome's profile layout.
   const candidates = [
     join(sessionDir, "session", "lockfile"),
     join(sessionDir, "session", "Default", "lockfile"),
     join(sessionDir, "session-default", "lockfile"),
     join(sessionDir, "session-default", "Default", "lockfile"),
   ];
+
   for (const candidate of candidates) {
     if (existsSync(candidate)) {
       try {
         rmSync(candidate, { force: true });
         console.log(`[whatsapp] Removed stale lockfile: ${candidate}`);
-      } catch (e) {
-        console.warn(`[whatsapp] Could not remove lockfile ${candidate}:`, e);
+      } catch (e: unknown) {
+        const code = (e as NodeJS.ErrnoException).code;
+        if (code === "EBUSY") {
+          // File still locked — Chrome is still alive. Kill it, wait, retry once.
+          console.warn(`[whatsapp] Lockfile busy — killing orphaned Chrome and retrying…`);
+          killOrphanedChrome(sessionDir);
+          // Give the OS 1 s to release the file handle after the process dies
+          await sleep(1_000);
+          try {
+            rmSync(candidate, { force: true });
+            console.log(`[whatsapp] Removed stale lockfile (after kill): ${candidate}`);
+          } catch (e2) {
+            console.warn(`[whatsapp] Could not remove lockfile ${candidate}:`, e2);
+          }
+        } else {
+          console.warn(`[whatsapp] Could not remove lockfile ${candidate}:`, e);
+        }
       }
     }
   }
@@ -63,7 +102,7 @@ export async function startWhatsappBot(_app: Hono): Promise<void> {
     : join(process.cwd(), ".wwebjs_auth");
 
   for (let attempt = 1; attempt <= MAX_INIT_RETRIES; attempt++) {
-    clearPuppeteerLockfile(sessionDir);
+    await clearPuppeteerLockfile(sessionDir);
 
     try {
       console.log(`[whatsapp] Initialising… (attempt ${attempt}/${MAX_INIT_RETRIES})`);
@@ -74,7 +113,8 @@ export async function startWhatsappBot(_app: Hono): Promise<void> {
       const isLockError = msg.includes("already running") || msg.includes("lockfile");
 
       if (isLockError && attempt < MAX_INIT_RETRIES) {
-        console.warn(`[whatsapp] Browser lock detected — retrying in ${RETRY_DELAY_MS / 1000}s…`);
+        console.warn(`[whatsapp] Browser lock detected — killing orphaned Chrome and retrying in ${RETRY_DELAY_MS / 1000}s…`);
+        killOrphanedChrome(sessionDir);
         await sleep(RETRY_DELAY_MS);
         continue;
       }

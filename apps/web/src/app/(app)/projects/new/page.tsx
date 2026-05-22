@@ -150,6 +150,10 @@ export default function NewProjectPage() {
         signal: abort.signal,
       });
 
+      if (res.status === 401) {
+        router.push("/login?redirect=/projects/new");
+        return;
+      }
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error((err as { error?: string }).error ?? "Generation failed");
