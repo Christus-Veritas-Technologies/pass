@@ -87,7 +87,7 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
         setQuestions(d.questions ?? []);
       })
       .catch((err) => { if (err.name !== "AbortError") console.error(err); })
-      .finally(() => setLoading(false));
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [id]);
 
@@ -211,7 +211,7 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
     );
   }
 
-  if (!paper) {
+  if (!loading && !paper) {
     return (
       <div className="mx-auto max-w-5xl py-20 text-center">
         <p className="text-sm text-muted-foreground">Paper not found.</p>

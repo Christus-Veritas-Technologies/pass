@@ -94,7 +94,7 @@ export default function PaperSessionScreen() {
         setQuestions(d.questions ?? []);
       })
       .catch((err) => { if (err.name !== "AbortError") console.error(err); })
-      .finally(() => setLoading(false));
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [id]);
 
