@@ -1,6 +1,9 @@
 /**
  * Central message dispatcher.
  * Called once per inbound message (after mutex serialisation).
+ *
+ * Quota check happens early so we know whether to use NLP (full mode)
+ * or regex-only pattern matching (rigid mode when quota exhausted).
  */
 
 import type { Message, Client } from "whatsapp-web.js";
@@ -63,7 +66,7 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
 
   const hard = matchHardIntent(text, state.mode);
 
-  // ── Global hard intents ───────────────────────────────────────────────────
+  // ── Global hard intents (always free, no AI, no quota check) ─────────────
 
   if (hard.kind === "help") {
     await sendHelp(msg);
@@ -105,7 +108,12 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
     return;
   }
 
-  // ── Linked path ───────────────────────────────────────────────────────────
+  // ── Linked path: check quota early ───────────────────────────────────────
+  // Determines whether to use full NLP or rigid (regex-only) mode.
+  // Slot collection (project_brief) is always allowed — only AI calls are gated.
+
+  const quota = await getAiMessageUsage(userId);
+  const rigidMode = !quota.allowed;
 
   if (hard.kind === "greeting" && state.mode.kind === "idle") {
     await sendHelp(msg);
@@ -199,8 +207,11 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
     }
   }
 
+  // project_brief: slot collection is free (no AI quota); NLP extraction uses Haiku
+  // but is not counted toward the user's AI message quota.
+  // In rigid mode we skip Haiku and use regex-only extraction.
   if (state.mode.kind === "project_brief") {
-    const { state: newState, ready } = await handleProjectBriefReply(msg, text, state);
+    const { state: newState, ready } = await handleProjectBriefReply(msg, text, state, !rigidMode);
     if (ready) {
       const finalState = await generateProject(client, msg, ready, userId, newState);
       await saveState(whatsappId, finalState);
@@ -217,19 +228,15 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
     return;
   }
 
-  // ── Natural-language AI routing (idle / browsing fallthrough) ─────────────
-  // Peek at quota without incrementing — the actual answer generation in
-  // handleAiChat will increment and enforce the limit.
+  // ── Quota wall: no further AI calls in rigid mode ─────────────────────────
 
-  const quota = await getAiMessageUsage(userId);
-
-  if (!quota.allowed) {
-    // Quota exhausted: show single canned message, no AI calls, no liability.
-    // UPGRADE and HELP are the only commands that still work (handled above).
+  if (rigidMode) {
     await msg.reply(AI_QUOTA_EXHAUSTED);
     await saveState(whatsappId, state);
     return;
   }
+
+  // ── Natural-language AI routing (idle / browsing fallthrough) ─────────────
 
   const action = await routeWithNL(text);
 
@@ -242,17 +249,6 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
 
   if (action.kind === "generate_project") {
     state = await startProjectBrief(msg, state, action);
-    if (
-      state.mode.kind === "project_brief" &&
-      state.mode.collected.subject &&
-      state.mode.collected.grade &&
-      state.mode.collected.topic
-    ) {
-      const { ready } = await handleProjectBriefReply(msg, "", state);
-      if (ready) {
-        state = await generateProject(client, msg, ready, userId, state);
-      }
-    }
     await saveState(whatsappId, state);
     return;
   }
