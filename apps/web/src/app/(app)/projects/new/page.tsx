@@ -398,4 +398,14 @@ export default function NewProjectPage() {
                     Writing…
                   </div>
                 )}
-                <div
+                <div className="prose prose-sm max-w-none dark:prose-invert text-foreground">
+                  {renderMarkdown(streamedContent)}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
