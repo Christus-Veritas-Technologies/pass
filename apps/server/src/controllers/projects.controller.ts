@@ -33,8 +33,8 @@ export async function generateProject(c: Context) {
   const userId = c.get("userId") as string;
 
   const body = await c.req.json().catch(() => null);
-  if (!body?.subject || !body?.grade || !body?.category) {
-    return c.json({ error: "subject, grade, and category are required" }, 400);
+  if (!body?.subject || !body?.grade) {
+    return c.json({ error: "subject and grade are required" }, 400);
   }
 
   const {
@@ -43,18 +43,36 @@ export async function generateProject(c: Context) {
     studentName = "",
     grade,
     subject,
-    category,
   } = body as {
     centreNumber?: string;
     candidateNumber?: string;
     studentName?: string;
     grade: string;
     subject: string;
-    category: string;
   };
 
   if (!VALID_GRADES.includes(grade as (typeof VALID_GRADES)[number])) {
     return c.json({ error: `grade must be one of: ${VALID_GRADES.join(", ")}` }, 400);
+  }
+
+  // Validate centre and candidate numbers are numeric
+  if (centreNumber && !/^\d+$/.test(centreNumber.trim())) {
+    return c.json({ error: "centreNumber must contain digits only" }, 400);
+  }
+  if (candidateNumber && !/^\d+$/.test(candidateNumber.trim())) {
+    return c.json({ error: "candidateNumber must contain digits only" }, 400);
+  }
+
+  // Validate subject against supported ZIMSEC subjects
+  const SUPPORTED_SUBJECTS = new Set([
+    "mathematics", "english language", "combined science", "physics",
+    "chemistry", "biology", "agriculture", "history", "geography",
+    "commerce", "accounting", "computer science", "food and nutrition",
+    "shona", "ndebele", "literature in english", "sociology", "economics",
+    "heritage studies", "religious and moral education", "art", "music",
+  ]);
+  if (!SUPPORTED_SUBJECTS.has(subject.trim().toLowerCase())) {
+    return c.json({ error: `"${subject}" is not a recognised or supported ZIMSEC subject. Please check the spelling and try again.` }, 400);
   }
 
   const year = new Date().getFullYear();
@@ -68,10 +86,9 @@ Candidate Details:
 - Candidate Number: ${candidateNumber}
 - Level: ${grade}
 - Learning Area: ${subject}
-- Category: ${category}
 - Year: ${year}
 
-First, select a specific, authentic project topic within the "${category}" category for ${subject} at ${grade} level. The topic must be rooted in Zimbabwean heritage and align with the HBC 5.0 curriculum.
+First, select a specific, authentic project topic for ${subject} at ${grade} level. The topic must be rooted in Zimbabwean heritage and align with the HBC 5.0 curriculum.
 
 Then produce the complete project using EXACTLY this structure:
 
@@ -83,7 +100,6 @@ Then produce the complete project using EXACTLY this structure:
 **Candidate Number:** ${candidateNumber}
 **Level:** ${grade}
 **Learning Area:** ${subject}
-**Category:** ${category}
 **Year:** ${year}
 
 ## Stage 1: Problem Identification
@@ -158,7 +174,7 @@ Write formally and academically throughout. Use British English. Every section m
           centreNumber,
           candidateNumber,
           studentName,
-          category,
+          category: "",
         },
       });
       projectId = project.id;
@@ -264,7 +280,6 @@ export async function getProjectHtml(c: Context) {
     <div><strong>Candidate Number:</strong> ${esc(project.candidateNumber || "—")}</div>
     <div><strong>Grade:</strong> ${esc(project.grade)}</div>
     <div><strong>Subject:</strong> ${esc(project.subject)}</div>
-    <div><strong>Category:</strong> ${esc(project.category)}</div>
     <div><strong>Year:</strong> ${new Date(project.createdAt).getFullYear()}</div>
   </div>
 </div>

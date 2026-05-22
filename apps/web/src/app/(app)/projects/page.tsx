@@ -112,9 +112,6 @@ export default function ProjectsPage() {
                   <div className="flex items-center justify-between mt-3">
                     <div className="flex items-center gap-2">
                       <Badge variant="outline" className="text-xs">{p.grade}</Badge>
-                      {p.category && (
-                        <Badge variant="secondary" className="text-xs">{p.category}</Badge>
-                      )}
                     </div>
                     <span className="text-xs text-muted-foreground">{timeAgo(p.createdAt)}</span>
                   </div>

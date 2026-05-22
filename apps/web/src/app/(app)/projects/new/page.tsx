@@ -2,12 +2,9 @@
 
 import {
   ArrowLeft01Icon,
-  BookOpen01Icon,
   CheckmarkCircle01Icon,
   Folder01Icon,
-  Leaf01Icon,
   SparklesIcon,
-  TheaterIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useEffect, useRef, useState } from "react";
@@ -18,19 +15,41 @@ import { getAccessToken } from "@/lib/auth";
 
 const API = process.env.NEXT_PUBLIC_SERVER_URL;
 
-const SUBJECTS_BY_GRADE: Record<string, string[]> = {
-  "Grade 7": ["Heritage Studies", "Mathematics", "English", "Science", "Shona/Ndebele"],
-  "Form 4": ["History", "Combined Science", "Agriculture", "Biology", "Chemistry", "Geography", "Shona", "English Literature"],
-  "Form 6": ["History", "Geography", "Sociology", "Agriculture", "Biology", "Chemistry", "Physics"],
-};
-
 const GRADES = ["Grade 7", "Form 4", "Form 6"] as const;
 
-const CATEGORIES = [
-  { id: "Culture & History", icon: BookOpen01Icon, title: "Culture & History", desc: "Totems, liberation struggle, customs, languages" },
-  { id: "Indigenous Sciences", icon: Leaf01Icon, title: "Indigenous Sciences", desc: "Traditional medicine, farming, energy systems" },
-  { id: "Arts & Lifestyle", icon: TheaterIcon, title: "Arts & Lifestyle", desc: "Music, architecture, food, traditional games" },
-] as const;
+// Canonical ZIMSEC subjects (lowercase for case-insensitive matching)
+const SUPPORTED_SUBJECTS = new Set([
+  "mathematics",
+  "english language",
+  "combined science",
+  "physics",
+  "chemistry",
+  "biology",
+  "agriculture",
+  "history",
+  "geography",
+  "commerce",
+  "accounting",
+  "computer science",
+  "food and nutrition",
+  "shona",
+  "ndebele",
+  "literature in english",
+  "sociology",
+  "economics",
+  "heritage studies",
+  "religious and moral education",
+  "art",
+  "music",
+]);
+
+function isValidSubject(subject: string): boolean {
+  return SUPPORTED_SUBJECTS.has(subject.trim().toLowerCase());
+}
+
+function isNumeric(value: string): boolean {
+  return /^\d+$/.test(value.trim());
+}
 
 function renderMarkdown(content: string) {
   return content.split("\n").map((line, i) => {
@@ -53,6 +72,13 @@ function renderMarkdown(content: string) {
   });
 }
 
+interface FormErrors {
+  studentName?: string;
+  centreNumber?: string;
+  candidateNumber?: string;
+  subject?: string;
+}
+
 export default function NewProjectPage() {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2>(1);
@@ -62,8 +88,8 @@ export default function NewProjectPage() {
   const [centreNumber, setCentreNumber] = useState("");
   const [candidateNumber, setCandidateNumber] = useState("");
   const [grade, setGrade] = useState<string>(GRADES[1]);
-  const [subject, setSubject] = useState<string>(SUBJECTS_BY_GRADE["Form 4"][0]);
-  const [category, setCategory] = useState<string>("");
+  const [subject, setSubject] = useState("");
+  const [errors, setErrors] = useState<FormErrors>({});
 
   // Step 2 generation state
   const [projectId, setProjectId] = useState("");
@@ -73,13 +99,34 @@ export default function NewProjectPage() {
   const [genError, setGenError] = useState("");
   const abortRef = useRef<AbortController | null>(null);
 
-  // Update subject when grade changes
-  function handleGradeChange(g: string) {
-    setGrade(g);
-    setSubject(SUBJECTS_BY_GRADE[g][0]);
+  function validate(): FormErrors {
+    const errs: FormErrors = {};
+    if (!studentName.trim()) errs.studentName = "Name is required.";
+    if (!centreNumber.trim()) {
+      errs.centreNumber = "Centre number is required.";
+    } else if (!isNumeric(centreNumber)) {
+      errs.centreNumber = "Must be digits only (e.g. 1234).";
+    }
+    if (!candidateNumber.trim()) {
+      errs.candidateNumber = "Candidate number is required.";
+    } else if (!isNumeric(candidateNumber)) {
+      errs.candidateNumber = "Must be digits only (e.g. 5678).";
+    }
+    if (!subject.trim()) {
+      errs.subject = "Subject is required.";
+    } else if (!isValidSubject(subject)) {
+      errs.subject = "Subject not recognised or not supported. Check spelling and try again.";
+    }
+    return errs;
   }
 
-  const canContinue = studentName.trim() && centreNumber.trim() && candidateNumber.trim() && grade && subject && category;
+  function handleContinue() {
+    const errs = validate();
+    setErrors(errs);
+    if (Object.keys(errs).length === 0) setStep(2);
+  }
+
+  const canContinue = studentName.trim() && centreNumber.trim() && candidateNumber.trim() && subject.trim();
 
   async function startGeneration() {
     setGenerating(true);
@@ -99,7 +146,7 @@ export default function NewProjectPage() {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ studentName, centreNumber, candidateNumber, grade, subject, category }),
+        body: JSON.stringify({ studentName, centreNumber, candidateNumber, grade, subject }),
         signal: abort.signal,
       });
 
@@ -112,7 +159,6 @@ export default function NewProjectPage() {
       const decoder = new TextDecoder();
       let buffer = "";
       let currentEvent = "";
-      let newProjectId = "";
 
       while (reader) {
         const { done: streamDone, value } = await reader.read();
@@ -127,7 +173,6 @@ export default function NewProjectPage() {
           } else if (line.startsWith("data: ")) {
             const data = line.slice(6);
             if (currentEvent === "project_id") {
-              newProjectId = data;
               setProjectId(data);
             } else if (currentEvent === "chunk") {
               setStreamedContent((prev) => prev + data);
@@ -168,7 +213,7 @@ export default function NewProjectPage() {
       <div className="flex items-center gap-3 mb-6">
         <button
           type="button"
-          onClick={() => (step === 2 && !done ? null : step === 2 ? router.push("/projects") : router.push("/projects"))}
+          onClick={() => router.push("/projects")}
           className="flex items-center justify-center h-9 w-9 rounded-lg border border-border hover:bg-muted transition-colors"
           disabled={step === 2 && generating}
         >
@@ -198,41 +243,49 @@ export default function NewProjectPage() {
 
       {/* ── Step 1: Candidate Information ─────────────────────────────────────── */}
       {step === 1 && (
-        <div className="space-y-6">
+        <div className="space-y-5">
+          {/* Name */}
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Your Name</label>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Full Name</label>
             <input
               type="text"
               placeholder="e.g. Tendai Moyo"
               value={studentName}
-              onChange={(e) => setStudentName(e.target.value)}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+              onChange={(e) => { setStudentName(e.target.value); setErrors((p) => ({ ...p, studentName: undefined })); }}
+              className={`w-full rounded-lg border bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 ${errors.studentName ? "border-destructive" : "border-border"}`}
             />
+            {errors.studentName && <p className="text-xs text-destructive mt-0.5">{errors.studentName}</p>}
           </div>
 
+          {/* Centre + Candidate numbers */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Centre Number</label>
               <input
                 type="text"
+                inputMode="numeric"
                 placeholder="e.g. 1234"
                 value={centreNumber}
-                onChange={(e) => setCentreNumber(e.target.value)}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                onChange={(e) => { setCentreNumber(e.target.value); setErrors((p) => ({ ...p, centreNumber: undefined })); }}
+                className={`w-full rounded-lg border bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 ${errors.centreNumber ? "border-destructive" : "border-border"}`}
               />
+              {errors.centreNumber && <p className="text-xs text-destructive mt-0.5">{errors.centreNumber}</p>}
             </div>
             <div className="space-y-1">
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Candidate Number</label>
               <input
                 type="text"
+                inputMode="numeric"
                 placeholder="e.g. 5678"
                 value={candidateNumber}
-                onChange={(e) => setCandidateNumber(e.target.value)}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                onChange={(e) => { setCandidateNumber(e.target.value); setErrors((p) => ({ ...p, candidateNumber: undefined })); }}
+                className={`w-full rounded-lg border bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 ${errors.candidateNumber ? "border-destructive" : "border-border"}`}
               />
+              {errors.candidateNumber && <p className="text-xs text-destructive mt-0.5">{errors.candidateNumber}</p>}
             </div>
           </div>
 
+          {/* Grade */}
           <div className="space-y-2">
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Grade</label>
             <div className="flex gap-2">
@@ -240,7 +293,7 @@ export default function NewProjectPage() {
                 <button
                   key={g}
                   type="button"
-                  onClick={() => handleGradeChange(g)}
+                  onClick={() => setGrade(g)}
                   className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
                     grade === g
                       ? "border-primary bg-primary text-primary-foreground"
@@ -253,51 +306,29 @@ export default function NewProjectPage() {
             </div>
           </div>
 
+          {/* Subject — free text */}
           <div className="space-y-1">
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Subject</label>
-            <select
+            <input
+              type="text"
+              placeholder="e.g. Biology, History, Shona…"
               value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-            >
-              {(SUBJECTS_BY_GRADE[grade] ?? []).map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Category</label>
-            <div className="grid gap-3">
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => setCategory(cat.id)}
-                  className={`flex items-start gap-3 rounded-xl border p-4 text-left transition-all ${
-                    category === cat.id
-                      ? "border-primary bg-primary/5 ring-1 ring-primary"
-                      : "border-border hover:border-primary/40 hover:bg-muted/50"
-                  }`}
-                >
-                  <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
-                    category === cat.id ? "bg-primary/10" : "bg-muted"
-                  }`}>
-                    <HugeiconsIcon icon={cat.icon} className={`h-5 w-5 ${category === cat.id ? "text-primary" : "text-muted-foreground"}`} />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold">{cat.title}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{cat.desc}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
+              onChange={(e) => { setSubject(e.target.value); setErrors((p) => ({ ...p, subject: undefined })); }}
+              className={`w-full rounded-lg border bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 ${errors.subject ? "border-destructive" : "border-border"}`}
+            />
+            {errors.subject ? (
+              <p className="text-xs text-destructive mt-0.5">{errors.subject}</p>
+            ) : (
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Supported: Mathematics, Physics, Chemistry, Biology, History, Geography, Agriculture, Commerce, Accounting, Computer Science, Shona, Ndebele, and more.
+              </p>
+            )}
           </div>
 
           <Button
-            className="w-full"
+            className="w-full mt-2"
             disabled={!canContinue}
-            onClick={() => setStep(2)}
+            onClick={handleContinue}
           >
             Continue
           </Button>

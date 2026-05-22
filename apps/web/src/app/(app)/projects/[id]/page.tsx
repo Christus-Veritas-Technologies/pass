@@ -125,7 +125,6 @@ export default function ProjectDetailPage() {
         <>
           <div className="flex items-center gap-2 mb-4 flex-wrap">
             <Badge variant="outline">{project.grade}</Badge>
-            {project.category && <Badge variant="secondary">{project.category}</Badge>}
             <span className="text-xs text-muted-foreground">{project.subject}</span>
             <span className="text-xs text-muted-foreground">·</span>
             <span className="text-xs text-muted-foreground">{formatDate(project.createdAt)}</span>
