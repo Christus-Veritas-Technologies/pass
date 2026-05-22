@@ -24,8 +24,17 @@ const RATE_WINDOW_MS   = 60_000;
 const RATE_MAX_PER_MIN = 30;
 
 export async function handleMessage(client: Client, msg: Message): Promise<void> {
-  // Ignore group messages in v1
-  if (msg.from.endsWith("@g.us")) return;
+  // Only process direct 1-on-1 chat messages.
+  // Silently drop everything else: groups, broadcasts, status updates, channels.
+  const from = msg.from ?? "";
+  if (
+    from.endsWith("@g.us")            || // WhatsApp groups
+    from.endsWith("@broadcast")        || // Broadcast lists / status
+    from.endsWith("@newsletter")       || // WhatsApp channels
+    from === "status@broadcast"        || // Status updates
+    msg.isStatus                       || // Status flag
+    msg.broadcast                         // Broadcast flag
+  ) return;
 
   if (msg.hasMedia) {
     await msg.reply(MEDIA_ONLY);
