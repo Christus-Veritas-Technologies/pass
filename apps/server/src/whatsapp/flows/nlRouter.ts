@@ -13,17 +13,17 @@ import { anthropic } from "../../lib/anthropic";
 
 export type NlAction =
   | { kind: "study_paper"; subject?: string; grade?: string; year?: number }
-  | { kind: "generate_project"; subject?: string; grade?: string; topic?: string }
+  | { kind: "generate_project"; subject?: string; grade?: string }
   | { kind: "answer_question"; question: string }
   | { kind: "show_usage" }
   | { kind: "upgrade_plan" }
   | { kind: "unclear"; reply: string };
 
-const SYSTEM_PROMPT = `You are the Pass WhatsApp study assistant for Zimbabwean O-Level and A-Level students (ZIMSEC).
+const SYSTEM_PROMPT = `You are the Pass WhatsApp study assistant for Zimbabwean students (ZIMSEC).
 
 When a student sends a message, call the appropriate tool:
 - study_paper: they want to study / attempt / browse past exam papers
-- generate_project: they want a ZIMSEC project or assignment written
+- generate_project: they want a ZIMSEC Heritage-Based Curriculum (HBC) project generated. This applies to Grade 7, Form 4, and Form 6 students. Triggers include: "generate project", "create project", "I need a project", "HBC project", "heritage project", "write my project", "project assignment"
 - answer_question: they have a study question, want an explanation, or need help understanding something
 - show_usage: they want to know how many papers/AI messages they have left this month
 - upgrade_plan: they want to upgrade their subscription / pay / get more access
@@ -48,11 +48,10 @@ export async function routeWithNL(message: string): Promise<NlAction> {
           }),
         }),
         generate_project: tool({
-          description: "Student wants to generate a ZIMSEC project report",
+          description: "Student wants to generate a ZIMSEC Heritage-Based Curriculum (HBC) project",
           parameters: z.object({
-            subject: z.string().optional().describe("Subject e.g. Geography, Agriculture"),
-            grade: z.string().optional().describe("Grade e.g. Form 4, A-Level"),
-            topic: z.string().optional().describe("Project topic"),
+            subject: z.string().optional().describe("Subject e.g. Geography, Agriculture, History"),
+            grade: z.string().optional().describe("Grade: Grade 7, Form 4, or Form 6"),
           }),
         }),
         answer_question: tool({
@@ -80,7 +79,7 @@ export async function routeWithNL(message: string): Promise<NlAction> {
       case "study_paper":
         return { kind: "study_paper", ...call.args };
       case "generate_project":
-        return { kind: "generate_project", ...call.args };
+        return { kind: "generate_project", subject: call.args.subject, grade: call.args.grade };
       case "answer_question":
         return { kind: "answer_question", question: call.args.question };
       case "show_usage":

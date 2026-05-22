@@ -38,11 +38,14 @@ export type ConversationMode =
     }
   | {
       kind: "project_brief";
-      awaiting: "topic" | "grade";
+      awaiting: "name" | "centre" | "candidate" | "grade" | "subject" | "category";
       collected: {
-        subject?: string;
+        studentName?: string;
+        centreNumber?: string;
+        candidateNumber?: string;
         grade?: string;
-        topic?: string;
+        subject?: string;
+        category?: string;
       };
     }
   | { kind: "project_generating"; projectId: string }
@@ -66,7 +69,7 @@ export interface ConversationState {
 
 export type Intent =
   | { kind: "study_paper"; hints?: { subject?: string; year?: number; grade?: string } }
-  | { kind: "generate_project"; hints?: { subject?: string; grade?: string; topic?: string } }
+  | { kind: "generate_project"; hints?: { subject?: string; grade?: string } }
   | { kind: "ai_chat"; question: string }
   | { kind: "unclear" };
 

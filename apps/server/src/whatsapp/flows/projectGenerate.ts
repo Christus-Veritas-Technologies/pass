@@ -1,13 +1,15 @@
 /**
- * Project generation flow.
- * Calls passAgent to generate markdown, renders to PDF, sends to the user.
+ * HBC project generation flow.
+ * Uses the ZIMSEC Heritage-Based Education 5.0 prompt, generates markdown,
+ * renders to PDF via Puppeteer, and sends as a WhatsApp document.
  */
 
+import { generateText } from "ai";
 import prisma from "@pass/db";
 import type { Client, Message } from "whatsapp-web.js";
 import type { ConversationState } from "../types";
 import type { ProjectSlots } from "./projectBrief";
-import { passAgent } from "../../mastra";
+import { anthropic, CLAUDE_MODEL } from "../../lib/anthropic";
 import { checkAndIncrementAiMessage } from "../../lib/aiQuota";
 import { PLAN_LIMITS, currentMonthKey, type PlanKey } from "../../lib/planLimits";
 import { renderProjectPdfAndUpload } from "../media/renderProjectPdf";
@@ -56,41 +58,87 @@ export async function generateProject(
     return { ...state, mode: { kind: "idle" } };
   }
 
-  await msg.reply(projectConfirmMessage(slots.subject, slots.grade, slots.topic));
+  await msg.reply(projectConfirmMessage(slots));
   await chat.sendStateTyping();
 
-  // Create placeholder project row
+  const year = new Date().getFullYear();
+  const displayName = slots.studentName || "Student";
+
+  const prompt = `You are an expert in ZIMSEC Heritage-Based Education 5.0. Generate a complete, formal ZIMSEC HBC project document for a ${slots.grade} student.
+
+Student: ${displayName}
+Centre Number: ${slots.centreNumber}
+Candidate Number: ${slots.candidateNumber}
+Subject: ${slots.subject}
+Category: ${slots.category}
+Grade: ${slots.grade}
+Year: ${year}
+
+First, choose a specific, authentic topic within the "${slots.category}" category for ${slots.subject} at ${slots.grade} level. The topic must be grounded in Zimbabwean heritage and align with the HBC 5.0 curriculum.
+
+Then write the complete project with these exact sections:
+
+# [Your chosen project title]
+
+## Candidate Information
+Centre Number: ${slots.centreNumber}
+Candidate Number: ${slots.candidateNumber}
+Name: ${displayName}
+Grade: ${slots.grade}
+Subject: ${slots.subject}
+Year: ${year}
+
+## Introduction
+[Background, rationale, objectives — 200-300 words. Ground it in Zimbabwean heritage context.]
+
+## Methodology
+[How data was collected — interviews with community elders, field visits, library research, surveys. 150-200 words. Must be realistic for a Zimbabwean student.]
+
+## Data Presentation and Analysis
+[Findings presented in structured sections with clear headings. Include tables or lists where appropriate. 400-600 words. This is the main body.]
+
+## Recommendations and Conclusion
+[Practical recommendations for preserving the heritage/practice. Concluding remarks tying back to Heritage-Based Education. 150-200 words.]
+
+## References
+[3-5 realistic references: textbooks, interviews with named community members, government publications]
+
+Write formally and academically. Use British English. Make the content authentic, detailed, and specific to Zimbabwe.`;
+
+  // Create placeholder project row with all HBC fields
   const project = await prisma.project.create({
-    data: { userId, grade: slots.grade, subject: slots.subject, topic: slots.topic, content: "" },
+    data: {
+      userId,
+      grade: slots.grade,
+      subject: slots.subject,
+      topic: "",
+      content: "",
+      centreNumber: slots.centreNumber,
+      candidateNumber: slots.candidateNumber,
+      studentName: slots.studentName,
+      category: slots.category,
+    },
   });
 
   try {
-    const stream = await passAgent.stream([
-      {
-        role: "user" as const,
-        content:
-          `Generate a complete ZIMSEC project report in Markdown format.\n\n` +
-          `Subject: ${slots.subject}\nGrade: ${slots.grade}\nTopic: ${slots.topic}\n\n` +
-          `Structure the report with ## headings:\n` +
-          `1. Title Page (school name placeholder, candidate name placeholder, year)\n` +
-          `2. Introduction (background and context)\n` +
-          `3. Objectives (bulleted list)\n` +
-          `4. Methodology (how the project was conducted)\n` +
-          `5. Findings / Results (main content — include tables or lists where appropriate)\n` +
-          `6. Analysis and Discussion\n` +
-          `7. Conclusion\n` +
-          `8. References (at least 3 ZIMSEC-appropriate references)\n\n` +
-          `Write at the appropriate academic level for ZIMSEC ${slots.grade} in Zimbabwe. ` +
-          `Use Zimbabwean context, examples, and currency (ZWL) where relevant.`,
-      },
-    ]);
+    const result = await generateText({
+      model: anthropic(CLAUDE_MODEL),
+      prompt,
+      maxTokens: 2500,
+    });
 
-    let content = "";
-    for await (const chunk of stream.textStream) content += chunk;
+    const content = result.text;
 
-    await prisma.project.update({ where: { id: project.id }, data: { content } });
+    // Extract the AI-chosen title from first # heading
+    const titleMatch = content.match(/^#\s+(.+)$/m);
+    const topic = titleMatch ? titleMatch[1].trim() : `${slots.subject} HBC Project`;
 
-    // Render PDF and upload to R2 (or tmp fallback)
+    await prisma.project.update({
+      where: { id: project.id },
+      data: { content, topic },
+    });
+
+    // Render PDF and upload (or save to tmp)
     const pdfUrl = await renderProjectPdfAndUpload(
       await prisma.project.findUniqueOrThrow({ where: { id: project.id } }),
     );

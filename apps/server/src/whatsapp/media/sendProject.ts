@@ -1,9 +1,10 @@
 /**
  * Sends a generated project PDF to a WhatsApp chat.
- * Handles R2-hosted (fromUrl) and tmp-file (fromFilePath) cases.
- * Falls back to sending chunked text if PDF is unavailable.
+ * Constructs a MessageMedia from the PDF bytes with a descriptive HBC filename.
+ * Falls back to text chunks if PDF rendering is unavailable.
  */
 
+import { readFile } from "node:fs/promises";
 import { MessageMedia } from "whatsapp-web.js";
 import type { Client, MessageSendOptions } from "whatsapp-web.js";
 import type { Project } from "@pass/db";
@@ -22,14 +23,26 @@ export async function sendProjectPdf(
   const pages   = estimatePageCount(project.content);
   const caption = projectDoneMessage(project.subject, project.topic, pages);
 
+  // Build a descriptive filename
+  const safeSubject = project.subject.replace(/[^a-zA-Z0-9]/g, "_");
+  const filename = project.candidateNumber
+    ? `HBC_Project_${project.candidateNumber}_${safeSubject}.pdf`
+    : `Pass_Project_${project.id.slice(-8)}.pdf`;
+
   if (pdfUrl) {
     try {
-      let media: InstanceType<typeof MessageMedia>;
+      let pdfBytes: Buffer;
       if (pdfUrl.startsWith("file://")) {
-        media = MessageMedia.fromFilePath(pdfUrl.replace("file://", ""));
+        pdfBytes = await readFile(pdfUrl.replace("file://", ""));
       } else {
-        media = await MessageMedia.fromUrl(pdfUrl, { unsafeMime: true });
+        const resp = await fetch(pdfUrl);
+        if (!resp.ok) throw new Error(`PDF fetch failed: ${resp.status}`);
+        pdfBytes = Buffer.from(await resp.arrayBuffer());
       }
+
+      const base64 = pdfBytes.toString("base64");
+      const media = new MessageMedia("application/pdf", base64, filename);
+
       await client.sendMessage(chatId, media, {
         sendMediaAsDocument: true,
         caption,
