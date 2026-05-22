@@ -131,7 +131,7 @@ Write formally and academically. Use British English. Make the content authentic
 
     // Extract the AI-chosen title from first # heading
     const titleMatch = content.match(/^#\s+(.+)$/m);
-    const topic = titleMatch ? titleMatch[1].trim() : `${slots.subject} HBC Project`;
+    const topic = titleMatch?.[1]?.trim() ?? `${slots.subject} HBC Project`;
 
     await prisma.project.update({
       where: { id: project.id },

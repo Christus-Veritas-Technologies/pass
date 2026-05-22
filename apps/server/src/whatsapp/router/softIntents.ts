@@ -64,7 +64,6 @@ export async function classifyIntent(message: string): Promise<Intent> {
         hints: {
           subject: (hints.subject as string | undefined) ?? undefined,
           grade:   (hints.grade   as string | undefined) ?? undefined,
-          topic:   (hints.topic   as string | undefined) ?? undefined,
         },
       };
     }

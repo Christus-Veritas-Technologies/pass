@@ -136,7 +136,7 @@ Write formally and academically. Use British English. Make the content authentic
 
       // Extract the first # heading as the stored topic
       const titleMatch = accumulatedContent.match(/^#\s+(.+)$/m);
-      const topic = titleMatch ? titleMatch[1].trim() : `${subject} HBC Project`;
+      const topic = titleMatch?.[1]?.trim() ?? `${subject} HBC Project`;
 
       await prisma.project.update({
         where: { id: projectId },

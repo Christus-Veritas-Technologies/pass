@@ -37,7 +37,7 @@ function regexExtract(text: string): HbcFields {
   // Name: "my name is X", "I am X", "I'm X", "name: X"
   const nameMatch = t.match(/(?:(?:my\s+)?name\s+is|I\s+am|I'm)\s+([A-Za-z][A-Za-z\s]{1,39})/i)
     ?? t.match(/^name[:\s]+([A-Za-z][A-Za-z\s]{1,39})/i);
-  if (nameMatch) fields.studentName = nameMatch[1].trim().replace(/,.*$/, "").trim();
+  if (nameMatch?.[1]) fields.studentName = nameMatch[1].trim().replace(/,.*$/, "").trim();
 
   // Centre number: "centre 1234", "centre number 1234", "centre: 1234"
   const centreMatch = t.match(/centre(?:\s+(?:number|no\.?|#))?[:\s]+(\d{3,8})/i)
