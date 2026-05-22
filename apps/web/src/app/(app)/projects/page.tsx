@@ -1,122 +1,64 @@
 "use client";
 
 import {
-  Cancel01Icon,
-  CheckmarkCircle01Icon,
+  BookOpen01Icon,
+  Calendar01Icon,
   Folder01Icon,
   PlusSignIcon,
-  SparklesIcon,
+  Tag01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Badge } from "@pass/ui/components/badge";
 import { Button } from "@pass/ui/components/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@pass/ui/components/card";
 import { Skeleton } from "@pass/ui/components/skeleton";
 import { getAccessToken } from "@/lib/auth";
 
-const SUBJECTS = [
-  "Mathematics", "English Language", "Combined Science", "Chemistry",
-  "Biology", "History", "Geography", "English Literature", "Shona", "Physics",
-];
-const GRADES = ["Form 1", "Form 2", "Form 3", "Form 4", "Form 5", "Form 6"];
-
 const API = process.env.NEXT_PUBLIC_SERVER_URL;
-const PAGE_SIZE = 10;
-
-function Pagination({
-  page,
-  totalPages,
-  from,
-  to,
-  total,
-  onPrev,
-  onNext,
-}: {
-  page: number;
-  totalPages: number;
-  from: number;
-  to: number;
-  total: number;
-  onPrev: () => void;
-  onNext: () => void;
-}) {
-  if (totalPages <= 1) return null;
-  return (
-    <div className="flex items-center justify-between mt-2 px-1">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={onPrev}
-        disabled={page === 1}
-        className="text-xs h-8 px-3"
-      >
-        ‹ Prev
-      </Button>
-      <span className="text-xs text-muted-foreground">
-        {from}–{to} of {total}
-      </span>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={onNext}
-        disabled={page === totalPages}
-        className="text-xs h-8 px-3"
-      >
-        Next ›
-      </Button>
-    </div>
-  );
-}
 
 interface Project {
   id: string;
   grade: string;
   subject: string;
   topic: string;
-  content: string;
+  category: string;
+  studentName: string;
+  centreNumber: string;
+  candidateNumber: string;
   createdAt: string;
 }
 
-function timeAgo(iso: string) {
-  const diff = Date.now() - new Date(iso).getTime();
-  const days = Math.floor(diff / 86400000);
-  if (days === 0) return "today";
-  if (days === 1) return "yesterday";
-  return `${days} days ago`;
+const CATEGORY_COLORS: Record<string, { bg: string; text: string; badge: "default" | "success" | "warning" | "outline" }> = {
+  "Culture & History":    { bg: "bg-amber-50 dark:bg-amber-950/30",   text: "text-amber-600 dark:text-amber-400",   badge: "warning" },
+  "Indigenous Sciences":  { bg: "bg-emerald-50 dark:bg-emerald-950/30", text: "text-emerald-600 dark:text-emerald-400", badge: "success" },
+  "Arts & Lifestyle":     { bg: "bg-violet-50 dark:bg-violet-950/30",  text: "text-violet-600 dark:text-violet-400",  badge: "default" },
+};
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString("en-ZW", { day: "numeric", month: "short", year: "numeric" });
 }
 
-function ProjectSkeleton() {
+function ProjectCardSkeleton() {
   return (
-    <Card className="rounded-xl">
-      <CardContent className="py-4 space-y-2">
-        <Skeleton className="h-4 w-3/4" />
-        <Skeleton className="h-3 w-1/2" />
-      </CardContent>
-    </Card>
+    <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+      <Skeleton className="h-4 w-2/3 rounded-lg" />
+      <Skeleton className="h-3 w-1/2 rounded-lg" />
+      <div className="flex gap-2 pt-1">
+        <Skeleton className="h-5 w-20 rounded-full" />
+        <Skeleton className="h-5 w-16 rounded-full" />
+      </div>
+    </div>
   );
 }
 
 export default function ProjectsPage() {
+  const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [selected, setSelected] = useState<Project | null>(null);
-  const [page, setPage] = useState(1);
 
-  // Form state
-  const [subject, setSubject] = useState(SUBJECTS[0]);
-  const [grade, setGrade]     = useState(GRADES[3]);
-  const [topic, setTopic]     = useState("");
-
-  // Generation state
-  const [generating, setGenerating] = useState(false);
-  const [streamedContent, setStreamedContent] = useState("");
-  const [genError, setGenError]     = useState("");
-  const abortRef = useRef<AbortController | null>(null);
-
-  async function fetchProjects() {
-    setLoading(true);
+  useEffect(() => {
     const token = getAccessToken();
     fetch(`${API}/projects`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -125,305 +67,84 @@ export default function ProjectsPage() {
       .then((d) => setProjects(d.projects ?? []))
       .catch(() => setProjects([]))
       .finally(() => setLoading(false));
-  }
-
-  useEffect(() => { fetchProjects(); }, []);
-
-  async function handleGenerate(e: React.FormEvent) {
-    e.preventDefault();
-    if (!topic.trim()) return;
-
-    setGenerating(true);
-    setStreamedContent("");
-    setGenError("");
-
-    const abort = new AbortController();
-    abortRef.current = abort;
-
-    try {
-      const token = getAccessToken();
-      const res = await fetch(`${API}/projects/generate`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ subject, grade, topic: topic.trim() }),
-        signal: abort.signal,
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error ?? "Generation failed");
-      }
-
-      const reader = res.body?.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let newProjectId = "";
-
-      while (reader) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-        for (const line of lines) {
-          if (line.startsWith("event: project_id")) continue;
-          if (line.startsWith("event: done")) {
-            // Done — refresh list
-            await fetchProjects();
-            break;
-          }
-          if (line.startsWith("event: error")) {
-            setGenError("AI generation failed. Please try again.");
-          }
-          if (line.startsWith("data: ")) {
-            const chunk = line.slice(6);
-            // The project_id event sends the id as data before chunks
-            if (chunk.startsWith("proj_") && newProjectId === "") {
-              newProjectId = chunk;
-            } else {
-              setStreamedContent((prev) => prev + chunk);
-            }
-          }
-        }
-      }
-
-      setShowForm(false);
-      setTopic("");
-    } catch (err: unknown) {
-      if ((err as Error).name !== "AbortError") {
-        setGenError("Something went wrong. Please try again.");
-      }
-    } finally {
-      setGenerating(false);
-      abortRef.current = null;
-    }
-  }
-
-  const displayContent = selected?.content ?? streamedContent;
+  }, []);
 
   return (
-    <div className="mx-auto max-w-5xl animate-fade-up">
-      <div className="flex items-center justify-between mb-6">
+    <div className="mx-auto max-w-4xl space-y-6 animate-fade-up">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Projects</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            AI-generated study guides for any topic.
+            Your ZIMSEC Heritage-Based Curriculum projects
           </p>
         </div>
-        <Button onClick={() => { setShowForm(!showForm); setSelected(null); setStreamedContent(""); }}>
+        <Button onClick={() => router.push("/projects/new")} className="shrink-0">
           <HugeiconsIcon icon={PlusSignIcon} className="mr-2 h-4 w-4" />
-          New project
+          New Project
         </Button>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-        {/* Left: list + form */}
-        <div className="space-y-4">
-          {/* Generate form */}
-          {showForm && (
-            <Card className="rounded-xl border-primary/30 bg-primary/5">
-              <CardHeader className="pb-3 pt-4 px-4">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <HugeiconsIcon icon={SparklesIcon} className="h-4 w-4 text-primary" />
-                  Generate a study project
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="px-4 pb-4">
-                <form onSubmit={handleGenerate} className="space-y-3">
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">Subject</label>
-                    <select
-                      value={subject}
-                      onChange={(e) => setSubject(e.target.value)}
-                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                    >
-                      {SUBJECTS.map((s) => <option key={s}>{s}</option>)}
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">Grade</label>
-                    <select
-                      value={grade}
-                      onChange={(e) => setGrade(e.target.value)}
-                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                    >
-                      {GRADES.map((g) => <option key={g}>{g}</option>)}
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">Topic</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Quadratic Equations"
-                      value={topic}
-                      onChange={(e) => setTopic(e.target.value)}
-                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                      required
-                    />
-                  </div>
-
-                  {genError && (
-                    <p className="text-xs text-destructive">{genError}</p>
-                  )}
-
-                  <div className="flex gap-2 pt-1">
-                    <Button type="submit" disabled={generating || !topic.trim()} className="flex-1">
-                      {generating ? (
-                        <>
-                          <HugeiconsIcon icon={SparklesIcon} className="mr-2 h-4 w-4 animate-pulse" />
-                          Generating…
-                        </>
-                      ) : (
-                        <>
-                          <HugeiconsIcon icon={SparklesIcon} className="mr-2 h-4 w-4" />
-                          Generate
-                        </>
-                      )}
-                    </Button>
-                    {generating && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => abortRef.current?.abort()}
-                      >
-                        <HugeiconsIcon icon={Cancel01Icon} className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Projects list */}
-          {loading ? (
-            <>
-              <ProjectSkeleton />
-              <ProjectSkeleton />
-            </>
-          ) : projects.length === 0 ? (
-            <div className="flex flex-col items-center py-12 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 mb-3">
-                <HugeiconsIcon icon={Folder01Icon} className="h-5 w-5 text-primary/40" />
-              </div>
-              <p className="text-sm font-medium">No projects yet</p>
-              <p className="mt-1 text-xs text-muted-foreground">Generate your first AI study guide.</p>
-              <button
-                onClick={() => { setShowForm(true); setSelected(null); setStreamedContent(""); }}
-                className="mt-3 flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary/90"
-              >
-                <HugeiconsIcon icon={SparklesIcon} className="h-3.5 w-3.5" />
-                Generate guide
-              </button>
-            </div>
-          ) : (() => {
-            const totalPages = Math.ceil(projects.length / PAGE_SIZE);
-            const safePage = Math.min(page, Math.max(1, totalPages));
-            const from = (safePage - 1) * PAGE_SIZE + 1;
-            const to = Math.min(safePage * PAGE_SIZE, projects.length);
-            const paged = projects.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+      {/* List */}
+      {loading ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <ProjectCardSkeleton />
+          <ProjectCardSkeleton />
+          <ProjectCardSkeleton />
+        </div>
+      ) : projects.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-24 text-center animate-fade-up">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/8 mb-5">
+            <HugeiconsIcon icon={Folder01Icon} className="h-7 w-7 text-primary/40" />
+          </div>
+          <p className="text-base font-semibold">No projects yet</p>
+          <p className="mt-2 text-sm text-muted-foreground max-w-xs leading-relaxed">
+            Generate your first ZIMSEC HBC project. The AI writes a complete, formally structured document — you just provide your candidate details.
+          </p>
+          <Button onClick={() => router.push("/projects/new")} className="mt-6">
+            <HugeiconsIcon icon={PlusSignIcon} className="mr-2 h-4 w-4" />
+            Start New Project
+          </Button>
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {projects.map((p) => {
+            const style = CATEGORY_COLORS[p.category] ?? CATEGORY_COLORS["Culture & History"]!;
             return (
-              <>
-                {paged.map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => { setSelected(p); setShowForm(false); setStreamedContent(""); }}
-                    className="w-full text-left"
-                  >
-                    <Card className={`rounded-xl transition-[transform,box-shadow] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] cursor-pointer hover:-translate-y-0.5 hover:shadow-sm active:scale-[0.98] ${selected?.id === p.id ? "ring-2 ring-primary shadow-sm" : ""}`}>
-                      <CardContent className="py-3 px-4">
-                        <p className="text-sm font-medium truncate">{p.topic}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {p.subject} · {p.grade}
-                        </p>
-                        <div className="flex items-center justify-between mt-2">
-                          <Badge variant="outline" className="text-xs">{p.grade}</Badge>
-                          <span className="text-xs text-muted-foreground">{timeAgo(p.createdAt)}</span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </button>
-                ))}
-                <Pagination
-                  page={safePage}
-                  totalPages={totalPages}
-                  from={from}
-                  to={to}
-                  total={projects.length}
-                  onPrev={() => setPage((p) => Math.max(1, p - 1))}
-                  onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
-                />
-              </>
-            );
-          })()}
-        </div>
+              <Link
+                key={p.id}
+                href={`/projects/${p.id}`}
+                className="group rounded-2xl border border-border bg-card p-5 transition-[transform,box-shadow] duration-200 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-0.5 hover:shadow-md block"
+              >
+                {/* Category icon strip */}
+                <div className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 mb-3 ${style.bg}`}>
+                  <HugeiconsIcon icon={BookOpen01Icon} className={`h-3.5 w-3.5 ${style.text}`} />
+                  <span className={`text-xs font-semibold ${style.text}`}>{p.category || "Heritage Project"}</span>
+                </div>
 
-        {/* Right: content viewer */}
-        <div>
-          {generating && streamedContent === "" ? (
-            <Card className="rounded-xl h-full">
-              <CardContent className="py-8 flex flex-col items-center justify-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 animate-pulse">
-                  <HugeiconsIcon icon={SparklesIcon} className="h-6 w-6 text-primary" />
+                {/* Title */}
+                <p className="font-semibold text-foreground leading-snug line-clamp-2 mb-1">
+                  {p.topic}
+                </p>
+
+                {/* Subject + grade */}
+                <p className="text-xs text-muted-foreground mb-3">
+                  {p.subject} · {p.grade}
+                </p>
+
+                {/* Footer row */}
+                <div className="flex items-center justify-between">
+                  <Badge variant="outline" className="text-xs font-medium">{p.grade}</Badge>
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <HugeiconsIcon icon={Calendar01Icon} className="h-3 w-3" />
+                    {formatDate(p.createdAt)}
+                  </span>
                 </div>
-                <p className="text-sm text-muted-foreground">Generating your study guide…</p>
-              </CardContent>
-            </Card>
-          ) : displayContent ? (
-            <Card className="rounded-xl">
-              <CardContent className="py-5 px-5">
-                {generating && (
-                  <div className="flex items-center gap-2 mb-4 text-xs text-primary">
-                    <HugeiconsIcon icon={SparklesIcon} className="h-3.5 w-3.5 animate-pulse" />
-                    Writing…
-                  </div>
-                )}
-                {!generating && selected && (
-                  <div className="flex items-center gap-2 mb-4 text-xs text-muted-foreground">
-                    <HugeiconsIcon icon={CheckmarkCircle01Icon} className="h-3.5 w-3.5 text-emerald-500" />
-                    {selected.subject} · {selected.grade} · {timeAgo(selected.createdAt)}
-                  </div>
-                )}
-                <div className="prose prose-sm max-w-none dark:prose-invert text-foreground">
-                  {displayContent.split("\n").map((line, i) => {
-                    if (line.startsWith("## ")) return <h2 key={i} className="text-base font-semibold mt-5 mb-2 text-foreground">{line.slice(3)}</h2>;
-                    if (line.startsWith("### ")) return <h3 key={i} className="text-sm font-semibold mt-4 mb-1.5 text-foreground">{line.slice(4)}</h3>;
-                    if (line.startsWith("# ")) return <h1 key={i} className="text-lg font-bold mt-2 mb-3 text-foreground">{line.slice(2)}</h1>;
-                    if (line.startsWith("- ") || line.startsWith("* ")) return <li key={i} className="text-sm text-foreground ml-4 list-disc">{line.slice(2)}</li>;
-                    if (line.match(/^\d+\.\s/)) return <li key={i} className="text-sm text-foreground ml-4 list-decimal">{line.replace(/^\d+\.\s/, "")}</li>;
-                    if (line.trim() === "") return <br key={i} />;
-                    // Bold + inline code
-                    const parts = line.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
-                    return (
-                      <p key={i} className="text-sm text-foreground leading-relaxed mb-1">
-                        {parts.map((part, j) => {
-                          if (part.startsWith("**") && part.endsWith("**")) return <strong key={j}>{part.slice(2, -2)}</strong>;
-                          if (part.startsWith("`") && part.endsWith("`")) return <code key={j} className="bg-muted px-1 py-0.5 rounded text-xs font-mono">{part.slice(1, -1)}</code>;
-                          return part;
-                        })}
-                      </p>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="flex h-full flex-col items-center justify-center py-20 text-center text-muted-foreground">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted mb-4">
-                <HugeiconsIcon icon={Folder01Icon} className="h-6 w-6 text-muted-foreground" />
-              </div>
-              <p className="text-sm font-medium">Select a project to read</p>
-              <p className="mt-1 text-xs">or generate a new one with the button above.</p>
-            </div>
-          )}
+              </Link>
+            );
+          })}
         </div>
-      </div>
+      )}
     </div>
   );
 }
