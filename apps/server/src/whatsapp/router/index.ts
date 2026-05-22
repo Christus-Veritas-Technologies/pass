@@ -17,6 +17,7 @@ import { showPapers, setPaperListCache, getPaperFromCache } from "../flows/paper
 import { startPaper, poseNextQuestion, gradeStudentAnswer, explainQuestion } from "../flows/paperStudy";
 import { startProjectBrief, handleProjectBriefReply } from "../flows/projectBrief";
 import { generateProject } from "../flows/projectGenerate";
+import { sendProjectPdf } from "../media/sendProject";
 import { handleAiChat } from "../flows/aiChat";
 import { startUpgrade, handleUpgradeReply } from "../flows/upgrade";
 import { routeWithNL } from "../flows/nlRouter";
@@ -135,6 +136,43 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
 
   if (hard.kind === "upgrade") {
     state = await startUpgrade(msg, state);
+    await saveState(whatsappId, state);
+    return;
+  }
+
+  // ── PDF resend: user asks for their last project as a PDF ─────────────────
+  if (hard.kind === "send_pdf") {
+    const lastProject = await prisma.project.findFirst({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+    });
+    if (!lastProject || !lastProject.content) {
+      await msg.reply("You don't have any projects yet. Send *project* to generate one 📝");
+    } else {
+      await msg.reply(`Sending your latest project as PDF: *${lastProject.topic}* ⏳`);
+      await sendProjectPdf(client, whatsappId, lastProject);
+    }
+    await saveState(whatsappId, state);
+    return;
+  }
+
+  // ── Session history: list last 5 completed sessions ───────────────────────
+  if (hard.kind === "history") {
+    const sessions = await prisma.paperSession.findMany({
+      where: { userId, completedAt: { not: null } },
+      include: { resource: true, questionAttempts: true },
+      orderBy: { completedAt: "desc" },
+      take: 5,
+    });
+    if (sessions.length === 0) {
+      await msg.reply("You haven't completed any study sessions yet.\n\nReply *papers* to start studying 📚");
+    } else {
+      const lines = sessions.map((s, i) => {
+        const date = s.completedAt ? new Date(s.completedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "?";
+        return `${i + 1}. *${s.resource.title}*\n   ${date} · ${s.questionsAnswered} q answered`;
+      });
+      await msg.reply(`📋 *Your last ${sessions.length} session${sessions.length !== 1 ? "s" : ""}:*\n\n${lines.join("\n\n")}\n\nReply *papers* to study again.`);
+    }
     await saveState(whatsappId, state);
     return;
   }

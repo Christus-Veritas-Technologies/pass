@@ -237,6 +237,46 @@ export async function completeSession(c: Context) {
   return c.json({ session: updated });
 }
 
+export async function getSession(c: Context) {
+  const userId = c.get("userId") as string;
+  const sessionId = c.req.param("sessionId");
+
+  const session = await prisma.paperSession.findUnique({
+    where: { id: sessionId },
+    include: {
+      resource: true,
+      questionAttempts: { orderBy: { questionNumber: "asc" } },
+    },
+  });
+
+  if (!session || session.userId !== userId) {
+    return c.json({ error: "Session not found" }, 404);
+  }
+
+  return c.json({
+    session: {
+      id: session.id,
+      mode: session.mode,
+      questionsAnswered: session.questionsAnswered,
+      completedAt: session.completedAt,
+      paper: {
+        id: session.resourceId,
+        title: session.resource.title,
+        subject: session.resource.subject,
+        grade: session.resource.grade,
+        year: session.resource.year,
+      },
+      attempts: session.questionAttempts.map((a) => ({
+        id: a.id,
+        questionNumber: a.questionNumber,
+        questionText: a.questionText,
+        userAnswer: a.userAnswer,
+        explanation: a.explanation,
+      })),
+    },
+  });
+}
+
 export async function getRecentSessions(c: Context) {
   const userId = c.get("userId") as string;
 

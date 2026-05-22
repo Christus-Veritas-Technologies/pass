@@ -4,6 +4,7 @@ import {
   getPaper,
   getPapers,
   getRecentSessions,
+  getSession,
   startSession,
   submitAnswer,
 } from "../controllers/papers.controller";
@@ -16,6 +17,7 @@ router.get("/", getPapers);
 
 // Static routes before param routes to avoid /:id swallowing them
 router.get("/sessions/recent", requireAuth, getRecentSessions);
+router.get("/sessions/:sessionId", requireAuth, getSession);
 
 router.get("/:id", getPaper);
 

@@ -189,7 +189,7 @@ export default function StudyScreen() {
                   {data.sessions.map((s) => (
                     <Pressable
                       key={s.id}
-                      onPress={() => router.push(`/papers/${s.paperId}` as never)}
+                      onPress={() => router.push(`/study/sessions/${s.id}` as never)}
                       style={({ pressed }) => ({
                         backgroundColor: pressed ? colors.cardSubtle : colors.card,
                         borderRadius: 12,
@@ -210,7 +210,7 @@ export default function StudyScreen() {
                           <View style={{ backgroundColor: s.mode === "GUIDE" ? colors.indigoBg : colors.borderSubtle, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
                             <Text style={{ fontSize: 10, fontWeight: "600", color: s.mode === "GUIDE" ? colors.brand : colors.textTertiary }}>{s.mode}</Text>
                           </View>
-                          <Text style={{ fontSize: 11, color: colors.textTertiary }}>{s.questionsAnswered}q</Text>
+                          <Text style={{ fontSize: 11, color: colors.textTertiary }}>{s.questionsAnswered}q · Review →</Text>
                         </View>
                       </View>
                     </Pressable>

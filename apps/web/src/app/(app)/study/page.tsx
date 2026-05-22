@@ -266,7 +266,7 @@ export default function StudyPage() {
                       <TableRow
                         key={s.id}
                         className="cursor-pointer transition-colors duration-100 hover:bg-muted/40"
-                        onClick={() => router.push(`/papers/${s.paperId}`)}
+                        onClick={() => router.push(`/study/sessions/${s.id}`)}
                       >
                         <TableCell className="font-medium max-w-[240px]">
                           <span className="line-clamp-1">{s.paperTitle}</span>

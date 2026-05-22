@@ -18,6 +18,10 @@ const NEXT      = /^(next|done|continue)\s*$/i;
 const SKIP      = /^skip\s*$/i;
 const SIX_DIGIT = /^\d{6}$/;
 const EXPLAIN   = /^explain(\s+(q?\d+))?\s*$/i;
+// PDF / download request — "pdf", "send pdf", "download", "send my project", "resend"
+const SEND_PDF  = /^(pdf|send\s*pdf|download(\s+(pdf|project))?|send\s*(my\s*)?(last\s*)?project|resend(\s*pdf)?)\s*$/i;
+// Session history
+const HISTORY   = /^(history|past\s*sessions?|my\s*sessions?|results?)\s*$/i;
 
 export interface HardIntentResult {
   kind:
@@ -35,6 +39,8 @@ export interface HardIntentResult {
     | "link_code"
     | "explain"
     | "number_select"
+    | "send_pdf"
+    | "history"
     | "none";
   explainQn?: number;
   code?: string;
@@ -44,6 +50,8 @@ export interface HardIntentResult {
 export function matchHardIntent(text: string, mode: ConversationMode): HardIntentResult {
   const t = text.trim();
 
+  if (SEND_PDF.test(t))                            return { kind: "send_pdf" };
+  if (HISTORY.test(t))                             return { kind: "history" };
   if (GREETINGS.test(t) && mode.kind === "idle") return { kind: "greeting" };
   if (HELP.test(t))                               return { kind: "help" };
   if (CANCEL.test(t))                             return { kind: "cancel" };
