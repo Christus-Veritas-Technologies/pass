@@ -3,15 +3,17 @@ import {
   generateProject,
   getProject,
   getProjectHtml,
+  getProjectPdf,
   getProjects,
 } from "../controllers/projects.controller";
 import { requireAuth } from "../middleware/auth";
 
 const router = new Hono();
 
-// HTML export validates its own token (Authorization header OR ?token= query param)
-// so it must be registered BEFORE requireAuth.
+// These two validate their own token (Authorization header OR ?token= query param)
+// and must be registered BEFORE requireAuth.
 router.get("/:id/html", getProjectHtml);
+router.get("/:id/pdf", getProjectPdf);
 
 router.use("/*", requireAuth);
 router.get("/", getProjects);

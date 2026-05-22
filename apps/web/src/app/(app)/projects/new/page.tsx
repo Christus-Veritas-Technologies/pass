@@ -361,19 +361,10 @@ export default function NewProjectPage() {
                     <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-1 italic">"{projectTitle}"</p>
                   )}
                 </div>
-                <div className="flex gap-3 w-full">
-                  <Button className="flex-1" onClick={() => router.push(`/projects/${projectId}`)}>
-                    <HugeiconsIcon icon={Folder01Icon} className="mr-2 h-4 w-4" />
-                    View Project
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => window.open(`${API}/projects/${projectId}/html?token=${getAccessToken()}`, "_blank")}
-                  >
-                    Download PDF
-                  </Button>
-                </div>
+                <Button className="w-full" onClick={() => router.push(`/projects/${projectId}`)}>
+                  <HugeiconsIcon icon={Folder01Icon} className="mr-2 h-4 w-4" />
+                  Open Project
+                </Button>
               </CardContent>
             </Card>
           ) : (

@@ -1,69 +1,70 @@
 /**
- * Renders a project's markdown content to PDF using Puppeteer
- * (already loaded in-process by whatsapp-web.js) and uploads to R2.
+ * Renders a project to PDF using the shared buildProjectHtml template and the
+ * Puppeteer browser instance exposed by whatsapp-web.js (zero extra deps).
  *
- * Falls back gracefully when R2 is not configured: saves PDF to a tmp
- * file and returns a file:// URL so the caller can still send it.
+ * Exports:
+ *  setBrowser      — called by client.ts on "ready" to share the wwebjs browser
+ *  htmlToPdfBytes  — renders any HTML string → PDF bytes (used by HTTP endpoint)
+ *  renderProjectPdfAndUpload — full pipeline: HTML → PDF → R2 (or tmp file)
+ *  estimatePageCount
  */
 
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { writeFile } from "node:fs/promises";
-import { marked } from "marked";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { env } from "@pass/env/server";
 import prisma from "@pass/db";
 import type { Project } from "@pass/db";
+import { generateProjectPdfBuffer } from "../../lib/projectPdfDocument";
+
+// ── Puppeteer browser ref (kept for WhatsApp session — NOT used for PDF) ─────
 
 interface PuppeteerBrowser {
-  newPage(): Promise<PuppeteerPage>;
-}
-interface PuppeteerPage {
-  setContent(html: string, options?: { waitUntil?: string }): Promise<void>;
-  pdf(options?: { format?: string; margin?: Record<string, string> }): Promise<Uint8Array>;
-  close(): Promise<void>;
+  newPage(): Promise<unknown>;
 }
 
-let _browser: PuppeteerBrowser | null = null;
-export function setBrowser(b: PuppeteerBrowser): void { _browser = b; }
-
-const STYLES = `
-  body { font-family: Arial, sans-serif; font-size: 12pt; line-height: 1.6; margin: 40px; color: #222; }
-  h1 { font-size: 18pt; text-align: center; }
-  h2 { font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 4px; margin-top: 28px; }
-  table { border-collapse: collapse; width: 100%; margin: 16px 0; }
-  th, td { border: 1px solid #aaa; padding: 6px 10px; text-align: left; }
-  th { background: #f0f0f0; }
-  code { background: #f5f5f5; padding: 1px 4px; border-radius: 2px; font-size: 10pt; }
-  pre { background: #f5f5f5; padding: 12px; border-radius: 4px; overflow-x: auto; }
-`;
-
-async function markdownToPdfBytes(markdown: string): Promise<Buffer | null> {
-  if (!_browser) return null;
-  const html =
-    `<!DOCTYPE html><html><head><meta charset="utf-8">` +
-    `<style>${STYLES}</style></head><body>${await marked(markdown)}</body></html>`;
-
-  const page = await _browser.newPage();
-  try {
-    await page.setContent(html, { waitUntil: "networkidle0" });
-    const pdf = await page.pdf({
-      format: "A4",
-      margin: { top: "20mm", bottom: "20mm", left: "15mm", right: "15mm" },
-    });
-    return Buffer.from(pdf);
-  } finally {
-    await page.close();
-  }
+/**
+ * No-op kept for API compatibility with whatsapp/client.ts.
+ * PDF rendering now uses @react-pdf/renderer — no browser needed.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function setBrowser(_b: PuppeteerBrowser): void {
+  /* no-op */
 }
 
-export async function renderProjectPdfAndUpload(project: Project): Promise<string | null> {
-  const pdfBytes = await markdownToPdfBytes(project.content);
-  if (!pdfBytes) return null;
+/** No longer meaningful for PDF rendering, kept for API compatibility. */
+export function isBrowserReady(): boolean {
+  // @react-pdf/renderer doesn't need a browser — always ready
+  return true;
+}
+
+/**
+ * Render a project to PDF bytes using @react-pdf/renderer.
+ * Always succeeds (no Puppeteer / browser dependency).
+ */
+async function projectToPdfBytes(project: Project): Promise<Buffer> {
+  return generateProjectPdfBuffer(project);
+}
+
+/**
+ * Render a project PDF and upload it to R2 (or save to a temp file as
+ * fallback). Returns the public URL (https://…) or a file:// path, or null
+ * if PDF rendering is unavailable.
+ */
+export async function renderProjectPdfAndUpload(
+  project: Project,
+): Promise<string | null> {
+  const pdfBytes = await projectToPdfBytes(project);
 
   const key = `projects/${project.id}.pdf`;
 
-  if (env.R2_ACCOUNT_ID && env.R2_ACCESS_KEY_ID && env.R2_SECRET_ACCESS_KEY && env.R2_BUCKET_NAME) {
+  if (
+    env.R2_ACCOUNT_ID &&
+    env.R2_ACCESS_KEY_ID &&
+    env.R2_SECRET_ACCESS_KEY &&
+    env.R2_BUCKET_NAME
+  ) {
     const s3 = new S3Client({
       region: "auto",
       endpoint: `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
@@ -81,11 +82,14 @@ export async function renderProjectPdfAndUpload(project: Project): Promise<strin
       }),
     );
     const publicUrl = `${env.R2_PUBLIC_URL?.replace(/\/$/, "")}/${key}`;
-    await prisma.project.update({ where: { id: project.id }, data: { pdfUrl: publicUrl } });
+    await prisma.project.update({
+      where: { id: project.id },
+      data: { pdfUrl: publicUrl },
+    });
     return publicUrl;
   }
 
-  // Fallback: write to tmp
+  // Fallback: write to tmp directory
   const tmpPath = join(tmpdir(), `pass-project-${project.id}.pdf`);
   await writeFile(tmpPath, pdfBytes);
   return `file://${tmpPath}`;

@@ -1,10 +1,13 @@
-import { Folder, SealCheck, Sparkle, X } from "@vuduc0801/react-native-phosphor-icons";
+import { ArrowDown, Folder, SealCheck, Sparkle, X } from "@vuduc0801/react-native-phosphor-icons";
+import * as FileSystem from "expo-file-system";
 import * as SecureStore from "expo-secure-store";
+import * as Sharing from "expo-sharing";
 import { MotiView } from "moti";
 import { Easing } from "react-native-reanimated";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -62,6 +65,7 @@ export default function ProjectsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [selected, setSelected] = useState<Project | null>(null);
+  const [downloading, setDownloading] = useState(false);
 
   // Step 1 form state
   const [step, setStep] = useState<1 | 2>(1);
@@ -185,6 +189,28 @@ export default function ProjectsScreen() {
   }
 
   const canContinue = !!(studentName.trim() && centreNumber.trim() && candidateNumber.trim() && grade && subject && category);
+
+  async function downloadPdf(project: Project) {
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      const token = await getToken();
+      const pdfUrl = `${API}/projects/${project.id}/pdf${token ? `?token=${token}` : ""}`;
+      const localPath = `${FileSystem.cacheDirectory}project_${project.id}.pdf`;
+      const result = await FileSystem.downloadAsync(pdfUrl, localPath, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (result.status !== 200) throw new Error("PDF not available");
+      await Sharing.shareAsync(result.uri, {
+        mimeType: "application/pdf",
+        dialogTitle: project.topic,
+      });
+    } catch {
+      Alert.alert("Download failed", "Could not download the PDF. Please try again.");
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   function renderContent(content: string) {
     return content.split("\n").map((line, i) => {
@@ -330,6 +356,20 @@ export default function ProjectsScreen() {
                 {selected?.subject} · {selected?.grade}
               </Text>
             </View>
+            {/* Download PDF */}
+            <Pressable
+              onPress={() => selected && downloadPdf(selected)}
+              disabled={downloading}
+              style={{ flexDirection: "row", alignItems: "center", gap: 5, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7, marginRight: 8, opacity: downloading ? 0.5 : 1 }}
+            >
+              {downloading
+                ? <ActivityIndicator size={14} color={colors.brand} />
+                : <ArrowDown size={14} color={colors.brand} />
+              }
+              <Text style={{ fontSize: 12, fontWeight: "600", color: colors.brand }}>
+                {downloading ? "…" : "PDF"}
+              </Text>
+            </Pressable>
             <Pressable onPress={() => setSelected(null)} style={{ padding: 8 }}>
               <X size={20} color={colors.textTertiary} />
             </Pressable>

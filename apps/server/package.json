@@ -17,6 +17,8 @@
     "@pass/db": "workspace:*",
     "@pass/env": "workspace:*",
     "@pass/pricing": "workspace:*",
+    "@react-pdf/renderer": "^4.5.1",
+    "@types/react": "^19.2.15",
     "ai": "^4.3.0",
     "dotenv": "catalog:",
     "hono": "^4.8.2",
@@ -25,6 +27,7 @@
     "nodemailer": "^6.10.1",
     "paynow": "^2.2.2",
     "qrcode-terminal": "^0.12.0",
+    "react": "^19.2.6",
     "whatsapp-web.js": "^1.27.0",
     "zod": "catalog:"
   },

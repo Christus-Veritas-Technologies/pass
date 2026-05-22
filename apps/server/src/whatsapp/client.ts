@@ -67,7 +67,8 @@ export function createClient(): Client {
   _client.on("ready", () => {
     console.log("[whatsapp] Ready ✓");
     setConnected(true);
-    // Expose the Puppeteer browser instance for PDF rendering
+    // Keep a reference so isBrowserReady() / setBrowser() remain satisfied
+    // (PDF rendering now uses @react-pdf/renderer, not Puppeteer directly)
     const browser = (_client as unknown as { pupBrowser?: unknown }).pupBrowser;
     if (browser) setBrowser(browser as Parameters<typeof setBrowser>[0]);
   });

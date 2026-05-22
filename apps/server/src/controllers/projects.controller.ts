@@ -1,12 +1,35 @@
 import { streamText } from "ai";
 import { streamSSE } from "hono/streaming";
+import { readFile } from "node:fs/promises";
 import type { Context } from "hono";
 
 import prisma from "@pass/db";
 import { anthropic, CLAUDE_MODEL } from "../lib/anthropic";
 import { verifyAccessToken } from "../lib/jwt";
+import { buildProjectHtml } from "../lib/projectHtml";
+import { renderProjectPdfAndUpload } from "../whatsapp/media/renderProjectPdf";
+import { generateProjectPdfBuffer } from "../lib/projectPdfDocument";
 
 const VALID_GRADES = ["Grade 7", "Form 4", "Form 6"] as const;
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/** Verify token from Authorization header or ?token= query param. */
+async function resolveUserId(c: Context): Promise<string | null> {
+  const authHeader = c.req.header("Authorization");
+  const queryToken = c.req.query("token");
+  const rawToken = authHeader?.startsWith("Bearer ")
+    ? authHeader.slice(7)
+    : (queryToken ?? null);
+
+  if (!rawToken) return null;
+  try {
+    const payload = await verifyAccessToken(rawToken);
+    return payload.sub;
+  } catch {
+    return null;
+  }
+}
 
 // ─── Controllers ─────────────────────────────────────────────────────────────
 
@@ -55,7 +78,6 @@ export async function generateProject(c: Context) {
     return c.json({ error: `grade must be one of: ${VALID_GRADES.join(", ")}` }, 400);
   }
 
-  // Validate centre and candidate numbers are numeric
   if (centreNumber && !/^\d+$/.test(centreNumber.trim())) {
     return c.json({ error: "centreNumber must contain digits only" }, 400);
   }
@@ -63,7 +85,6 @@ export async function generateProject(c: Context) {
     return c.json({ error: "candidateNumber must contain digits only" }, 400);
   }
 
-  // Validate subject against supported ZIMSEC subjects
   const SUPPORTED_SUBJECTS = new Set([
     "mathematics", "english language", "combined science", "physics",
     "chemistry", "biology", "agriculture", "history", "geography",
@@ -158,7 +179,6 @@ Then produce the complete project using EXACTLY this structure:
 
 Write formally and academically throughout. Use British English. Every section must contain real, specific Zimbabwean content — names of places, people, cultural practices, plants, historical events, or scientific knowledge authentic to Zimbabwe. Do not use generic placeholder text.`;
 
-
   let projectId: string | null = null;
   let accumulatedContent = "";
 
@@ -192,7 +212,6 @@ Write formally and academically throughout. Use British English. Every section m
         await stream.writeSSE({ data: chunk, event: "chunk" });
       }
 
-      // Extract the first # heading as the stored topic
       const titleMatch = accumulatedContent.match(/^#\s+(.+)$/m);
       const topic = titleMatch?.[1]?.trim() ?? `${subject} HBC Project`;
 
@@ -212,22 +231,10 @@ Write formally and academically throughout. Use British English. Every section m
   });
 }
 
+/** GET /projects/:id/html — screen-mode preview (iframe embed) */
 export async function getProjectHtml(c: Context) {
-  // Accept token from Authorization header OR ?token= query param (for new-tab opens)
-  let userId: string | null = null;
-  const authHeader = c.req.header("Authorization");
-  const queryToken = c.req.query("token");
-  const rawToken = authHeader?.startsWith("Bearer ")
-    ? authHeader.slice(7)
-    : queryToken ?? null;
-
-  if (!rawToken) return c.json({ error: "Unauthorized" }, 401);
-  try {
-    const payload = await verifyAccessToken(rawToken);
-    userId = payload.sub;
-  } catch {
-    return c.json({ error: "Invalid or expired token" }, 401);
-  }
+  const userId = await resolveUserId(c);
+  if (!userId) return c.json({ error: "Unauthorized" }, 401);
 
   const id = c.req.param("id");
   const project = await prisma.project.findUnique({ where: { id } });
@@ -235,61 +242,7 @@ export async function getProjectHtml(c: Context) {
     return c.json({ error: "Project not found" }, 404);
   }
 
-  const contentHtml = project.content
-    .split("\n")
-    .map((line) => {
-      if (line.startsWith("# ")) return `<h1>${esc(line.slice(2))}</h1>`;
-      if (line.startsWith("## ")) return `<h2>${esc(line.slice(3))}</h2>`;
-      if (line.startsWith("### ")) return `<h3>${esc(line.slice(4))}</h3>`;
-      if (line.startsWith("- ") || line.startsWith("* ")) return `<li>${esc(line.slice(2))}</li>`;
-      if (line.match(/^\d+\.\s/)) return `<li>${esc(line.replace(/^\d+\.\s/, ""))}</li>`;
-      if (line.trim() === "") return "<br/>";
-      return `<p>${esc(line).replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")}</p>`;
-    })
-    .join("\n");
-
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8"/>
-<title>${esc(project.topic)} — ZIMSEC HBC Project</title>
-<style>
-  @page { size: A4; margin: 25mm 20mm; }
-  body { font-family: "Times New Roman", serif; font-size: 12pt; line-height: 1.6; color: #000; max-width: 170mm; margin: 0 auto; }
-  .cover { text-align: center; page-break-after: always; padding-top: 40mm; }
-  .cover-header { font-size: 14pt; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 24px; }
-  .cover-title { font-size: 18pt; font-weight: bold; margin: 32px 0; line-height: 1.4; }
-  .cover-meta { font-size: 12pt; line-height: 2.2; margin-top: 40px; }
-  h1 { font-size: 16pt; font-weight: bold; margin: 24px 0 12px; border-bottom: 1px solid #000; padding-bottom: 4px; }
-  h2 { font-size: 14pt; font-weight: bold; margin: 20px 0 8px; }
-  h3 { font-size: 12pt; font-weight: bold; margin: 16px 0 6px; }
-  p { margin: 6px 0; text-align: justify; }
-  li { margin: 4px 0; margin-left: 24px; }
-  strong { font-weight: bold; }
-  .print-tip { background: #f0f4ff; border: 1px solid #c7d3f5; border-radius: 6px; padding: 12px 16px; margin-bottom: 24px; font-family: sans-serif; font-size: 13px; }
-  @media print { .print-tip { display: none; } body { max-width: none; } }
-</style>
-</head>
-<body>
-<div class="cover">
-  <div class="cover-header">ZIMSEC Heritage-Based Curriculum Project</div>
-  <div class="cover-title">${esc(project.topic)}</div>
-  <div class="cover-meta">
-    <div><strong>Name:</strong> ${esc(project.studentName || "Student")}</div>
-    <div><strong>Centre Number:</strong> ${esc(project.centreNumber || "—")}</div>
-    <div><strong>Candidate Number:</strong> ${esc(project.candidateNumber || "—")}</div>
-    <div><strong>Grade:</strong> ${esc(project.grade)}</div>
-    <div><strong>Subject:</strong> ${esc(project.subject)}</div>
-    <div><strong>Year:</strong> ${new Date(project.createdAt).getFullYear()}</div>
-  </div>
-</div>
-<div class="print-tip">
-  <strong>To save as PDF:</strong> Press <kbd>Ctrl+P</kbd> (or Cmd+P on Mac) and choose "Save as PDF".
-</div>
-${contentHtml}
-</body>
-</html>`;
-
+  const html = buildProjectHtml(project, "screen");
   return new Response(html, {
     headers: {
       "Content-Type": "text/html; charset=utf-8",
@@ -298,6 +251,71 @@ ${contentHtml}
   });
 }
 
-function esc(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+/** GET /projects/:id/pdf — download as real PDF (puppeteer-rendered) */
+export async function getProjectPdf(c: Context) {
+  const userId = await resolveUserId(c);
+  if (!userId) return c.json({ error: "Unauthorized" }, 401);
+
+  const id = c.req.param("id");
+  const project = await prisma.project.findUnique({ where: { id } });
+  if (!project || project.userId !== userId) {
+    return c.json({ error: "Project not found" }, 404);
+  }
+
+  // If we already have a cached PDF, stream it straight back
+  if (project.pdfUrl && !project.pdfUrl.startsWith("file://")) {
+    try {
+      const resp = await fetch(project.pdfUrl);
+      if (resp.ok) {
+        const bytes = await resp.arrayBuffer();
+        return pdfResponse(c, bytes, project);
+      }
+    } catch {
+      // Cache miss — fall through to regenerate
+    }
+  }
+  if (project.pdfUrl?.startsWith("file://")) {
+    try {
+      const bytes = await readFile(project.pdfUrl.replace("file://", ""));
+      return pdfResponse(c, bytes.buffer as ArrayBuffer, project);
+    } catch {
+      // Tmp file gone — fall through to regenerate
+    }
+  }
+
+  // Generate PDF using @react-pdf/renderer (no Puppeteer needed)
+  let pdfBytes: Buffer;
+  try {
+    pdfBytes = await generateProjectPdfBuffer(project);
+  } catch (err) {
+    console.error("[pdf] generation failed:", err);
+    return c.json({ error: "PDF generation failed. Please try again." }, 500);
+  }
+
+  // Persist to R2 or tmp for next request (non-fatal)
+  try {
+    const pdfUrl = await renderProjectPdfAndUpload(project);
+    if (pdfUrl) {
+      await prisma.project.update({ where: { id }, data: { pdfUrl } });
+    }
+  } catch {
+    // Non-fatal — we still return the bytes we already have
+  }
+
+  return pdfResponse(c, pdfBytes.buffer as ArrayBuffer, project);
+}
+
+function pdfResponse(_c: Context, bytes: ArrayBuffer, project: { topic: string; candidateNumber: string; id: string }) {
+  const safeTitle = (project.topic || "project").replace(/[^a-zA-Z0-9 _-]/g, "").trim().replace(/\s+/g, "_");
+  const suffix = project.candidateNumber ? `_${project.candidateNumber}` : `_${project.id.slice(-6)}`;
+  const filename = `HBC_${safeTitle}${suffix}.pdf`;
+
+  return new Response(bytes, {
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Cache-Control": "private, max-age=3600",
+      "Content-Length": String(bytes.byteLength),
+    },
+  });
 }
