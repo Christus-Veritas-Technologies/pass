@@ -47,9 +47,9 @@ export const HELP_MESSAGE = `*Pass on WhatsApp — quick guide*
    _"I want to do a Maths paper"_
    I'll show you a list, send the PDF, then walk you through it question by question.
 
-📝 *Generate a project*
-   _"Write me a Geography project on land degradation"_
-   You get a downloadable PDF report.
+📝 *Generate an HBC project*
+   _"generate project"_ or _"I need an HBC project"_
+   I'll collect your candidate info, then generate a complete formal ZIMSEC Heritage-Based Curriculum project and send it as a PDF. (Grade 7, Form 4, Form 6 only.)
 
 🧠 *Ask anything*
    Just type your question. Equations, definitions, exam technique — anything ZIMSEC.
@@ -201,34 +201,65 @@ Want me to explain a question? Reply *explain 3* (or any question number).
 Or pick another paper: reply *papers*.`;
 }
 
-// ─── Project ──────────────────────────────────────────────────────────────────
+// ─── Project (HBC) ───────────────────────────────────────────────────────────
 
-export const PROJECT_ASK_TOPIC = `Sweet — let's build it.
+export const PROJECT_ASK_NAME = `Let's create your ZIMSEC Heritage-Based Curriculum project! 📚
 
-*What's your topic?* Be as specific as you can.
-e.g. _"The impact of mobile money on small businesses in Mbare"_ or _"Comparing supermarket pricing in Harare"_.`;
+*What is your full name?* (as it appears on your exam registration)`;
 
-export const PROJECT_ASK_GRADE = `Got it. *What grade are you in?* (e.g. _Form 4_, _A-Level_)`;
+export const PROJECT_ASK_CENTRE_CANDIDATE = `Got it! Please send your exam centre number and candidate number.
+e.g. _Centre: 1234, Candidate: 5678_`;
 
-export function projectConfirmMessage(subject: string, grade: string, topic: string): string {
-  return `*Subject:* ${subject}
-*Grade:* ${grade}
-*Topic:* ${topic}
+export const PROJECT_ASK_CENTRE = `What is your *exam centre number*? (e.g. _1234_)`;
 
-Generating now — this takes about 30–60 seconds…
-_🧠 Writing introduction, objectives, methodology…_`;
+export const PROJECT_ASK_CANDIDATE = `And your *candidate number*? (e.g. _5678_)`;
+
+export const PROJECT_ASK_GRADE = `Which grade are you in?
+
+Reply with one of:
+• *Grade 7*
+• *Form 4*
+• *Form 6*`;
+
+export const PROJECT_ASK_CATEGORY = `Choose a category for your project:
+
+🏺 *Culture & History* — totems, liberation struggle, customs, languages
+🌿 *Indigenous Sciences* — traditional medicine, farming, energy systems
+🎭 *Arts & Lifestyle* — music, architecture, food, traditional games
+
+Just reply with the name of the category (e.g. _Culture & History_).`;
+
+export function projectConfirmMessage(slots: {
+  studentName: string;
+  centreNumber: string;
+  candidateNumber: string;
+  grade: string;
+  subject: string;
+  category: string;
+}): string {
+  return `*Generating your HBC project…*
+
+📋 *${slots.studentName}*
+Centre: ${slots.centreNumber} · Candidate: ${slots.candidateNumber}
+Grade: ${slots.grade} · Subject: ${slots.subject}
+Category: ${slots.category}
+
+🧠 _Choosing an authentic topic and writing all sections — this takes 30–60 seconds…_`;
 }
 
 export function projectDoneMessage(subject: string, topic: string, pages: number): string {
-  return `✅ Done! *${subject} — ${topic}*
+  return `✅ *Project complete!*
 
-It's a ${pages}-page report with title page, introduction, methodology, findings, analysis, conclusion and references. Edit the placeholders for your name and school before submitting.`;
+*${topic}*
+${subject} · ${pages}-page formal HBC report
+
+Includes: cover page, introduction, methodology, data presentation & analysis, recommendations & conclusion, and references. Review and add your school name before submitting.`;
 }
 
 export function projectFallbackMessage(projectId: string): string {
-  return `✅ Your project is ready — view it at https://pass.co.zw/projects/${projectId}
+  return `✅ Your project is saved — view it at https://pass.co.zw/projects/${projectId}
 
-_(I couldn't attach the PDF right now, but the full text is saved in your Pass account.)_`;
+_(Could not attach the PDF right now, but the full text is in your Pass account.)_`;
 }
 
 // ─── Quota exhausted (hard limit — no further AI calls) ──────────────────────
