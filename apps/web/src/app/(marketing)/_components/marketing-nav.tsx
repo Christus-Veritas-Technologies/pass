@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight01Icon, Cancel01Icon, Menu01Icon, Moon01Icon, Sun01Icon, Computer01Icon } from "@hugeicons/core-free-icons";
+import { ArrowRight01Icon, Cancel01Icon, Menu01Icon, Moon01Icon, Sun01Icon, ComputerIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Image from "next/image";
@@ -31,7 +31,7 @@ export function MarketingNav() {
     else setTheme("system");
   }
 
-  const themeIcon = !mounted ? Sun01Icon : theme === "dark" ? Moon01Icon : theme === "light" ? Sun01Icon : Computer01Icon;
+  const themeIcon = !mounted ? Sun01Icon : theme === "dark" ? Moon01Icon : theme === "light" ? Sun01Icon : ComputerIcon;
   const themeLabel = !mounted ? "Toggle theme" : theme === "dark" ? "Dark mode" : theme === "light" ? "Light mode" : "System theme";
 
   useEffect(() => {

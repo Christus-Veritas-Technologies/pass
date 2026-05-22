@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import {
   Mail01Icon,
-  MessageSent01Icon,
+  MessageDone01Icon,
   WhatsappIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -188,7 +188,7 @@ export default function ContactPage() {
               type="submit"
               className="inline-flex items-center gap-2 rounded-xl bg-foreground px-6 py-2.5 text-sm font-semibold text-background transition-opacity hover:opacity-80"
             >
-              <HugeiconsIcon icon={MessageSent01Icon} className="h-4 w-4" />
+              <HugeiconsIcon icon={MessageDone01Icon} className="h-4 w-4" />
               Send message
             </button>
           </form>
