@@ -19,6 +19,8 @@ jobs:
           envs: SERVER_ENV_B64,WEB_ENV_B64
           script: |
             set -e
+            export BUN_INSTALL="$HOME/.bun"
+            export PATH="$BUN_INSTALL/bin:$PATH"
             if [ ! -d /var/www/pass ]; then
               mkdir -p /var/www && git clone https://github.com/christus-veritas-technologies/pass /var/www/pass
             fi
@@ -29,9 +31,14 @@ jobs:
             bun install && bun run build
             pm2 delete pass-server 2>/dev/null || true
             pm2 delete pass-web 2>/dev/null || true
-            cd /var/www/pass/apps/server && pm2 start "bun run start" --name pass-server
-            cd /var/www/pass/apps/web && pm2 start "bun run start" --name pass-web
-            pm2 save && pm2 list
+            pm2 start "bun run start" --name pass-server --cwd /var/www/pass/apps/server
+            pm2 start "bun run start" --name pass-web --cwd /var/www/pass/apps/web
+            pm2 save
+            sleep 8
+            pm2 list
+            echo "=== Server logs ===" && pm2 logs pass-server --lines 30 --nostream || true
+            echo "=== Web logs ===" && pm2 logs pass-web --lines 30 --nostream || true
+            echo "=== Port check ===" && ss -tlnp | grep -E '5005|5006' || echo "WARNING: expected ports not found"
         env:
           SERVER_ENV_B64: ${{ secrets.SERVER_ENV_B64 }}
           WEB_ENV_B64: ${{ secrets.WEB_ENV_B64 }}
@@ -89,6 +96,7 @@ jobs:
           password: ${{ secrets.VPS_PASSWORD }}
           script: |
             certbot --nginx -d pass.co.zw -d www.pass.co.zw -d api.pass.co.zw \
-              --non-interactive --agree-tos -m kinzinzombe07@gmail.com --redirect || \
+              --non-interactive --agree-tos -m kinzinzombe07@gmail.com --redirect \
+              --keep-until-expiring || \
               echo "Certbot failed - ensure DNS records point to this server first"
             nginx -t && systemctl reload nginx
