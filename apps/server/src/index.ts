@@ -95,9 +95,4 @@ if (env.WHATSAPP_ENABLED === "true") {
     .catch((err) => console.error("[whatsapp] Import error:", err));
 }
 
-// ─── Start server ────────────────────────────────────────────────────────────
-const PORT = Number(process.env.PORT) || 5006;
-Bun.serve({ fetch: app.fetch.bind(app), port: PORT });
-console.log(`[server] Listening on port ${PORT}`);
-
 export default app;
