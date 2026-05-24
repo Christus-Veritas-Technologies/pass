@@ -14,7 +14,7 @@ export function signAccessToken(userId: string, sessionId: string): Promise<stri
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(userId)
     .setIssuedAt()
-    .setExpirationTime("15m")
+    .setExpirationTime("30d")
     .sign(accessSecret);
 }
 
@@ -23,7 +23,7 @@ export function signRefreshToken(userId: string, sessionId: string): Promise<str
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(userId)
     .setIssuedAt()
-    .setExpirationTime("7d")
+    .setExpirationTime("30d")
     .sign(refreshSecret);
 }
 
@@ -35,4 +35,4 @@ export async function verifyAccessToken(token: string): Promise<TokenPayload> {
 export async function verifyRefreshToken(token: string): Promise<TokenPayload> {
   const { payload } = await jwtVerify<{ sessionId: string }>(token, refreshSecret);
   return payload as TokenPayload;
-}
+}

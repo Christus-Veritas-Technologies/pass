@@ -126,7 +126,7 @@ export function storeTokens(tokens: AuthTokens) {
   localStorage.setItem("pass_access_token", tokens.accessToken);
   localStorage.setItem("pass_refresh_token", tokens.refreshToken);
   // Mirror a cookie so the edge middleware can check auth state without reading localStorage
-  document.cookie = "pass_session=1; path=/; max-age=604800; SameSite=Lax";
+  document.cookie = "pass_session=1; path=/; max-age=2592000; SameSite=Lax";
 }
 
 export function clearTokens() {
@@ -160,4 +160,4 @@ export function isLoggedIn(): boolean {
     return false;
   }
   return true;
-}
+}
