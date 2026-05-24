@@ -29,6 +29,7 @@ import {
   PAPER_FILE_MISSING,
   aiUsageFooter,
 } from "../utils/messages";
+import { mdToWhatsApp } from "../utils/format";
 
 // ─── Start a paper session ────────────────────────────────────────────────────
 
@@ -314,7 +315,7 @@ export async function explainQuestion(
           `1. What the correct answer requires\n` +
           `2. The key concept\n` +
           `3. One exam tip\n\n` +
-          `Use WhatsApp markdown (*bold*, _italic_). End with "Reply *next* when ready."`,
+          `Use standard markdown (**bold**, *italic*, ## headings, - bullets). End with "Reply *next* when ready."`,
       },
     ]);
 
@@ -328,7 +329,7 @@ export async function explainQuestion(
 
     const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } });
     const footer = aiUsageFooter(quota.used, quota.limit, user?.plan ?? "FREE") ?? "";
-    await msg.reply(text + footer);
+    await msg.reply(mdToWhatsApp(text) + footer);
   } catch (err) {
     console.error("[whatsapp] explainQuestion error:", err);
     await chat.clearState();
@@ -354,7 +355,4 @@ async function finalisePaper(msg: Message, state: ConversationState): Promise<Co
 
   const score = recalculateScore(questions, attempts);
 
-  await msg.reply(completionMessage({ title: s.paperTitle, ...score }));
-
-  return { ...state, mode: { kind: "idle" } };
-}
+  await msg.reply(completionMessage({ 

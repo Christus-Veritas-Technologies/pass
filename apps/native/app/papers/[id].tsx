@@ -17,6 +17,80 @@ import { PdfViewerModal } from "@/components/pdf-viewer";
 import { FormattedQuestionText } from "@/lib/format-question";
 
 const BRAND = "#4F46E5";
+
+/** Renders AI markdown (# ## ### **bold** *italic* - bullets 1. numbered) as native elements. */
+function RenderMarkdown({ text, color = "#1E293B" }: { text: string; color?: string }) {
+  const elements: React.ReactNode[] = [];
+  let bulletBuffer: string[] = [];
+  let numberedBuffer: string[] = [];
+  let key = 0;
+
+  function flushBullets() {
+    if (!bulletBuffer.length) return;
+    bulletBuffer.forEach((item) => {
+      elements.push(
+        <Text key={key++} style={{ fontSize: 13, color, marginLeft: 12, marginBottom: 3, lineHeight: 20 }}>
+          {"• "}{renderInline(item, key++)}
+        </Text>,
+      );
+    });
+    bulletBuffer = [];
+  }
+
+  function flushNumbered() {
+    if (!numberedBuffer.length) return;
+    numberedBuffer.forEach((item, idx) => {
+      elements.push(
+        <Text key={key++} style={{ fontSize: 13, color, marginLeft: 12, marginBottom: 3, lineHeight: 20 }}>
+          {`${idx + 1}. `}{renderInline(item, key++)}
+        </Text>,
+      );
+    });
+    numberedBuffer = [];
+  }
+
+  function renderInline(line: string, baseKey: number): React.ReactNode {
+    const parts = line.split(/(\*\*[^*]+\*\*|\*[^*\n]+\*)/g);
+    return parts.map((part, j) => {
+      if (part.startsWith("**") && part.endsWith("**"))
+        return <Text key={baseKey + j} style={{ fontWeight: "700" }}>{part.slice(2, -2)}</Text>;
+      if (part.startsWith("*") && part.endsWith("*") && part.length > 2)
+        return <Text key={baseKey + j} style={{ fontStyle: "italic" }}>{part.slice(1, -1)}</Text>;
+      return part;
+    });
+  }
+
+  for (const line of text.split("\n")) {
+    if (line.startsWith("### ")) {
+      flushBullets(); flushNumbered();
+      elements.push(<Text key={key++} style={{ fontSize: 13, fontWeight: "700", color, marginTop: 8, marginBottom: 2 }}>{line.slice(4)}</Text>);
+    } else if (line.startsWith("## ")) {
+      flushBullets(); flushNumbered();
+      elements.push(<Text key={key++} style={{ fontSize: 14, fontWeight: "700", color, marginTop: 10, marginBottom: 3 }}>{line.slice(3)}</Text>);
+    } else if (line.startsWith("# ")) {
+      flushBullets(); flushNumbered();
+      elements.push(<Text key={key++} style={{ fontSize: 15, fontWeight: "700", color, marginTop: 12, marginBottom: 4 }}>{line.slice(2)}</Text>);
+    } else if (/^[-*•]\s+/.test(line)) {
+      flushNumbered();
+      bulletBuffer.push(line.replace(/^[-*•]\s+/, ""));
+    } else if (/^\d+\.\s+/.test(line)) {
+      flushBullets();
+      numberedBuffer.push(line.replace(/^\d+\.\s+/, ""));
+    } else if (line.trim() === "") {
+      flushBullets(); flushNumbered();
+      elements.push(<View key={key++} style={{ height: 5 }} />);
+    } else {
+      flushBullets(); flushNumbered();
+      elements.push(
+        <Text key={key++} style={{ fontSize: 13, color, lineHeight: 21, marginBottom: 2 }}>
+          {renderInline(line, key)}
+        </Text>,
+      );
+    }
+  }
+  flushBullets(); flushNumbered();
+  return <>{elements}</>;
+}
 const API = env.EXPO_PUBLIC_SERVER_URL;
 
 interface Question {
@@ -452,78 +526,4 @@ export default function PaperSessionScreen() {
                 className="rounded-[12px]"
               >
                 <Sparkle size={16} color="#FFFFFF" />
-                <Text style={{ fontSize: 14, fontWeight: "600", color: "#FFFFFF", marginLeft: 6 }}>
-                  {streaming ? "Loading answer…" : "Get Answer"}
-                </Text>
-              </Button>
-            )}
-
-            {/* AI response */}
-            {(aiResponses[currentQ.questionNumber] || streaming) && (
-              <View style={{ backgroundColor: "#EEF2FF", borderRadius: 12, borderWidth: 1, borderColor: `${BRAND}30`, padding: 16 }}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                  <Sparkle size={15} color={BRAND} />
-                  <Text style={{ fontSize: 13, fontWeight: "600", color: BRAND }}>
-                    AI {mode === "GUIDE" ? "Feedback" : "Solution"}
-                  </Text>
-                  {streaming && <ActivityIndicator size="small" color={BRAND} style={{ marginLeft: 4 }} />}
-                  {mode === "GUIDE" && !streaming && (
-                    <Text
-                      style={{
-                        marginLeft: "auto",
-                        fontSize: 10,
-                        fontWeight: "600",
-                        color: currentQ.guideSource === "OFFICIAL" ? "#16A34A" : "#9CA3AF",
-                      }}
-                    >
-                      {currentQ.guideSource === "OFFICIAL"
-                        ? "Official marking scheme"
-                        : "AI-estimated marking"}
-                    </Text>
-                  )}
-                </View>
-                <Text style={{ fontSize: 14, color: "#1E293B", lineHeight: 22 }}>
-                  {aiResponses[currentQ.questionNumber]}
-                </Text>
-              </View>
-            )}
-
-            {/* Previous / Next navigation */}
-            {completed.has(currentQ.questionNumber) && (
-              <View style={{ flexDirection: "row", gap: 10 }}>
-                {currentIndex > 0 && (
-                  <Button
-                    onPress={() => setCurrentIndex((i) => i - 1)}
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 rounded-[12px]"
-                  >
-                    Previous
-                  </Button>
-                )}
-                {currentIndex < questions.length - 1 ? (
-                  <Button
-                    onPress={() => setCurrentIndex((i) => i + 1)}
-                    size="sm"
-                    className="flex-1 rounded-[12px]"
-                  >
-                    Next
-                  </Button>
-                ) : allDone ? (
-                  <Button
-                    onPress={handleComplete}
-                    variant="success"
-                    size="sm"
-                    className="flex-1 rounded-[12px]"
-                  >
-                    Complete session
-                  </Button>
-                ) : null}
-              </View>
-            )}
-          </View>
-        )}
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
+                <Text style={{ fontSize: 14, font

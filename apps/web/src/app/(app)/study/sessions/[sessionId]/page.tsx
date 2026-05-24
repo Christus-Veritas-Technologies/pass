@@ -1,11 +1,11 @@
 "use client";
 
 import {
+  ArrowDown01Icon,
   ArrowLeft01Icon,
+  ArrowUp01Icon,
   CheckmarkCircle01Icon,
   SparklesIcon,
-  ChevronDown01Icon,
-  ChevronUp01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import Link from "next/link";
@@ -17,6 +17,7 @@ import { Skeleton } from "@pass/ui/components/skeleton";
 import { clearTokens, getAccessToken } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import { FormattedQuestionText } from "@/lib/format-question";
+import { MarkdownContent } from "@/lib/render-markdown";
 
 const API = process.env.NEXT_PUBLIC_SERVER_URL;
 
@@ -70,7 +71,7 @@ function AttemptCard({ attempt, mode }: { attempt: Attempt; mode: "GUIDE" | "FRE
           </p>
         </div>
         <HugeiconsIcon
-          icon={open ? ChevronUp01Icon : ChevronDown01Icon}
+          icon={open ? ArrowUp01Icon : ArrowDown01Icon}
           className="h-4 w-4 shrink-0 text-muted-foreground"
         />
       </button>
@@ -102,8 +103,8 @@ function AttemptCard({ attempt, mode }: { attempt: Attempt; mode: "GUIDE" | "FRE
                   AI {mode === "GUIDE" ? "Feedback" : "Solution"}
                 </p>
               </div>
-              <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm whitespace-pre-wrap leading-relaxed">
-                {attempt.explanation}
+              <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
+                <MarkdownContent text={attempt.explanation} />
               </div>
             </div>
           ) : (
@@ -232,8 +233,4 @@ export default function SessionReviewPage({ params }: { params: Promise<{ sessio
           {session.attempts.map((a) => (
             <AttemptCard key={a.id} attempt={a} mode={session.mode} />
           ))}
-        </div>
-      )}
-    </div>
-  );
-}
+        

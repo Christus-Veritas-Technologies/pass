@@ -20,6 +20,7 @@ import { Skeleton } from "@pass/ui/components/skeleton";
 import { cn } from "@/lib/utils";
 import { clearTokens, getAccessToken } from "@/lib/auth";
 import { FormattedQuestionText } from "@/lib/format-question";
+import { MarkdownContent } from "@/lib/render-markdown";
 
 const API = process.env.NEXT_PUBLIC_SERVER_URL;
 
@@ -147,6 +148,11 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
         body: JSON.stringify(body),
       });
 
+      if (res.status === 401) {
+        clearTokens();
+        router.replace("/login");
+        return;
+      }
       if (!res.body) return;
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -191,10 +197,15 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
   async function handleComplete() {
     if (!sessionId) return;
     const token = getAccessToken();
-    await fetch(`${API}/papers/session/${sessionId}/complete`, {
+    const res = await fetch(`${API}/papers/session/${sessionId}/complete`, {
       method: "POST",
       headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     }).catch(console.error);
+    if (res && res.status === 401) {
+      clearTokens();
+      router.replace("/login");
+      return;
+    }
     setSessionComplete(true);
   }
 
@@ -475,12 +486,4 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
                         {currentQ.guideSource === "OFFICIAL"
                           ? "Official marking scheme"
                           : "AI-estimated marking"}
-                      </span>
-                    )}
-                  </div>
-                  <div
-                    ref={aiBoxRef}
-                    className="max-h-72 overflow-y-auto text-sm leading-relaxed whitespace-pre-wrap"
-                  >
-                    {aiResponses[currentQ.questionNumber]}
-         
+                      </span>
