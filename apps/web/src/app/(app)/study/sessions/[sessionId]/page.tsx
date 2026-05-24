@@ -233,4 +233,8 @@ export default function SessionReviewPage({ params }: { params: Promise<{ sessio
           {session.attempts.map((a) => (
             <AttemptCard key={a.id} attempt={a} mode={session.mode} />
           ))}
-        
+        </div>
+      )}
+    </div>
+  );
+}

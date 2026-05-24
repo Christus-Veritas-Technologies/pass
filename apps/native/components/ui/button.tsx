@@ -67,7 +67,6 @@ export function Button({
 
   return (
     <Pressable
-      // @ts-expect-error — className works via uniwind
       className={buttonVariants({ variant, size, className })}
       disabled={isDisabled}
       style={{ opacity: isDisabled ? 0.6 : 1 }}
@@ -76,7 +75,6 @@ export function Button({
       {loading ? (
         <ActivityIndicator color={variant === "default" || variant === "destructive" || variant === "success" ? "#fff" : "#4F46E5"} />
       ) : typeof children === "string" ? (
-        // @ts-expect-error — className works via uniwind
         <Text className={textVariants({ variant, className: textClassName })}>{children}</Text>
       ) : (
         children

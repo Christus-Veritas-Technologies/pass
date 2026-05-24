@@ -355,4 +355,7 @@ async function finalisePaper(msg: Message, state: ConversationState): Promise<Co
 
   const score = recalculateScore(questions, attempts);
 
-  await msg.reply(completionMessage({ 
+  await msg.reply(completionMessage({ title: s.paperTitle, ...score }));
+
+  return { ...state, mode: { kind: "idle" } };
+}

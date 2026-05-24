@@ -526,4 +526,76 @@ export default function PaperSessionScreen() {
                 className="rounded-[12px]"
               >
                 <Sparkle size={16} color="#FFFFFF" />
-                <Text style={{ fontSize: 14, font
+                <Text style={{ fontSize: 14, fontWeight: "600", color: "#FFFFFF", marginLeft: 6 }}>
+                  {streaming ? "Loading answer…" : "Get Answer"}
+                </Text>
+              </Button>
+            )}
+
+            {/* AI response */}
+            {(aiResponses[currentQ.questionNumber] || streaming) && (
+              <View style={{ backgroundColor: "#EEF2FF", borderRadius: 12, borderWidth: 1, borderColor: `${BRAND}30`, padding: 16 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 }}>
+                  <Sparkle size={15} color={BRAND} />
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: BRAND }}>
+                    AI {mode === "GUIDE" ? "Feedback" : "Solution"}
+                  </Text>
+                  {streaming && <ActivityIndicator size="small" color={BRAND} style={{ marginLeft: 4 }} />}
+                  {mode === "GUIDE" && !streaming && (
+                    <Text
+                      style={{
+                        marginLeft: "auto",
+                        fontSize: 10,
+                        fontWeight: "600",
+                        color: currentQ.guideSource === "OFFICIAL" ? "#16A34A" : "#9CA3AF",
+                      }}
+                    >
+                      {currentQ.guideSource === "OFFICIAL"
+                        ? "Official marking scheme"
+                        : "AI-estimated marking"}
+                    </Text>
+                  )}
+                </View>
+                <RenderMarkdown text={aiResponses[currentQ.questionNumber] ?? ""} color="#1E293B" />
+              </View>
+            )}
+
+            {/* Previous / Next navigation */}
+            {completed.has(currentQ.questionNumber) && (
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                {currentIndex > 0 && (
+                  <Button
+                    onPress={() => setCurrentIndex((i) => i - 1)}
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 rounded-[12px]"
+                  >
+                    Previous
+                  </Button>
+                )}
+                {currentIndex < questions.length - 1 ? (
+                  <Button
+                    onPress={() => setCurrentIndex((i) => i + 1)}
+                    size="sm"
+                    className="flex-1 rounded-[12px]"
+                  >
+                    Next
+                  </Button>
+                ) : allDone ? (
+                  <Button
+                    onPress={handleComplete}
+                    variant="success"
+                    size="sm"
+                    className="flex-1 rounded-[12px]"
+                  >
+                    Complete session
+                  </Button>
+                ) : null}
+              </View>
+            )}
+          </View>
+        )}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}

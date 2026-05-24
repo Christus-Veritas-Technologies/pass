@@ -38,7 +38,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.setItem(STORAGE_KEY, p);
   }
 
-  const colorScheme: ColorScheme = preference === "system" ? systemScheme : preference;
+  const colorScheme: ColorScheme = preference === "system" ? (systemScheme === "dark" ? "dark" : "light") : preference;
   const colors = Colors[colorScheme];
 
   return (

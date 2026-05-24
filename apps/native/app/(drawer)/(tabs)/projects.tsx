@@ -196,7 +196,7 @@ export default function ProjectsScreen() {
     try {
       const token = await getToken();
       const pdfUrl = `${API}/projects/${project.id}/pdf${token ? `?token=${token}` : ""}`;
-      const localPath = `${FileSystem.cacheDirectory}project_${project.id}.pdf`;
+      const localPath = `${(FileSystem as { cacheDirectory?: string }).cacheDirectory ?? ""}project_${project.id}.pdf`;
       const result = await FileSystem.downloadAsync(pdfUrl, localPath, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });

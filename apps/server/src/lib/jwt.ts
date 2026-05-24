@@ -35,4 +35,4 @@ export async function verifyAccessToken(token: string): Promise<TokenPayload> {
 export async function verifyRefreshToken(token: string): Promise<TokenPayload> {
   const { payload } = await jwtVerify<{ sessionId: string }>(token, refreshSecret);
   return payload as TokenPayload;
-}
+}

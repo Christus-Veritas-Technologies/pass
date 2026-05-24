@@ -30,7 +30,7 @@ export function Progress({
       <View
         style={{
           height: "100%",
-          width: pct,
+          width: pct as `${number}%`,
           backgroundColor: color,
           borderRadius: height / 2,
         }}

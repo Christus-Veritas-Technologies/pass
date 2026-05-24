@@ -39,3 +39,34 @@ export function chunkMessage(text: string, maxChars = 3_500): string[] {
 export function truncate(s: string, max: number): string {
   return s.length > max ? s.slice(0, max - 1) + "…" : s;
 }
+
+/**
+ * Convert standard markdown to WhatsApp markdown.
+ *
+ * Standard → WhatsApp:
+ *   **bold**    → *bold*
+ *   *italic*    → _italic_
+ *   # Heading   → *Heading*
+ *   ## Heading  → *Heading*
+ *   ### Heading → *Heading*
+ *   - item      → • item
+ */
+export function mdToWhatsApp(text: string): string {
+  /** Convert **bold** and *italic* spans in a single pass (no backtracking). */
+  function convertInline(s: string): string {
+    return s.replace(/\*\*([^*\n]+)\*\*|\*([^*\n]+)\*/g, (_, bold, italic) =>
+      bold !== undefined ? `*${bold}*` : `_${italic}_`,
+    );
+  }
+
+  return text
+    .split("\n")
+    .map((line) => {
+      if (/^###\s+/.test(line)) return `*${convertInline(line.replace(/^###\s+/, ""))}*`;
+      if (/^##\s+/.test(line))  return `*${convertInline(line.replace(/^##\s+/, ""))}*`;
+      if (/^#\s+/.test(line))   return `*${convertInline(line.replace(/^#\s+/, ""))}*`;
+      if (/^[-*]\s+/.test(line)) return `• ${convertInline(line.replace(/^[-*]\s+/, ""))}`;
+      return convertInline(line);
+    })
+    .join("\n");
+}

@@ -486,4 +486,65 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
                         {currentQ.guideSource === "OFFICIAL"
                           ? "Official marking scheme"
                           : "AI-estimated marking"}
-                      </span>
+                      </span>
+                    )}
+                  </div>
+                  <div
+                    ref={aiBoxRef}
+                    className="max-h-72 overflow-y-auto"
+                  >
+                    <MarkdownContent text={aiResponses[currentQ.questionNumber] ?? ""} />
+                    {streaming && <span className="ml-1 inline-block h-4 w-0.5 animate-pulse bg-primary" />}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Next question / complete */}
+            {completed.has(currentQ.questionNumber) && (
+              <div className="flex items-center gap-3">
+                {currentIndex < questions.length - 1 ? (
+                  <Button
+                    onClick={() => setCurrentIndex((i) => i + 1)}
+                    className="rounded-xl"
+                  >
+                    Next question
+                  </Button>
+                ) : allDone ? (
+                  <Button
+                    onClick={handleComplete}
+                    className="rounded-xl bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    Complete session
+                  </Button>
+                ) : null}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Original-paper PDF overlay */}
+      {pdfOpen && pdfUrl && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-black/80 p-4 backdrop-blur-sm">
+          <div className="mx-auto flex w-full max-w-4xl items-center gap-3 pb-3">
+            <p className="flex-1 truncate text-sm font-medium text-white">{paper.title}</p>
+            <button
+              type="button"
+              onClick={() => setPdfOpen(false)}
+              className="rounded-lg p-1.5 text-white transition-colors hover:bg-white/10"
+              aria-label="Close"
+            >
+              <HugeiconsIcon icon={Cancel01Icon} className="h-5 w-5" />
+            </button>
+          </div>
+          <iframe
+            title="Original paper"
+            src={`${pdfUrl}#page=${pdfPage}`}
+            className="mx-auto h-full w-full max-w-4xl rounded-lg bg-white"
+          />
+        </div>
+      )}
+    </div>
+  );
+}

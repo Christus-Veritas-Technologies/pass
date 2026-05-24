@@ -91,7 +91,7 @@ export default function HomeScreen() {
     else setLoading(true);
 
     const token = await getToken();
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
 
     const [meRes, sessionsRes, resourcesRes] = await Promise.allSettled([
       fetch(`${API}/users/me`, { headers }),

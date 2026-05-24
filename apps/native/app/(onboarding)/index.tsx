@@ -56,7 +56,7 @@ function FloatingBubble({
   floatDuration,
   drift,
 }: {
-  source: ReturnType<typeof require>;
+  source: number;
   size: number;
   pos: object;
   entryDelay: number;

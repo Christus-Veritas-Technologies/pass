@@ -14,9 +14,7 @@
       "enabled": true,
       "url": "https://u.expo.dev/31966f37-762e-44f9-9da4-2aa43d262227"
     },
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
+    "runtimeVersion": "1.0.0",
     "android": {
       "package": "com.pass.app",
       "versionCode": 1,
