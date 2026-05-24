@@ -205,15 +205,23 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-5xl space-y-4">
+      <div className="mx-auto max-w-5xl space-y-4 px-0">
         <Skeleton className="h-6 w-48 rounded" />
         <Skeleton className="h-4 w-72 rounded" />
-        <div className="grid grid-cols-4 gap-4 mt-6">
-          <div className="col-span-1 space-y-2">
+        {/* Mobile skeleton: pill row + full-width panel */}
+        <div className="mt-6 flex gap-2 lg:hidden overflow-x-auto pb-1">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-8 w-10 shrink-0 rounded-full" />
+          ))}
+        </div>
+        {/* Desktop skeleton: sidebar + panel */}
+        <div className="hidden lg:grid grid-cols-[180px_1fr] gap-4">
+          <div className="space-y-2">
             {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 rounded-lg" />)}
           </div>
-          <div className="col-span-3"><Skeleton className="h-80 rounded-xl" /></div>
+          <Skeleton className="h-80 rounded-xl" />
         </div>
+        <Skeleton className="h-80 rounded-xl lg:hidden" />
       </div>
     );
   }
@@ -226,6 +234,8 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
       </div>
     );
   }
+
+  if (!paper) return null;
 
   if (sessionComplete) {
     return (
@@ -249,18 +259,19 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
   return (
     <div className="mx-auto max-w-5xl space-y-5">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <Link href="/resources" className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        <Link href="/resources" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors">
           <HugeiconsIcon icon={ArrowLeft01Icon} className="h-4 w-4" />
         </Link>
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-lg font-bold">{paper.title}</h1>
+          <h1 className="truncate text-base font-bold sm:text-lg">{paper.title}</h1>
           <p className="text-xs text-muted-foreground">{paper.subject} · {paper.grade} · {paper.year}</p>
         </div>
         {pdfUrl && (
-          <Button variant="outline" onClick={() => openPdf(1)} className="gap-2 rounded-lg">
-            <HugeiconsIcon icon={File01Icon} className="h-4 w-4" />
-            Original paper
+          <Button variant="outline" size="sm" onClick={() => openPdf(1)} className="gap-1.5 rounded-lg text-xs shrink-0">
+            <HugeiconsIcon icon={File01Icon} className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Original paper</span>
+            <span className="sm:hidden">Paper</span>
           </Button>
         )}
       </div>
@@ -320,9 +331,36 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
 
       {/* Main session UI */}
       {started && currentQ && (
-        <div className="grid grid-cols-[180px_1fr] gap-5">
-          {/* Question navigator */}
-          <div className="space-y-1.5">
+        <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[180px_1fr] lg:gap-5">
+
+          {/* ── Mobile: horizontal pill navigator ── */}
+          <div className="flex gap-2 overflow-x-auto pb-1 lg:hidden">
+            {questions.map((q, i) => {
+              const isDone = completed.has(q.questionNumber);
+              const isActive = i === currentIndex;
+              return (
+                <button
+                  key={q.id}
+                  type="button"
+                  onClick={() => setCurrentIndex(i)}
+                  className={cn(
+                    "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-xs font-bold transition-colors",
+                    isActive && "border-primary bg-primary text-primary-foreground",
+                    isDone && !isActive && "border-emerald-400 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+                    !isActive && !isDone && "border-border bg-background text-muted-foreground hover:border-primary/40",
+                  )}
+                  aria-label={`Question ${q.questionNumber}`}
+                >
+                  {isDone && !isActive
+                    ? <HugeiconsIcon icon={CheckmarkCircle01Icon} className="h-4 w-4" />
+                    : q.questionNumber}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* ── Desktop: vertical sidebar navigator ── */}
+          <div className="hidden lg:block space-y-1.5">
             {questions.map((q, i) => {
               const isDone = completed.has(q.questionNumber);
               const isActive = i === currentIndex;
@@ -445,57 +483,4 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
                     className="max-h-72 overflow-y-auto text-sm leading-relaxed whitespace-pre-wrap"
                   >
                     {aiResponses[currentQ.questionNumber]}
-                    {streaming && <span className="ml-1 inline-block h-4 w-0.5 animate-pulse bg-primary" />}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Next question / complete */}
-            {completed.has(currentQ.questionNumber) && (
-              <div className="flex items-center gap-3">
-                {currentIndex < questions.length - 1 ? (
-                  <Button
-                    onClick={() => setCurrentIndex((i) => i + 1)}
-                    className="rounded-xl"
-                  >
-                    Next question
-                  </Button>
-                ) : allDone ? (
-                  <Button
-                    onClick={handleComplete}
-                    className="rounded-xl bg-emerald-600 hover:bg-emerald-700"
-                  >
-                    Complete session
-                  </Button>
-                ) : null}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Original-paper PDF overlay */}
-      {pdfOpen && pdfUrl && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-black/80 p-4 backdrop-blur-sm">
-          <div className="mx-auto flex w-full max-w-4xl items-center gap-3 pb-3">
-            <p className="flex-1 truncate text-sm font-medium text-white">{paper.title}</p>
-            <button
-              type="button"
-              onClick={() => setPdfOpen(false)}
-              className="rounded-lg p-1.5 text-white transition-colors hover:bg-white/10"
-              aria-label="Close"
-            >
-              <HugeiconsIcon icon={Cancel01Icon} className="h-5 w-5" />
-            </button>
-          </div>
-          <iframe
-            title="Original paper"
-            src={`${pdfUrl}#page=${pdfPage}`}
-            className="mx-auto h-full w-full max-w-4xl rounded-lg bg-white"
-          />
-        </div>
-      )}
-    </div>
-  );
-}
+         
