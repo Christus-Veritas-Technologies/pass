@@ -63,13 +63,13 @@ function RenderMarkdown({ text, color = "#1E293B" }: { text: string; color?: str
   for (const line of text.split("\n")) {
     if (line.startsWith("### ")) {
       flushBullets(); flushNumbered();
-      elements.push(<Text key={key++} style={{ fontSize: 13, fontWeight: "700", color, marginTop: 10, marginBottom: 4 }}>{line.slice(4)}</Text>);
+      elements.push(<Text key={key++} style={{ fontSize: 13, fontWeight: "700", color, marginTop: 12, marginBottom: 5, marginRight: 8 }}>{line.slice(4)}</Text>);
     } else if (line.startsWith("## ")) {
       flushBullets(); flushNumbered();
-      elements.push(<Text key={key++} style={{ fontSize: 14, fontWeight: "700", color, marginTop: 12, marginBottom: 5 }}>{line.slice(3)}</Text>);
+      elements.push(<Text key={key++} style={{ fontSize: 14, fontWeight: "700", color, marginTop: 14, marginBottom: 6, marginRight: 8 }}>{line.slice(3)}</Text>);
     } else if (line.startsWith("# ")) {
       flushBullets(); flushNumbered();
-      elements.push(<Text key={key++} style={{ fontSize: 15, fontWeight: "700", color, marginTop: 14, marginBottom: 6 }}>{line.slice(2)}</Text>);
+      elements.push(<Text key={key++} style={{ fontSize: 15, fontWeight: "700", color, marginTop: 16, marginBottom: 7, marginRight: 8 }}>{line.slice(2)}</Text>);
     } else if (/^[-*•]\s+/.test(line)) {
       flushNumbered();
       bulletBuffer.push(line.replace(/^[-*•]\s+/, ""));
@@ -78,11 +78,11 @@ function RenderMarkdown({ text, color = "#1E293B" }: { text: string; color?: str
       numberedBuffer.push(line.replace(/^\d+\.\s+/, ""));
     } else if (line.trim() === "") {
       flushBullets(); flushNumbered();
-      elements.push(<View key={key++} style={{ height: 8 }} />);
+      elements.push(<View key={key++} style={{ height: 10 }} />);
     } else {
       flushBullets(); flushNumbered();
       elements.push(
-        <Text key={key++} style={{ fontSize: 13, color, lineHeight: 21, marginBottom: 3 }}>
+        <Text key={key++} style={{ fontSize: 13, color, lineHeight: 21, marginBottom: 3, marginRight: 8 }}>
           {renderInline(line, key)}
         </Text>,
       );

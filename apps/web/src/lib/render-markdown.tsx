@@ -77,21 +77,21 @@ export function MarkdownContent({
     if (line.startsWith("### ")) {
       flushBullets(); flushNumbered();
       elements.push(
-        <h3 key={key++} className="text-sm font-semibold mt-3 mb-0.5 first:mt-0">
+        <h3 key={key++} className="text-sm font-semibold mt-4 mb-2 first:mt-0">
           <InlineText text={line.slice(4)} />
         </h3>,
       );
     } else if (line.startsWith("## ")) {
       flushBullets(); flushNumbered();
       elements.push(
-        <h2 key={key++} className="text-sm font-bold mt-4 mb-1 first:mt-0">
+        <h2 key={key++} className="text-base font-bold mt-5 mb-3 first:mt-0">
           <InlineText text={line.slice(3)} />
         </h2>,
       );
     } else if (line.startsWith("# ")) {
       flushBullets(); flushNumbered();
       elements.push(
-        <h1 key={key++} className="text-base font-bold mt-4 mb-1 first:mt-0">
+        <h1 key={key++} className="text-lg font-bold mt-6 mb-3 first:mt-0">
           <InlineText text={line.slice(2)} />
         </h1>,
       );
@@ -103,11 +103,11 @@ export function MarkdownContent({
       numberedItems.push(line.replace(/^\d+\.\s+/, ""));
     } else if (line.trim() === "") {
       flushBullets(); flushNumbered();
-      elements.push(<div key={key++} className="h-1" />);
+      elements.push(<div key={key++} className="h-2" />);
     } else {
       flushBullets(); flushNumbered();
       elements.push(
-        <p key={key++} className="text-sm leading-relaxed">
+        <p key={key++} className="text-sm leading-relaxed whitespace-normal break-words">
           <InlineText text={line} />
         </p>,
       );
