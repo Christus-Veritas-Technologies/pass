@@ -377,7 +377,7 @@ export default function PaperSessionScreen() {
             </View>
 
             {/* Mode toggle */}
-            <View style={{ flexDirection: "row", borderRadius: 12, borderWidth: 1, borderColor: "#E5E7EB", overflow: "hidden" }}>
+            <View style={{ flexDirection: "row", borderRadius: 12, borderWidth: 2, borderColor: "#E5E7EB", overflow: "hidden", gap: 1, backgroundColor: "#FFFFFF" }}>
               {(["GUIDE", "FREE"] as const).map((m) => (
                 <Pressable
                   key={m}
@@ -387,13 +387,14 @@ export default function PaperSessionScreen() {
                     paddingVertical: 12,
                     alignItems: "center",
                     backgroundColor: mode === m ? BRAND : "#FFFFFF",
+                    borderRadius: mode === m ? 10 : 0,
                   }}
                 >
-                  <Text style={{ fontSize: 14, fontWeight: "600", color: mode === m ? "#FFFFFF" : "#6B7280" }}>
+                  <Text style={{ fontSize: 14, fontWeight: "600", color: mode === m ? "#FFFFFF" : "#6B7280", paddingHorizontal: 8 }}>
                     {m === "GUIDE" ? "Guide" : "Free"}
                   </Text>
-                  <Text style={{ fontSize: 11, color: mode === m ? "rgba(255,255,255,0.75)" : "#9CA3AF", marginTop: 2, textAlign: "center", paddingHorizontal: 8 }}>
-                    {m === "GUIDE" ? "Answer + get feedback" : "See full solution"}
+                  <Text style={{ fontSize: 11, color: mode === m ? "rgba(255,255,255,0.85)" : "#9CA3AF", marginTop: 3, textAlign: "center", paddingHorizontal: 12, lineHeight: 16 }}>
+                    {m === "GUIDE" ? "Answer +\nget feedback" : "See full\nsolution"}
                   </Text>
                 </Pressable>
               ))}

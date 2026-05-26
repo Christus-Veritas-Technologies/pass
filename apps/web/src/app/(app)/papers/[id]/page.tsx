@@ -313,12 +313,12 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
                   onClick={() => setMode(m)}
                   variant="outline"
                   className={cn(
-                    "h-auto rounded-xl border-2 p-4 flex-col items-start",
-                    mode === m ? "border-primary bg-primary/5" : "border-border hover:border-primary/40",
+                    "h-auto rounded-xl border-2 p-4 flex-col items-start transition-all duration-200",
+                    mode === m ? "border-primary bg-primary/10 shadow-md" : "border-border hover:border-primary/40",
                   )}
                 >
-                  <p className="text-sm font-semibold">{m === "GUIDE" ? "Guide" : "Free"}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
+                  <p className={cn("text-sm font-semibold transition-colors", mode === m ? "text-primary" : "")}>{m === "GUIDE" ? "Guide" : "Free"}</p>
+                  <p className={cn("mt-1 text-xs whitespace-normal break-words", mode === m ? "text-primary/80" : "text-muted-foreground")}>
                     {m === "GUIDE"
                       ? "Write your answer and get AI feedback on how you did."
                       : "Skip the attempt — see the full worked solution immediately."}
