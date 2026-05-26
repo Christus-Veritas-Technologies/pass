@@ -45,7 +45,7 @@ export function MarkdownContent({
   function flushBullets() {
     if (!bulletItems.length) return;
     elements.push(
-      <ul key={key++} className="space-y-1 pl-1 my-1">
+      <ul key={key++} className="space-y-2 pl-1 my-2">
         {bulletItems.map((item, i) => (
           <li key={i} className="flex items-start gap-2">
             <span className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-50" />
@@ -62,7 +62,7 @@ export function MarkdownContent({
   function flushNumbered() {
     if (!numberedItems.length) return;
     elements.push(
-      <ol key={key++} className="space-y-1 pl-5 my-1 list-decimal">
+      <ol key={key++} className="space-y-2 pl-5 my-2 list-decimal">
         {numberedItems.map((item, i) => (
           <li key={i} className="text-sm leading-relaxed">
             <InlineText text={item} />
@@ -103,7 +103,7 @@ export function MarkdownContent({
       numberedItems.push(line.replace(/^\d+\.\s+/, ""));
     } else if (line.trim() === "") {
       flushBullets(); flushNumbered();
-      // blank lines just provide vertical rhythm via space-y
+      elements.push(<div key={key++} className="h-1" />);
     } else {
       flushBullets(); flushNumbered();
       elements.push(
@@ -118,7 +118,7 @@ export function MarkdownContent({
   flushNumbered();
 
   return (
-    <div className={cn("space-y-1.5", className)}>
+    <div className={cn("space-y-2.5", className)}>
       {elements}
     </div>
   );

@@ -29,7 +29,7 @@ function RenderMarkdown({ text, color = "#1E293B" }: { text: string; color?: str
     if (!bulletBuffer.length) return;
     bulletBuffer.forEach((item) => {
       elements.push(
-        <Text key={key++} style={{ fontSize: 13, color, marginLeft: 12, marginBottom: 3, lineHeight: 20 }}>
+        <Text key={key++} style={{ fontSize: 13, color, marginLeft: 12, marginBottom: 6, lineHeight: 21, marginTop: 2 }}>
           {"• "}{renderInline(item, key++)}
         </Text>,
       );
@@ -41,7 +41,7 @@ function RenderMarkdown({ text, color = "#1E293B" }: { text: string; color?: str
     if (!numberedBuffer.length) return;
     numberedBuffer.forEach((item, idx) => {
       elements.push(
-        <Text key={key++} style={{ fontSize: 13, color, marginLeft: 12, marginBottom: 3, lineHeight: 20 }}>
+        <Text key={key++} style={{ fontSize: 13, color, marginLeft: 12, marginBottom: 6, lineHeight: 21, marginTop: 2 }}>
           {`${idx + 1}. `}{renderInline(item, key++)}
         </Text>,
       );
@@ -63,13 +63,13 @@ function RenderMarkdown({ text, color = "#1E293B" }: { text: string; color?: str
   for (const line of text.split("\n")) {
     if (line.startsWith("### ")) {
       flushBullets(); flushNumbered();
-      elements.push(<Text key={key++} style={{ fontSize: 13, fontWeight: "700", color, marginTop: 8, marginBottom: 2 }}>{line.slice(4)}</Text>);
+      elements.push(<Text key={key++} style={{ fontSize: 13, fontWeight: "700", color, marginTop: 10, marginBottom: 4 }}>{line.slice(4)}</Text>);
     } else if (line.startsWith("## ")) {
       flushBullets(); flushNumbered();
-      elements.push(<Text key={key++} style={{ fontSize: 14, fontWeight: "700", color, marginTop: 10, marginBottom: 3 }}>{line.slice(3)}</Text>);
+      elements.push(<Text key={key++} style={{ fontSize: 14, fontWeight: "700", color, marginTop: 12, marginBottom: 5 }}>{line.slice(3)}</Text>);
     } else if (line.startsWith("# ")) {
       flushBullets(); flushNumbered();
-      elements.push(<Text key={key++} style={{ fontSize: 15, fontWeight: "700", color, marginTop: 12, marginBottom: 4 }}>{line.slice(2)}</Text>);
+      elements.push(<Text key={key++} style={{ fontSize: 15, fontWeight: "700", color, marginTop: 14, marginBottom: 6 }}>{line.slice(2)}</Text>);
     } else if (/^[-*•]\s+/.test(line)) {
       flushNumbered();
       bulletBuffer.push(line.replace(/^[-*•]\s+/, ""));
@@ -78,11 +78,11 @@ function RenderMarkdown({ text, color = "#1E293B" }: { text: string; color?: str
       numberedBuffer.push(line.replace(/^\d+\.\s+/, ""));
     } else if (line.trim() === "") {
       flushBullets(); flushNumbered();
-      elements.push(<View key={key++} style={{ height: 5 }} />);
+      elements.push(<View key={key++} style={{ height: 8 }} />);
     } else {
       flushBullets(); flushNumbered();
       elements.push(
-        <Text key={key++} style={{ fontSize: 13, color, lineHeight: 21, marginBottom: 2 }}>
+        <Text key={key++} style={{ fontSize: 13, color, lineHeight: 21, marginBottom: 3 }}>
           {renderInline(line, key)}
         </Text>,
       );
