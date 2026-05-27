@@ -11,7 +11,8 @@ const CANCEL    = /^(cancel|exit|stop|quit|back)\b/i;
 const LINK      = /^link(\s+my\s+account)?\s*$/i;
 const USAGE     = /^(usage|plan|limits?|quota)\s*$/i;
 const UPGRADE   = /^upgrade\s*$/i;
-const PAPERS    = /^papers?\s*$/i;
+// Match "papers", "show papers", "which papers do you have", "what papers", "available papers", etc.
+const PAPERS    = /^(papers?\s*$|(show|list|view|what|which|available|browse)\s+papers?(\s+(do\s+you\s+have|are\s+(available|there)|\?))*\s*\??)/i;
 const MORE      = /^more\s*$/i;
 const START     = /^start\s*$/i;
 const NEXT      = /^(next|done|continue)\s*$/i;
@@ -54,9 +55,11 @@ export interface HardIntentResult {
 export function matchHardIntent(text: string, mode: ConversationMode): HardIntentResult {
   const t = text.trim();
 
-  if (SEND_PDF.test(t))                           return { kind: "send_pdf" };
-  if (HISTORY.test(t))                            return { kind: "history" };
-  if (GREETINGS.test(t) && mode.kind === "idle")  return { kind: "greeting" };
+  if (SEND_PDF.test(t))                            return { kind: "send_pdf" };
+  if (HISTORY.test(t))                             return { kind: "history" };
+  // Greetings reset the conversation unless actively mid-study
+  if (GREETINGS.test(t) && mode.kind !== "paper_study" && mode.kind !== "browsing_papers")
+                                                   return { kind: "greeting" };
   if (HELP.test(t))                               return { kind: "help" };
   if (CANCEL.test(t))                             return { kind: "cancel" };
   if (LINK.test(t))                               return { kind: "link" };
@@ -79,17 +82,4 @@ export function matchHardIntent(text: string, mode: ConversationMode): HardInten
     if (NEXT.test(t))                          return { kind: "next" };
     if (SKIP.test(t))                          return { kind: "skip" };
 
-    const em = EXPLAIN.exec(t);
-    if (em) {
-      const qStr = em[2]?.replace(/^q/i, "");
-      return { kind: "explain", explainQn: qStr ? Number(qStr) : 0 };
-    }
-
-    const em2 = /^explain\s+(q?(\d+))\s*$/i.exec(t);
-    if (em2) return { kind: "explain", explainQn: Number(em2[2]) };
-  }
-
-  if (SIX_DIGIT.test(t)) return { kind: "link_code", code: t };
-
-  return { kind: "none" };
-}
+    const em = EXPLAIN.exec
