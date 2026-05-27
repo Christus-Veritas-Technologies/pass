@@ -64,12 +64,14 @@ export async function generateProject(c: Context) {
     centreNumber = "",
     candidateNumber = "",
     studentName = "",
+    schoolName = "",
     grade,
     subject,
   } = body as {
     centreNumber?: string;
     candidateNumber?: string;
     studentName?: string;
+    schoolName?: string;
     grade: string;
     subject: string;
   };
@@ -102,7 +104,7 @@ export async function generateProject(c: Context) {
   const prompt = `You are an expert in ZIMSEC Heritage-Based Education (HBC) 5.0. Generate a complete, authentic ZIMSEC HBC project document for a ${grade} student. Follow the exact stage-based structure used in real ZIMSEC submissions.
 
 Candidate Details:
-- Name: ${displayName}
+- Name: ${displayName}${schoolName ? `\n- School: ${schoolName}` : ""}
 - Centre Number: ${centreNumber}
 - Candidate Number: ${candidateNumber}
 - Level: ${grade}
@@ -116,7 +118,7 @@ Then produce the complete project using EXACTLY this structure:
 # [Your chosen project title]
 
 ## Cover Page
-**Name:** ${displayName}
+**Name:** ${displayName}${schoolName ? `\n**School:** ${schoolName}` : ""}
 **Centre Number:** ${centreNumber}
 **Candidate Number:** ${candidateNumber}
 **Level:** ${grade}
@@ -194,6 +196,7 @@ Write formally and academically throughout. Use British English. Every section m
           centreNumber,
           candidateNumber,
           studentName,
+          schoolName,
           category: "",
         },
       });
