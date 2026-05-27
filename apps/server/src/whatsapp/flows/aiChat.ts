@@ -54,4 +54,17 @@ export async function handleAiChat(
 
     if (!text) {
       await msg.reply(AI_ERROR);
-      return { ...state, mode
+      return { ...state, mode: { kind: "ai_chat" } };
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } });
+    const footer = aiUsageFooter(quota.used, quota.limit, user?.plan ?? "FREE") ?? "";
+    await msg.reply(text + footer);
+  } catch (err) {
+    console.error("[whatsapp] handleAiChat error:", err);
+    await chat.clearState();
+    await msg.reply(AI_ERROR);
+  }
+
+  return { ...state, mode: { kind: "ai_chat" } };
+}
