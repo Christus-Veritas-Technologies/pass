@@ -138,6 +138,7 @@ function ProjectDocument({ project, blocks }: { project: Project; blocks: Block[
 
   const meta: { label: string; value: string }[] = [
     { label: "Name:", value: project.studentName || "Student" },
+    ...(project.schoolName ? [{ label: "School:", value: project.schoolName }] : []),
     { label: "Centre Number:", value: project.centreNumber || "—" },
     { label: "Candidate Number:", value: project.candidateNumber || "—" },
     { label: "Grade:", value: project.grade },

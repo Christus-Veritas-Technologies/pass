@@ -74,6 +74,7 @@ function renderMarkdown(content: string) {
 
 interface FormErrors {
   studentName?: string;
+  schoolName?: string;
   centreNumber?: string;
   candidateNumber?: string;
   subject?: string;
@@ -85,6 +86,7 @@ export default function NewProjectPage() {
 
   // Step 1 form state
   const [studentName, setStudentName] = useState("");
+  const [schoolName, setSchoolName] = useState("");
   const [centreNumber, setCentreNumber] = useState("");
   const [candidateNumber, setCandidateNumber] = useState("");
   const [grade, setGrade] = useState<string>(GRADES[1]);
@@ -102,6 +104,7 @@ export default function NewProjectPage() {
   function validate(): FormErrors {
     const errs: FormErrors = {};
     if (!studentName.trim()) errs.studentName = "Name is required.";
+    if (!schoolName.trim()) errs.schoolName = "School name is required.";
     if (!centreNumber.trim()) {
       errs.centreNumber = "Centre number is required.";
     } else if (!isNumeric(centreNumber)) {
@@ -126,7 +129,7 @@ export default function NewProjectPage() {
     if (Object.keys(errs).length === 0) setStep(2);
   }
 
-  const canContinue = studentName.trim() && centreNumber.trim() && candidateNumber.trim() && subject.trim();
+  const canContinue = studentName.trim() && schoolName.trim() && centreNumber.trim() && candidateNumber.trim() && subject.trim();
 
   async function startGeneration() {
     setGenerating(true);
@@ -146,7 +149,7 @@ export default function NewProjectPage() {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ studentName, centreNumber, candidateNumber, grade, subject }),
+        body: JSON.stringify({ studentName, schoolName, centreNumber, candidateNumber, grade, subject }),
         signal: abort.signal,
       });
 
@@ -259,6 +262,19 @@ export default function NewProjectPage() {
               className={`w-full rounded-xl border bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground/50 hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent ${errors.studentName ? "border-destructive" : "border-border"}`}
             />
             {errors.studentName && <p className="text-xs text-destructive mt-0.5">{errors.studentName}</p>}
+          </div>
+
+          {/* School Name */}
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-foreground/90">School Name</label>
+            <input
+              type="text"
+              placeholder="e.g. Harare High School"
+              value={schoolName}
+              onChange={(e) => { setSchoolName(e.target.value); setErrors((p) => ({ ...p, schoolName: undefined })); }}
+              className={`w-full rounded-xl border bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground/50 hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent ${errors.schoolName ? "border-destructive" : "border-border"}`}
+            />
+            {errors.schoolName && <p className="text-xs text-destructive mt-0.5">{errors.schoolName}</p>}
           </div>
 
           {/* Centre + Candidate numbers */}

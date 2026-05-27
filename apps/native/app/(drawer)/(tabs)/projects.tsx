@@ -70,6 +70,7 @@ export default function ProjectsScreen() {
   // Step 1 form state
   const [step, setStep] = useState<1 | 2>(1);
   const [studentName, setStudentName] = useState("");
+  const [schoolName, setSchoolName] = useState("");
   const [centreNumber, setCentreNumber] = useState("");
   const [candidateNumber, setCandidateNumber] = useState("");
   const [grade, setGrade] = useState<string>(GRADES[1]);
@@ -115,6 +116,7 @@ export default function ProjectsScreen() {
   function resetModal() {
     setStep(1);
     setStudentName("");
+    setSchoolName("");
     setCentreNumber("");
     setCandidateNumber("");
     setGrade(GRADES[1]);
@@ -143,7 +145,7 @@ export default function ProjectsScreen() {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ studentName, centreNumber, candidateNumber, grade, subject, category }),
+        body: JSON.stringify({ studentName, schoolName, centreNumber, candidateNumber, grade, subject, category }),
         signal: abort.signal,
       });
 
@@ -188,7 +190,7 @@ export default function ProjectsScreen() {
     }
   }
 
-  const canContinue = !!(studentName.trim() && centreNumber.trim() && candidateNumber.trim() && grade && subject && category);
+  const canContinue = !!(studentName.trim() && schoolName.trim() && centreNumber.trim() && candidateNumber.trim() && grade && subject && category);
 
   async function downloadPdf(project: Project) {
     if (downloading) return;
@@ -416,6 +418,15 @@ export default function ProjectsScreen() {
                     placeholderTextColor={colors.textPlaceholder}
                     value={studentName}
                     onChangeText={setStudentName}
+                    style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: colors.text, marginBottom: 16, backgroundColor: colors.cardSubtle }}
+                  />
+
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: colors.textTertiary, marginBottom: 6 }}>SCHOOL NAME</Text>
+                  <TextInput
+                    placeholder="e.g. Harare High School"
+                    placeholderTextColor={colors.textPlaceholder}
+                    value={schoolName}
+                    onChangeText={setSchoolName}
                     style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: colors.text, marginBottom: 16, backgroundColor: colors.cardSubtle }}
                   />
 
