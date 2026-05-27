@@ -104,6 +104,71 @@ export async function startPaper(
   };
 }
 
+// ─── WhatsApp question formatter ─────────────────────────────────────────────
+
+/**
+ * Format a question's raw text for WhatsApp:
+ *   • Detects MCQ options (A … B … C … D …) and puts each on its own line.
+ *   • Strips [Passage: …] brackets and adds a clear divider before the question.
+ *   • Preserves all other text as-is.
+ */
+function formatQuestionForWhatsApp(raw: string): string {
+  let text = raw.replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
+
+  // Extract passage if present
+  const passageMatch = text.match(/\[(?:Passage[:\s]*)?([\s\S]+?)\]([\s\S]*)$/);
+  let passageBlock = "";
+  let remainder = text;
+
+  if (passageMatch && passageMatch[1].trim().length > 60) {
+    const before = text.slice(0, passageMatch.index).trim();
+    passageBlock =
+      (before ? `_${before}_\n\n` : "") +
+      `_${passageMatch[1].trim()}_`;
+    remainder = passageMatch[2].trim();
+  }
+
+  // Detect MCQ options inline: "… A opt B opt C opt D opt"
+  const MCQ_LINE_RE = /^([A-D])[ \t]+(.+)$/gm;
+  const lineOptions: Array<{ label: string; text: string; index: number }> = [];
+  let lm: RegExpExecArray | null;
+  while ((lm = MCQ_LINE_RE.exec(remainder)) !== null) {
+    lineOptions.push({ label: lm[1], text: lm[2].trim(), index: lm.index });
+  }
+
+  if (lineOptions.length >= 2) {
+    // Options already on separate lines
+    const stem = remainder.slice(0, lineOptions[0].index).trim();
+    const opts = lineOptions.map((o) => `*${o.label}* ${o.text}`).join("\n");
+    const questionPart = stem ? `${stem}\n\n${opts}` : opts;
+    return passageBlock ? `${passageBlock}\n\n${questionPart}` : questionPart;
+  }
+
+  // Try inline MCQ: split at standalone A/B/C/D letters
+  const inlineRe = /(?:^|\s)([A-D])\s+/g;
+  const positions: Array<{ label: string; matchStart: number; contentStart: number }> = [];
+  let im: RegExpExecArray | null;
+  while ((im = inlineRe.exec(remainder)) !== null) {
+    const labelIdx = im.index + im[0].indexOf(im[1]);
+    positions.push({ label: im[1], matchStart: labelIdx, contentStart: im.index + im[0].length });
+  }
+
+  if (positions.length >= 2 && positions[0].label === "A") {
+    const stem = remainder.slice(0, positions[0].matchStart).trim();
+    const opts = positions
+      .map((p, i) => {
+        const end = i + 1 < positions.length ? positions[i + 1].matchStart : remainder.length;
+        return `*${p.label}* ${remainder.slice(p.contentStart, end).trim()}`;
+      })
+      .join("\n");
+    const questionPart = stem ? `${stem}\n\n${opts}` : opts;
+    return passageBlock ? `${passageBlock}\n\n${questionPart}` : questionPart;
+  }
+
+  // No MCQ — return as-is with passage if any
+  return passageBlock ? `${passageBlock}\n\n${remainder}` : remainder;
+}
+
 // ─── Pose the next question ───────────────────────────────────────────────────
 
 export async function poseNextQuestion(
@@ -154,7 +219,7 @@ export async function poseNextQuestion(
 
   // Build question text with sub-parts
   const subPartsArr = q.subParts as Array<{ label: string; text: string; marks: number }> | null;
-  let questionBody = q.text;
+  let questionBody = formatQuestionForWhatsApp(q.text);
   if (subPartsArr && subPartsArr.length > 0) {
     questionBody +=
       "\n\n" +
@@ -311,11 +376,11 @@ export async function explainQuestion(
           `Question: ${question.text}\n\n` +
           (attempt?.userAnswer ? `Student's answer: ${attempt.userAnswer}\n\n` : "") +
           `Marking rubric:\n${guide}\n\n` +
-          `Explain in 150–200 words:\n` +
+          `Explain in 150–200 words covering:\n` +
           `1. What the correct answer requires\n` +
           `2. The key concept\n` +
           `3. One exam tip\n\n` +
-          `Use standard markdown (**bold**, *italic*, ## headings, - bullets). End with "Reply *next* when ready."`,
+          `Write in plain text only. Use blank lines to separate paragraphs. If you need a list, start each item with "* " (asterisk space). Do not use any markdown — no **bold**, no *italic*, no # headings, no - bullets. End with "Reply next when ready."`,
       },
     ]);
 

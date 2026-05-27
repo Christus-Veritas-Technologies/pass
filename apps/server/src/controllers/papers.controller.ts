@@ -166,26 +166,18 @@ The student answered: ${userAnswer || "(no answer provided)"}
 
 Give encouraging feedback in 2–4 sentences. Mark against the rubric: if the answer is correct or mostly correct, congratulate them and note any missing points. If it is wrong or incomplete, gently explain the key points they missed and why — never be harsh.
 
-Use standard markdown for emphasis only when helpful: **bold** for key terms, *italic* for light emphasis. Do NOT use headings or bullet lists — plain flowing sentences only.`;
+Write in plain text only. Use a blank line to separate paragraphs. If you need to list points, start each item on its own line with "* " (asterisk followed by a space). Do not use any markdown — no # headings, no **bold**, no *italic*, no - bullets.`;
   } else {
     // Full worked solution — teaching, runs on Sonnet for quality.
     model = CLAUDE_TUTOR_MODEL;
     prompt = `You are a knowledgeable ZIMSEC tutor helping a Zimbabwean student understand a past-paper question.
 
-**Question:**
+Question:
 ${questionText}${diagramHint}
-${guide ? `\n**Marking rubric (source of truth):**\n${guide}\n` : ""}
-Write a clear, well-structured solution suitable for a Form 4 or Form 6 student.
+${guide ? `\nMarking rubric (source of truth):\n${guide}\n` : ""}
+Write a clear, well-structured solution suitable for a Form 4 or Form 6 student. Keep the language simple and the explanation thorough.
 
-Format your response using standard markdown:
-- Use ## for main section headings (e.g. ## Solution, ## Key Concepts)
-- Use ### for sub-headings where needed
-- Use **bold** to highlight key terms and important values
-- Use numbered lists (1. 2. 3.) for sequential steps
-- Use bullet points (- item) for lists of facts or points
-- Use *italic* for emphasis or definitions
-
-Keep the language simple and the explanation thorough.`;
+Write in plain text only. Use blank lines to separate sections or paragraphs. If you need a list, start each item on its own line with "* " (asterisk followed by a space). Do not use any markdown — no # headings, no **bold**, no *italic*, no - bullets.`;
   }
 
   // Persist answer attempt (upsert in case of retry)
