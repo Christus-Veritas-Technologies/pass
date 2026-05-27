@@ -14,6 +14,7 @@ import { anthropic } from "../../lib/anthropic";
 
 export interface HbcFields {
   studentName?: string;
+  schoolName?: string;
   centreNumber?: string;
   candidateNumber?: string;
   grade?: string;
@@ -38,6 +39,10 @@ function regexExtract(text: string): HbcFields {
   const nameMatch = t.match(/(?:(?:my\s+)?name\s+is|I\s+am|I'm)\s+([A-Za-z][A-Za-z\s]{1,39})/i)
     ?? t.match(/^name[:\s]+([A-Za-z][A-Za-z\s]{1,39})/i);
   if (nameMatch?.[1]) fields.studentName = nameMatch[1].trim().replace(/,.*$/, "").trim();
+
+  // School name: "my school is X", "school: X", "I go to X", "I attend X"
+  const schoolMatch = t.match(/(?:my\s+school\s+(?:is|name\s+is)|school[:\s]+|I\s+(?:go\s+to|attend)\s+)\s*([A-Za-z][A-Za-z0-9\s'.-]{1,59})/i);
+  if (schoolMatch?.[1]) fields.schoolName = schoolMatch[1].trim().replace(/[.,;].*$/, "").trim();
 
   // Centre number: "centre 1234", "centre number 1234", "centre: 1234"
   const centreMatch = t.match(/centre(?:\s+(?:number|no\.?|#))?[:\s]+(\d{3,8})/i)
@@ -127,6 +132,7 @@ Valid categories: ${VALID_CATEGORIES.join(", ")}`,
           description: "Extract HBC project candidate fields from the message",
           parameters: z.object({
             studentName: z.string().optional().describe("Student full name"),
+            schoolName: z.string().optional().describe("School or institution name"),
             centreNumber: z.string().optional().describe("Exam centre number (digits only)"),
             candidateNumber: z.string().optional().describe("Candidate number (digits only)"),
             grade: z.enum(VALID_GRADES).optional(),
