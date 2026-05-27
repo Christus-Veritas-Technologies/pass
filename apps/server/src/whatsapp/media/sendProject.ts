@@ -1,10 +1,3 @@
-/**
- * Sends a generated project PDF to a WhatsApp chat.
- * Constructs a MessageMedia from the PDF bytes with a descriptive HBC filename.
- * Falls back to text chunks if PDF rendering is unavailable.
- */
-
-import { readFile } from "node:fs/promises";
 import { MessageMedia } from "whatsapp-web.js";
 import type { Client, MessageSendOptions } from "whatsapp-web.js";
 import type { Project } from "@pass/db";
@@ -23,7 +16,6 @@ export async function sendProjectPdf(
   const pages   = estimatePageCount(project.content);
   const caption = projectDoneMessage(project.subject, project.topic, pages);
 
-  // Build a descriptive filename
   const safeSubject = project.subject.replace(/[^a-zA-Z0-9]/g, "_");
   const filename = project.candidateNumber
     ? `HBC_Project_${project.candidateNumber}_${safeSubject}.pdf`
@@ -31,29 +23,19 @@ export async function sendProjectPdf(
 
   if (pdfUrl) {
     try {
-      let pdfBytes: Buffer;
-      if (pdfUrl.startsWith("file://")) {
-        pdfBytes = await readFile(pdfUrl.replace("file://", ""));
-      } else {
-        const resp = await fetch(pdfUrl);
-        if (!resp.ok) throw new Error(`PDF fetch failed: ${resp.status}`);
-        pdfBytes = Buffer.from(await resp.arrayBuffer());
-      }
-
-      const base64 = pdfBytes.toString("base64");
-      const media = new MessageMedia("application/pdf", base64, filename);
-
+      const media = await MessageMedia.fromUrl(pdfUrl, { unsafeMime: true });
+      media.filename = filename;
       await client.sendMessage(chatId, media, {
         sendMediaAsDocument: true,
         caption,
       } as MessageSendOptions);
       return;
     } catch (err) {
-      console.error("[whatsapp] sendProjectPdf failed:", err);
+      console.error("[whatsapp] sendProjectPdf fromUrl failed:", err);
     }
   }
 
-  // Fallback: send the project URL + first text chunk
+  // Fallback: send URL + first text chunk
   await client.sendMessage(chatId, projectFallbackMessage(project.id));
   const preview = chunkMessage(project.content)[0];
   if (preview) await client.sendMessage(chatId, preview);

@@ -1,17 +1,12 @@
 /**
- * Renders a project to PDF using the shared buildProjectHtml template and the
- * Puppeteer browser instance exposed by whatsapp-web.js (zero extra deps).
+ * Renders a project to PDF using @react-pdf/renderer and uploads to R2.
  *
  * Exports:
- *  setBrowser      — called by client.ts on "ready" to share the wwebjs browser
- *  htmlToPdfBytes  — renders any HTML string → PDF bytes (used by HTTP endpoint)
- *  renderProjectPdfAndUpload — full pipeline: HTML → PDF → R2 (or tmp file)
+ *  setBrowser      — no-op kept for API compatibility with whatsapp/client.ts
+ *  renderProjectPdfAndUpload — full pipeline: PDF bytes → R2 → public URL
  *  estimatePageCount
  */
 
-import { join } from "node:path";
-import { tmpdir } from "node:os";
-import { writeFile } from "node:fs/promises";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { env } from "@pass/env/server";
 import prisma from "@pass/db";
@@ -48,51 +43,48 @@ async function projectToPdfBytes(project: Project): Promise<Buffer> {
 }
 
 /**
- * Render a project PDF and upload it to R2 (or save to a temp file as
- * fallback). Returns the public URL (https://…) or a file:// path, or null
- * if PDF rendering is unavailable.
+ * Render a project PDF and upload it to R2. Returns the public URL.
+ * Throws if R2 is not configured.
  */
 export async function renderProjectPdfAndUpload(
   project: Project,
-): Promise<string | null> {
-  const pdfBytes = await projectToPdfBytes(project);
-
-  const key = `projects/${project.id}.pdf`;
-
+): Promise<string> {
   if (
-    env.R2_ACCOUNT_ID &&
-    env.R2_ACCESS_KEY_ID &&
-    env.R2_SECRET_ACCESS_KEY &&
-    env.R2_BUCKET_NAME
+    !env.R2_ACCOUNT_ID ||
+    !env.R2_ACCESS_KEY_ID ||
+    !env.R2_SECRET_ACCESS_KEY ||
+    !env.R2_BUCKET_NAME
   ) {
-    const s3 = new S3Client({
-      region: "auto",
-      endpoint: `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-      credentials: {
-        accessKeyId: env.R2_ACCESS_KEY_ID,
-        secretAccessKey: env.R2_SECRET_ACCESS_KEY,
-      },
-    });
-    await s3.send(
-      new PutObjectCommand({
-        Bucket: env.R2_BUCKET_NAME,
-        Key: key,
-        Body: pdfBytes,
-        ContentType: "application/pdf",
-      }),
-    );
-    const publicUrl = `${env.R2_PUBLIC_URL?.replace(/\/$/, "")}/${key}`;
-    await prisma.project.update({
-      where: { id: project.id },
-      data: { pdfUrl: publicUrl },
-    });
-    return publicUrl;
+    throw new Error("R2 storage is not configured — cannot store project PDF");
   }
 
-  // Fallback: write to tmp directory
-  const tmpPath = join(tmpdir(), `pass-project-${project.id}.pdf`);
-  await writeFile(tmpPath, pdfBytes);
-  return `file://${tmpPath}`;
+  const pdfBytes = await projectToPdfBytes(project);
+  const key = `projects/${project.id}.pdf`;
+
+  const s3 = new S3Client({
+    region: "auto",
+    endpoint: `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+    credentials: {
+      accessKeyId: env.R2_ACCESS_KEY_ID,
+      secretAccessKey: env.R2_SECRET_ACCESS_KEY,
+    },
+  });
+
+  await s3.send(
+    new PutObjectCommand({
+      Bucket: env.R2_BUCKET_NAME,
+      Key: key,
+      Body: pdfBytes,
+      ContentType: "application/pdf",
+    }),
+  );
+
+  const publicUrl = `${env.R2_PUBLIC_URL?.replace(/\/$/, "")}/${key}`;
+  await prisma.project.update({
+    where: { id: project.id },
+    data: { pdfUrl: publicUrl },
+  });
+  return publicUrl;
 }
 
 export function estimatePageCount(content: string): number {
