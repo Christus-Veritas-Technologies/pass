@@ -164,17 +164,28 @@ Question: ${questionText}${diagramHint}
 ${guide ? `\nMarking rubric / accepted points:\n${guide}\n` : ""}
 The student answered: ${userAnswer || "(no answer provided)"}
 
-Give encouraging feedback in 2-4 sentences. Mark against the rubric: if the answer is correct or mostly correct, congratulate them and note any missing points. If it is wrong or incomplete, gently explain the key points they missed and why — never be harsh.`;
+Give encouraging feedback in 2–4 sentences. Mark against the rubric: if the answer is correct or mostly correct, congratulate them and note any missing points. If it is wrong or incomplete, gently explain the key points they missed and why — never be harsh.
+
+Use standard markdown for emphasis only when helpful: **bold** for key terms, *italic* for light emphasis. Do NOT use headings or bullet lists — plain flowing sentences only.`;
   } else {
     // Full worked solution — teaching, runs on Sonnet for quality.
     model = CLAUDE_TUTOR_MODEL;
-    prompt = `You are a knowledgeable ZIMSEC tutor helping a Zimbabwean student.
+    prompt = `You are a knowledgeable ZIMSEC tutor helping a Zimbabwean student understand a past-paper question.
 
-Work through this ZIMSEC question:
-
+**Question:**
 ${questionText}${diagramHint}
-${guide ? `\nUse this marking rubric as the source of truth for the answer:\n${guide}\n` : ""}
-Give the full, worked solution with a clear step-by-step explanation. Use simple language suitable for a Form 4 or Form 6 student.`;
+${guide ? `\n**Marking rubric (source of truth):**\n${guide}\n` : ""}
+Write a clear, well-structured solution suitable for a Form 4 or Form 6 student.
+
+Format your response using standard markdown:
+- Use ## for main section headings (e.g. ## Solution, ## Key Concepts)
+- Use ### for sub-headings where needed
+- Use **bold** to highlight key terms and important values
+- Use numbered lists (1. 2. 3.) for sequential steps
+- Use bullet points (- item) for lists of facts or points
+- Use *italic* for emphasis or definitions
+
+Keep the language simple and the explanation thorough.`;
   }
 
   // Persist answer attempt (upsert in case of retry)

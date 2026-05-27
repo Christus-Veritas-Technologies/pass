@@ -61,28 +61,48 @@ function RenderMarkdown({ text, color = "#1E293B" }: { text: string; color?: str
   }
 
   for (const line of text.split("\n")) {
-    if (line.startsWith("### ")) {
+    // ── Headings ──────────────────────────────────────────────────────────────
+    if (/^#{4,}\s+/.test(line)) {
       flushBullets(); flushNumbered();
-      elements.push(<Text key={key++} style={{ fontSize: 13, fontWeight: "700", color, marginTop: 12, marginBottom: 5, marginRight: 8 }}>{line.slice(4)}</Text>);
+      elements.push(<Text key={key++} style={{ fontSize: 13, fontWeight: "600", color, marginTop: 10, marginBottom: 3 }}>{line.replace(/^#{4,}\s+/, "")}</Text>);
+    } else if (line.startsWith("### ")) {
+      flushBullets(); flushNumbered();
+      elements.push(<Text key={key++} style={{ fontSize: 13, fontWeight: "700", color, marginTop: 12, marginBottom: 4 }}>{renderInline(line.slice(4), key)}</Text>);
     } else if (line.startsWith("## ")) {
       flushBullets(); flushNumbered();
-      elements.push(<Text key={key++} style={{ fontSize: 14, fontWeight: "700", color, marginTop: 14, marginBottom: 6, marginRight: 8 }}>{line.slice(3)}</Text>);
+      elements.push(<Text key={key++} style={{ fontSize: 14, fontWeight: "700", color, marginTop: 14, marginBottom: 5 }}>{renderInline(line.slice(3), key)}</Text>);
     } else if (line.startsWith("# ")) {
       flushBullets(); flushNumbered();
-      elements.push(<Text key={key++} style={{ fontSize: 15, fontWeight: "700", color, marginTop: 16, marginBottom: 7, marginRight: 8 }}>{line.slice(2)}</Text>);
+      elements.push(<Text key={key++} style={{ fontSize: 15, fontWeight: "700", color, marginTop: 14, marginBottom: 5 }}>{renderInline(line.slice(2), key)}</Text>);
+    // ── Blockquote ────────────────────────────────────────────────────────────
+    } else if (line.startsWith("> ")) {
+      flushBullets(); flushNumbered();
+      elements.push(
+        <View key={key++} style={{ borderLeftWidth: 2, borderLeftColor: "#4F46E5", paddingLeft: 10, marginVertical: 4 }}>
+          <Text style={{ fontSize: 13, color, fontStyle: "italic", lineHeight: 20 }}>{renderInline(line.slice(2), key)}</Text>
+        </View>,
+      );
+    // ── Horizontal rule ───────────────────────────────────────────────────────
+    } else if (/^(-{3,}|\*{3,}|_{3,})$/.test(line.trim())) {
+      flushBullets(); flushNumbered();
+      elements.push(<View key={key++} style={{ height: 1, backgroundColor: "#E5E7EB", marginVertical: 8 }} />);
+    // ── Bullet list ───────────────────────────────────────────────────────────
     } else if (/^[-*•]\s+/.test(line)) {
       flushNumbered();
       bulletBuffer.push(line.replace(/^[-*•]\s+/, ""));
+    // ── Numbered list ─────────────────────────────────────────────────────────
     } else if (/^\d+\.\s+/.test(line)) {
       flushBullets();
       numberedBuffer.push(line.replace(/^\d+\.\s+/, ""));
+    // ── Blank line ────────────────────────────────────────────────────────────
     } else if (line.trim() === "") {
       flushBullets(); flushNumbered();
-      elements.push(<View key={key++} style={{ height: 10 }} />);
+      elements.push(<View key={key++} style={{ height: 6 }} />);
+    // ── Paragraph ─────────────────────────────────────────────────────────────
     } else {
       flushBullets(); flushNumbered();
       elements.push(
-        <Text key={key++} style={{ fontSize: 13, color, lineHeight: 21, marginBottom: 3, marginRight: 8 }}>
+        <Text key={key++} style={{ fontSize: 13, color, lineHeight: 21, marginBottom: 2 }}>
           {renderInline(line, key)}
         </Text>,
       );

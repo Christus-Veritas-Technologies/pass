@@ -239,7 +239,7 @@ export async function gradeStudentAnswer(
 
     const reply =
       `*Q${s.questionNumber} — ${evaluation.score}/${evaluation.maxScore}* ${tick}\n\n` +
-      `${evaluation.feedback}\n\n` +
+      `${mdToWhatsApp(evaluation.feedback)}\n\n` +
       (detail ? `${detail}\n\n` : "") +
       `Reply *explain* to dig deeper, or *next* to continue.${footer}`;
 
