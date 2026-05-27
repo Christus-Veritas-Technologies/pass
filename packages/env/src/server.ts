@@ -46,6 +46,11 @@ export const env = createEnv({
     WHATSAPP_SESSION_DIR: z.string().default("./.wwebjs_auth"),
     WHATSAPP_ADMIN_TOKEN: z.string().optional(), // gates GET /whatsapp/qr
     WHATSAPP_BOT_NUMBER:  z.string().optional(), // E.164, shown in welcome message
+
+    // Web Push (VAPID) — optional (web push disabled when absent)
+    VAPID_PUBLIC_KEY:  z.string().optional(),
+    VAPID_PRIVATE_KEY: z.string().optional(),
+    VAPID_EMAIL:       z.string().optional(),
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,
