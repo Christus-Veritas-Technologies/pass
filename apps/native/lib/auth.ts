@@ -1,5 +1,7 @@
 import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
+import * as Notifications from "expo-notifications";
+import { Platform } from "react-native";
 import { env } from "@pass/env/native";
 
 const API = env.EXPO_PUBLIC_SERVER_URL;
@@ -33,10 +35,10 @@ export interface AuthTokens {
   refreshToken: string;
 }
 
-export function apiSignup(name: string, email: string, password: string) {
+export function apiSignup(name: string, email: string, password: string, referralCode?: string) {
   return request<{ user: AuthUser } & AuthTokens>("/auth/signup", {
     method: "POST",
-    body: JSON.stringify({ name, email, password }),
+    body: JSON.stringify({ name, email, password, ...(referralCode ? { referralCode } : {}) }),
   });
 }
 
@@ -158,4 +160,26 @@ export async function storeTokens(tokens: AuthTokens) {
 export async function clearTokens() {
   await SecureStore.deleteItemAsync("pass_access_token");
   await SecureStore.deleteItemAsync("pass_refresh_token");
+}
+
+const EXPO_PROJECT_ID = "31966f37-762e-44f9-9da4-2aa43d262227";
+
+export async function registerPushToken(): Promise<void> {
+  try {
+    const { status: existing } = await Notifications.getPermissionsAsync();
+    let finalStatus = existing;
+    if (existing !== "granted") {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+    if (finalStatus !== "granted") return;
+
+    const tokenData = await Notifications.getExpoPushTokenAsync({ projectId: EXPO_PROJECT_ID });
+    await authedRequest("/notifications/native-push/register", {
+      method: "POST",
+      body: JSON.stringify({ token: tokenData.data, platform: Platform.OS }),
+    });
+  } catch {
+    // Non-fatal — push is best-effort
+  }
 }

@@ -4,8 +4,8 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { type FormEvent, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { type FormEvent, useState, Suspense } from "react";
 import { BrandPanel } from "@/components/auth/brand-panel";
 import { FormField, AuthInput } from "@/components/auth/form-field";
 import { GoogleButton } from "@/components/auth/google-button";
@@ -14,8 +14,10 @@ import { apiSignup, storeTokens } from "@/lib/auth";
 
 const STAGGER = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0 } };
 
-export default function SignupPage() {
+function SignupForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const referralCode = searchParams.get("ref") ?? undefined;
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -50,7 +52,7 @@ export default function SignupPage() {
     setErrors({});
     setLoading(true);
     try {
-      const data = await apiSignup(name.trim(), email, password);
+      const data = await apiSignup(name.trim(), email, password, referralCode);
       storeTokens(data);
       localStorage.setItem("pass_user_name", data.user.name);
       router.replace("/onboarding");
@@ -64,6 +66,7 @@ export default function SignupPage() {
   return (
     <div className="min-h-screen flex">
       <BrandPanel />
+
 
       <div className="flex-1 flex items-center justify-center px-6 py-12 bg-background">
         <motion.div
@@ -198,5 +201,13 @@ export default function SignupPage() {
         </motion.div>
       </div>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense>
+      <SignupForm />
+    </Suspense>
   );
 }

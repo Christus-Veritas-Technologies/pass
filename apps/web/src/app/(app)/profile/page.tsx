@@ -11,6 +11,8 @@ import {
   ArrowRight01Icon,
   SmartPhone01Icon,
   LinkSquare02Icon,
+  Copy01Icon,
+  Notification01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useRouter } from "next/navigation";
@@ -68,6 +70,22 @@ interface WhatsAppStatus {
   linkedAt: string | null;
 }
 
+interface ReferralInfo {
+  code: string | null;
+  bonusPapers: number;
+  bonusProjects: number;
+}
+
+interface NotificationSettings {
+  emailEnabled: boolean;
+  webPushEnabled: boolean;
+  nativePushEnabled: boolean;
+  referralAlerts: boolean;
+  loginAlerts: boolean;
+  paymentAlerts: boolean;
+  renewalAlerts: boolean;
+}
+
 function getInitials(name: string) {
   return name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase();
 }
@@ -84,6 +102,10 @@ export default function ProfilePage() {
   const [unlinkLoading, setUnlinkLoading] = useState(false);
   const [loading, setLoading]   = useState(true);
   const [editing, setEditing] = useState(false);
+  const [referral, setReferral] = useState<ReferralInfo | null>(null);
+  const [referralCopied, setReferralCopied] = useState(false);
+  const [notifSettings, setNotifSettings] = useState<NotificationSettings | null>(null);
+  const [notifSaving, setNotifSaving] = useState(false);
 
   const [name, setName]     = useState("");
   const [grade, setGrade]   = useState("");
@@ -105,6 +127,7 @@ export default function ProfilePage() {
         setStats(d.stats ?? null);
         setPlanUsage(d.planUsage ?? null);
         setWhatsapp(d.whatsapp ?? null);
+        if (d.referral) setReferral(d.referral as ReferralInfo);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -120,6 +143,13 @@ export default function ProfilePage() {
             setSubscription(d);
           }
         })
+        .catch(() => {});
+
+      fetch(`${API}/notifications/settings`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((r) => r.json())
+        .then((d) => { if (d && !d.error) setNotifSettings(d as NotificationSettings); })
         .catch(() => {});
     }
   }, []);
@@ -189,6 +219,31 @@ export default function ProfilePage() {
       setLinkCode(null);
     } catch { /* ignore */ }
     finally { setUnlinkLoading(false); }
+  }
+
+  function copyReferralLink() {
+    if (!referral?.code) return;
+    const url = `${window.location.origin}/signup?ref=${referral.code}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setReferralCopied(true);
+      setTimeout(() => setReferralCopied(false), 2000);
+    }).catch(() => undefined);
+  }
+
+  async function patchNotifSettings(patch: Partial<NotificationSettings>) {
+    const token = getAccessToken();
+    if (!token || !notifSettings) return;
+    const updated = { ...notifSettings, ...patch };
+    setNotifSettings(updated);
+    setNotifSaving(true);
+    try {
+      await fetch(`${API}/notifications/settings`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+    } catch { /* ignore */ }
+    finally { setNotifSaving(false); }
   }
 
   if (loading) {
@@ -542,6 +597,103 @@ export default function ProfilePage() {
                 )}
               </>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Referral */}
+      {!editing && referral && (
+        <Card className="rounded-xl">
+          <CardHeader className="pb-3 pt-5 px-5">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-50">
+                <HugeiconsIcon icon={CrownIcon} className="h-4 w-4 text-violet-500" />
+              </div>
+              <CardTitle className="text-sm font-semibold">Refer a friend</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="px-5 pb-5 space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Share your referral code. For every friend who signs up, you get <strong>+2 paper credits</strong> and <strong>+1 project credit</strong>.
+            </p>
+            {referral.code && (
+              <div className="flex items-center gap-2">
+                <div className="flex-1 rounded-xl border border-input bg-muted/40 px-3 py-2 font-mono text-sm font-bold tracking-widest text-foreground">
+                  {referral.code}
+                </div>
+                <Button variant="outline" size="sm" onClick={copyReferralLink} className="shrink-0">
+                  <HugeiconsIcon icon={Copy01Icon} className="mr-1.5 h-3.5 w-3.5" />
+                  {referralCopied ? "Copied!" : "Copy link"}
+                </Button>
+              </div>
+            )}
+            {(referral.bonusPapers > 0 || referral.bonusProjects > 0) && (
+              <div className="flex gap-3 text-xs text-emerald-700">
+                {referral.bonusPapers > 0 && (
+                  <span className="rounded-md bg-emerald-50 px-2 py-1 font-medium">
+                    +{referral.bonusPapers} paper {referral.bonusPapers === 1 ? "credit" : "credits"} available
+                  </span>
+                )}
+                {referral.bonusProjects > 0 && (
+                  <span className="rounded-md bg-emerald-50 px-2 py-1 font-medium">
+                    +{referral.bonusProjects} project {referral.bonusProjects === 1 ? "credit" : "credits"} available
+                  </span>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Notification Settings */}
+      {!editing && notifSettings && (
+        <Card className="rounded-xl">
+          <CardHeader className="pb-3 pt-5 px-5">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50">
+                <HugeiconsIcon icon={Notification01Icon} className="h-4 w-4 text-blue-500" />
+              </div>
+              <CardTitle className="text-sm font-semibold">Notifications</CardTitle>
+              {notifSaving && <span className="ml-auto text-xs text-muted-foreground">Saving…</span>}
+            </div>
+          </CardHeader>
+          <CardContent className="px-5 pb-5 space-y-4">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Channels</p>
+              {[
+                { key: "emailEnabled" as const, label: "Email notifications" },
+                { key: "webPushEnabled" as const, label: "Browser push notifications" },
+              ].map(({ key, label }) => (
+                <label key={key} className="flex items-center justify-between cursor-pointer">
+                  <span className="text-sm text-foreground">{label}</span>
+                  <input
+                    type="checkbox"
+                    checked={notifSettings[key]}
+                    onChange={(e) => patchNotifSettings({ [key]: e.target.checked })}
+                    className="h-4 w-4 accent-primary"
+                  />
+                </label>
+              ))}
+            </div>
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Alert types</p>
+              {[
+                { key: "paymentAlerts" as const, label: "Payment confirmations" },
+                { key: "renewalAlerts" as const, label: "Subscription expiry reminders" },
+                { key: "loginAlerts" as const, label: "New sign-in alerts" },
+                { key: "referralAlerts" as const, label: "Referral rewards" },
+              ].map(({ key, label }) => (
+                <label key={key} className="flex items-center justify-between cursor-pointer">
+                  <span className="text-sm text-foreground">{label}</span>
+                  <input
+                    type="checkbox"
+                    checked={notifSettings[key]}
+                    onChange={(e) => patchNotifSettings({ [key]: e.target.checked })}
+                    className="h-4 w-4 accent-primary"
+                  />
+                </label>
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}

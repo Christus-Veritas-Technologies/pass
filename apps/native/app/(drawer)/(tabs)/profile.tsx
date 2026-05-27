@@ -1,5 +1,6 @@
-import { ArrowRight, X, CheckCircle, Crown, Moon, Monitor, PencilSimple, SignOut, Sun, WarningCircle } from "@vuduc0801/react-native-phosphor-icons";
+import { ArrowRight, X, CheckCircle, Crown, Moon, Monitor, PencilSimple, SignOut, Sun, WarningCircle, Copy } from "@vuduc0801/react-native-phosphor-icons";
 import * as SecureStore from "expo-secure-store";
+import * as Clipboard from "expo-clipboard";
 import { useRouter } from "expo-router";
 import { MotiView } from "moti";
 import { Easing } from "react-native-reanimated";
@@ -10,6 +11,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  Switch,
   Text,
   TextInput,
   View,
@@ -60,6 +62,22 @@ interface SubscriptionInfo {
   renewalDue: boolean;
 }
 
+interface ReferralInfo {
+  code: string | null;
+  bonusPapers: number;
+  bonusProjects: number;
+}
+
+interface NotificationSettings {
+  emailEnabled: boolean;
+  webPushEnabled: boolean;
+  nativePushEnabled: boolean;
+  referralAlerts: boolean;
+  loginAlerts: boolean;
+  paymentAlerts: boolean;
+  renewalAlerts: boolean;
+}
+
 const PLAN_LABEL: Record<string, string> = { FREE: "Free", STUDY: "Study", PASS: "Pass" };
 
 function getInitials(name: string) {
@@ -81,6 +99,8 @@ export default function ProfileScreen() {
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
+  const [referral, setReferral] = useState<ReferralInfo | null>(null);
+  const [notifSettings, setNotifSettings] = useState<NotificationSettings | null>(null);
 
   const [name, setName] = useState("");
   const [grade, setGrade] = useState("");
@@ -110,13 +130,22 @@ export default function ProfileScreen() {
         setUser(data.user ?? null);
         setStats(data.stats ?? null);
         setPlanUsage(data.planUsage ?? null);
+        if (data.referral) setReferral(data.referral as ReferralInfo);
 
-        if (token && data.user?.plan !== "FREE") {
-          const subRes = await fetch(`${API}/payments/renewal-status`, {
+        if (token) {
+          if (data.user?.plan !== "FREE") {
+            const subRes = await fetch(`${API}/payments/renewal-status`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            const subData = await subRes.json();
+            if (subData && !subData.error) setSubscription(subData);
+          }
+
+          const notifRes = await fetch(`${API}/notifications/settings`, {
             headers: { Authorization: `Bearer ${token}` },
           });
-          const subData = await subRes.json();
-          if (subData && !subData.error) setSubscription(subData);
+          const notifData = await notifRes.json();
+          if (notifData && !notifData.error) setNotifSettings(notifData as NotificationSettings);
         }
       } catch {}
       setLoading(false);
@@ -161,6 +190,24 @@ export default function ProfileScreen() {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function handleCopyReferral() {
+    if (!referral?.code) return;
+    const url = `https://pass.co.zw/signup?ref=${referral.code}`;
+    await Clipboard.setStringAsync(url);
+  }
+
+  async function patchNotifSettings(patch: Partial<NotificationSettings>) {
+    const token = await getToken();
+    if (!token || !notifSettings) return;
+    const updated = { ...notifSettings, ...patch };
+    setNotifSettings(updated);
+    fetch(`${API}/notifications/settings`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    }).catch(() => undefined);
   }
 
   async function handleLogout() {
@@ -496,6 +543,99 @@ export default function ProfileScreen() {
                         {subscription.renewalDue ? "Renew now" : "Manage"}
                       </Text>
                     </Pressable>
+                  </CardContent>
+                </Card>
+              </MotiView>
+            )}
+
+            {/* Referral */}
+            {referral && (
+              <MotiView
+                from={{ opacity: 0, translateY: 6 }}
+                animate={{ opacity: 1, translateY: 0 }}
+                transition={{ type: "timing", duration: 220, delay: 115, easing: Easing.bezier(0.23, 1, 0.32, 1) }}
+                style={{ marginHorizontal: 20, marginTop: 12 }}
+              >
+                <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textPlaceholder, letterSpacing: 0.5, marginBottom: 10, paddingLeft: 2 }}>REFER A FRIEND</Text>
+                <Card style={{ backgroundColor: colors.card }}>
+                  <CardContent style={{ gap: 12 }}>
+                    <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18 }}>
+                      Share your code — earn <Text style={{ fontWeight: "700", color: colors.text }}>+2 paper credits</Text> and <Text style={{ fontWeight: "700", color: colors.text }}>+1 project credit</Text> per signup.
+                    </Text>
+                    {referral.code && (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                        <View style={{ flex: 1, backgroundColor: colors.cardSubtle, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: colors.border }}>
+                          <Text style={{ fontSize: 16, fontWeight: "800", letterSpacing: 4, color: colors.text, fontVariant: ["tabular-nums"] }}>{referral.code}</Text>
+                        </View>
+                        <Pressable
+                          onPress={handleCopyReferral}
+                          style={({ pressed }) => ({
+                            width: 42, height: 42, borderRadius: 10,
+                            backgroundColor: pressed ? colors.indigoBg : colors.indigoBg,
+                            borderWidth: 1, borderColor: colors.indigoBorder,
+                            alignItems: "center", justifyContent: "center",
+                          })}
+                        >
+                          <Copy size={16} color={colors.brand} />
+                        </Pressable>
+                      </View>
+                    )}
+                    {(referral.bonusPapers > 0 || referral.bonusProjects > 0) && (
+                      <View style={{ flexDirection: "row", gap: 8 }}>
+                        {referral.bonusPapers > 0 && (
+                          <View style={{ backgroundColor: colors.successBg, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 }}>
+                            <Text style={{ fontSize: 12, fontWeight: "600", color: colors.success }}>+{referral.bonusPapers} paper {referral.bonusPapers === 1 ? "credit" : "credits"}</Text>
+                          </View>
+                        )}
+                        {referral.bonusProjects > 0 && (
+                          <View style={{ backgroundColor: colors.successBg, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 }}>
+                            <Text style={{ fontSize: 12, fontWeight: "600", color: colors.success }}>+{referral.bonusProjects} project {referral.bonusProjects === 1 ? "credit" : "credits"}</Text>
+                          </View>
+                        )}
+                      </View>
+                    )}
+                  </CardContent>
+                </Card>
+              </MotiView>
+            )}
+
+            {/* Notification Settings */}
+            {notifSettings && (
+              <MotiView
+                from={{ opacity: 0, translateY: 6 }}
+                animate={{ opacity: 1, translateY: 0 }}
+                transition={{ type: "timing", duration: 220, delay: 117, easing: Easing.bezier(0.23, 1, 0.32, 1) }}
+                style={{ marginHorizontal: 20, marginTop: 12 }}
+              >
+                <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textPlaceholder, letterSpacing: 0.5, marginBottom: 10, paddingLeft: 2 }}>NOTIFICATIONS</Text>
+                <Card style={{ backgroundColor: colors.card }}>
+                  <CardContent style={{ gap: 0 }}>
+                    {[
+                      { key: "nativePushEnabled" as const, label: "Push notifications" },
+                      { key: "emailEnabled" as const, label: "Email notifications" },
+                      { key: "paymentAlerts" as const, label: "Payment confirmations" },
+                      { key: "renewalAlerts" as const, label: "Subscription reminders" },
+                      { key: "loginAlerts" as const, label: "New sign-in alerts" },
+                      { key: "referralAlerts" as const, label: "Referral rewards" },
+                    ].map(({ key, label }, idx, arr) => (
+                      <View
+                        key={key}
+                        style={{
+                          flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+                          paddingVertical: 13,
+                          borderBottomWidth: idx < arr.length - 1 ? 1 : 0,
+                          borderBottomColor: colors.borderSubtle,
+                        }}
+                      >
+                        <Text style={{ fontSize: 14, color: colors.text, fontWeight: "500" }}>{label}</Text>
+                        <Switch
+                          value={notifSettings[key]}
+                          onValueChange={(v) => patchNotifSettings({ [key]: v })}
+                          trackColor={{ false: colors.borderSubtle, true: colors.brand }}
+                          thumbColor="#FFFFFF"
+                        />
+                      </View>
+                    ))}
                   </CardContent>
                 </Card>
               </MotiView>
