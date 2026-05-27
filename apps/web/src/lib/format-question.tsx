@@ -1,95 +1,71 @@
-type TextBlock =
+/**
+ * Renders ZIMSEC question text with proper structure:
+ *   • Instruction headers  ("READ THE FOLLOWING PASSAGE…")
+ *   • Passage blocks       ([Passage: …])
+ *   • MCQ options          (A … B … C … D … on separate lines)
+ *   • Regular paragraphs and bullet/labeled lists
+ */
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type Block =
+  | { kind: "instruction"; text: string }
+  | { kind: "passage"; paragraphs: string[] }
+  | { kind: "stem"; text: string }
+  | { kind: "mcq"; options: Array<{ label: string; text: string }> }
   | { kind: "paragraph"; text: string }
-  | { kind: "list"; items: string[]; bullet: boolean };
+  | { kind: "bullet"; items: string[] }
+  | { kind: "labeled"; items: string[] };
 
-const BULLET_RE = /^[-•*–]\s+/;
-const LABEL_RE = /^(?:\([a-zA-Z0-9ivxlc]+\)|[a-zA-Z0-9]+[.)]\s)/i;
+// ─── MCQ detection ────────────────────────────────────────────────────────────
 
-function parseQuestionText(raw: string): TextBlock[] {
-  const text = raw.replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
-  if (!text) return [];
+const MCQ_LINE_RE = /^([A-D])[ \t]+(.+)$/;
 
-  const chunks = text.split(/\n{2,}/);
-  const result: TextBlock[] = [];
+function tryExtractMCQ(
+  text: string,
+): { preamble: string; options: Array<{ label: string; text: string }> } | null {
+  const normalized = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 
-  for (const chunk of chunks) {
-    const lines = chunk.split("\n").map((l) => l.trim()).filter(Boolean);
-    if (!lines.length) continue;
-
-    if (lines.length === 1) {
-      result.push({ kind: "paragraph", text: lines[0] });
-      continue;
-    }
-
-    const bulletCount = lines.filter((l) => BULLET_RE.test(l)).length;
-    const labelCount = lines.filter((l) => LABEL_RE.test(l)).length;
-
-    if (bulletCount === lines.length) {
-      result.push({
-        kind: "list",
-        bullet: true,
-        items: lines.map((l) => l.replace(BULLET_RE, "").trim()),
-      });
-    } else if (labelCount === lines.length) {
-      result.push({ kind: "list", bullet: false, items: lines });
-    } else {
-      // Find where a list begins within the chunk (if at all)
-      let splitAt = -1;
-      for (let i = 0; i < lines.length; i++) {
-        if (BULLET_RE.test(lines[i]) || LABEL_RE.test(lines[i])) {
-          splitAt = i;
-          break;
-        }
-      }
-
-      if (splitAt > 0) {
-        result.push({ kind: "paragraph", text: lines.slice(0, splitAt).join(" ") });
-        const listLines = lines.slice(splitAt);
-        const allBullet = listLines.every((l) => BULLET_RE.test(l));
-        result.push({
-          kind: "list",
-          bullet: allBullet,
-          items: allBullet ? listLines.map((l) => l.replace(BULLET_RE, "").trim()) : listLines,
-        });
-      } else {
-        result.push({ kind: "paragraph", text: lines.join(" ") });
-      }
-    }
+  // Strategy 1: options on their own lines  "A …\nB …\nC …"
+  const lines = normalized.split("\n");
+  const optLines: Array<{ label: string; text: string; idx: number }> = [];
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].trim().match(MCQ_LINE_RE);
+    if (m) optLines.push({ label: m[1], text: m[2].trim(), idx: i });
+  }
+  if (optLines.length >= 2) {
+    const firstIdx = optLines[0].idx;
+    return {
+      preamble: lines.slice(0, firstIdx).join("\n").trim(),
+      options: optLines.map((o) => ({ label: o.label, text: o.text })),
+    };
   }
 
-  return result;
+  // Strategy 2: options inline  "… A option B option C option D option"
+  // Split at positions where a standalone A/B/C/D letter followed by a space appears
+  const inlineRe = /(?:^|(?<=\s))([A-D])\s+/g;
+  const positions: Array<{ label: string; contentStart: number; matchStart: number }> = [];
+  let m: RegExpExecArray | null;
+  while ((m = inlineRe.exec(normalized)) !== null) {
+    positions.push({
+      label: m[1],
+      matchStart: m.index,
+      contentStart: m.index + m[0].length,
+    });
+  }
+
+  // Only treat as MCQ if it starts at A and we have at least 2 options
+  if (positions.length >= 2 && positions[0].label === "A") {
+    const preamble = normalized.slice(0, positions[0].matchStart).trim();
+    const options = positions.map((p, i) => {
+      const end =
+        i + 1 < positions.length ? positions[i + 1].matchStart : normalized.length;
+      return { label: p.label, text: normalized.slice(p.contentStart, end).trim() };
+    });
+    return { preamble, options };
+  }
+
+  return null;
 }
 
-export function FormattedQuestionText({ text }: { text: string }) {
-  const blocks = parseQuestionText(text);
-  if (!blocks.length) return null;
-
-  return (
-    <div className="space-y-3 text-sm leading-relaxed">
-      {blocks.map((block, i) => {
-        if (block.kind === "paragraph") {
-          return <p key={i}>{block.text}</p>;
-        }
-        if (block.bullet) {
-          return (
-            <ul key={i} className="space-y-2 pl-1">
-              {block.items.map((item, j) => (
-                <li key={j} className="flex items-start gap-2.5">
-                  <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/50" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          );
-        }
-        return (
-          <ol key={i} className="space-y-2 pl-1">
-            {block.items.map((item, j) => (
-              <li key={j}>{item}</li>
-            ))}
-          </ol>
-        );
-      })}
-    </div>
-  );
-}
+// ─── Passage detection ──────────────────────────────────�
