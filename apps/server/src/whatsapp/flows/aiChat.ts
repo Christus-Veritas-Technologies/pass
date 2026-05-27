@@ -6,9 +6,23 @@
 import prisma from "@pass/db";
 import type { Message } from "whatsapp-web.js";
 import type { ConversationState } from "../types";
-import { passAgent } from "../../mastra";
+import { generateText } from "ai";
+import { anthropic } from "../../lib/anthropic";
 import { checkAndIncrementAiMessage } from "../../lib/aiQuota";
 import { aiQuotaMessage, aiUsageFooter, AI_ERROR } from "../utils/messages";
+
+const SYSTEM_PROMPT = `You are the Pass study assistant, an AI tutor for Zimbabwean O-Level and A-Level students.
+You specialise in ZIMSEC (Zimbabwe School Examinations Council) exam preparation.
+
+When answering study questions:
+- Answer in 120–200 words
+- Use WhatsApp markdown (*bold*, _italic_) for emphasis
+- Be helpful, clear, and encouraging
+- Reference Zimbabwean context where relevant (ZWL currency, local examples)
+- End with a brief exam tip if relevant
+- Never mock or belittle a student
+
+If the student asks something unrelated to studying, gently redirect them to studying.`;
 
 export async function handleAiChat(
   msg: Message,
@@ -28,29 +42,16 @@ export async function handleAiChat(
   }
 
   try {
-    const stream = await passAgent.stream([
-      {
-        role: "user" as const,
-        content:
-          `A ZIMSEC student is asking a study question via WhatsApp. ` +
-          `Answer in 120–200 words using WhatsApp markdown (*bold*, _italic_). ` +
-          `Be helpful, clear, and encouraging. End with a brief exam tip if relevant.\n\n` +
-          `Question: ${question}`,
-      },
-    ]);
+    const result = await generateText({
+      model: anthropic("claude-haiku-4-5"),
+      system: SYSTEM_PROMPT,
+      messages: [{ role: "user", content: question }],
+      maxTokens: 400,
+    });
 
-    let text = "";
-    for await (const chunk of stream.textStream) text += chunk;
+    const text = result.text?.trim() ?? "";
     await chat.clearState();
 
-    const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } });
-    const footer = aiUsageFooter(quota.used, quota.limit, user?.plan ?? "FREE") ?? "";
-    await msg.reply(text + footer);
-  } catch (err) {
-    console.error("[whatsapp] handleAiChat error:", err);
-    await chat.clearState();
-    await msg.reply(AI_ERROR);
-  }
-
-  return { ...state, mode: { kind: "ai_chat" } };
-}
+    if (!text) {
+      await msg.reply(AI_ERROR);
+      return { ...state, mode
