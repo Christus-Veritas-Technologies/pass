@@ -73,6 +73,10 @@ model User {
   whatsappId       String?   @unique        // wwebjs chat id, e.g. "263771234567@c.us"
   whatsappLinkedAt DateTime?
 
+  // Referral bonus credits (lifetime pool, decremented when monthly limit is exceeded)
+  bonusPapers   Int @default(0)
+  bonusProjects Int @default(0)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -85,6 +89,16 @@ model User {
   paymentTransactions  PaymentTransaction[]
   whatsappConversation WhatsappConversation?
   whatsappLinkCodes    WhatsappLinkCode[]
+
+  // Referral system
+  referralCode     ReferralCode?
+  referralsMade    ReferralRedemption[] @relation("ReferralsMade")
+  referralReceived ReferralRedemption?  @relation("ReferralsReceived")
+
+  // Notifications
+  webPushSubscriptions WebPushSubscription[]
+  devicePushTokens     DevicePushToken[]
+  notificationSettings NotificationSettings?
 }
 
 // Stores one row per active refresh token. Deleting a row = revoking that session.
@@ -200,6 +214,7 @@ model Project {
   candidateNumber String   @default("")
   category        String   @default("")
   studentName     String   @default("")
+  schoolName      String   @default("")
   createdAt       DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id])
@@ -298,4 +313,73 @@ model PaymentTransaction {
 
   @@index([userId])
   @@index([createdAt])
+}
+
+// ─── Referral system ──────────────────────────────────────────────────────────
+
+// One referral code per user, auto-generated on account creation.
+model ReferralCode {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  code      String   @unique
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Tracks each successful referred signup. refereeId is unique — one redemption per new user.
+model ReferralRedemption {
+  id            String   @id @default(cuid())
+  referrerId    String
+  refereeId     String   @unique
+  rewardGranted Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  referrer User @relation("ReferralsMade",     fields: [referrerId], references: [id])
+  referee  User @relation("ReferralsReceived", fields: [refereeId],  references: [id])
+
+  @@index([referrerId])
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+// Web Push API subscription per browser/device.
+model WebPushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// Expo push token per native device.
+model DevicePushToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  platform  String   // "ios" | "android"
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// Per-user notification preferences. Created on first access with all defaults enabled.
+model NotificationSettings {
+  userId            String  @id
+  emailEnabled      Boolean @default(true)
+  webPushEnabled    Boolean @default(true)
+  nativePushEnabled Boolean @default(true)
+  referralAlerts    Boolean @default(true)
+  loginAlerts       Boolean @default(true)
+  paymentAlerts     Boolean @default(true)
+  renewalAlerts     Boolean @default(true)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
