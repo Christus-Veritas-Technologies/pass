@@ -10,7 +10,10 @@ const HELP      = /^(help|menu|what can you do|commands)\b/i;
 const CANCEL    = /^(cancel|exit|stop|quit|back)\b/i;
 const LINK      = /^link(\s+my\s+account)?\s*$/i;
 const USAGE     = /^(usage|plan|limits?|quota)\s*$/i;
-const UPGRADE   = /^upgrade\s*$/i;
+// "upgrade", "upgrade plan", "upgrade my plan", "upgrade subscription"
+const UPGRADE   = /^upgrade(\s+(plan|my\s+plan|my\s+subscription|subscription|now))?\s*$/i;
+// "generate project", "create project", "I need a project", "HBC project", "write my project", etc.
+const PROJECT   = /^(generate|create|write|make|start|i\s+need|i\s+want)(\s+a|\s+an|\s+my)?\s*(hbc|heritage|zimsec|o.?level|a.?level|grade\s*\d+|form\s*\d+)?\s*project\b/i;
 // Match "papers", "show papers", "which papers do you have", "what papers", "available papers", etc.
 const PAPERS    = /^(papers?\s*$|(show|list|view|what|which|available|browse)\s+papers?(\s+(do\s+you\s+have|are\s+(available|there)|\?))*\s*\??)/i;
 const MORE      = /^more\s*$/i;
@@ -34,6 +37,7 @@ export interface HardIntentResult {
     | "link"
     | "usage"
     | "upgrade"
+    | "project"
     | "papers"
     | "more"
     | "start"
@@ -65,34 +69,10 @@ export function matchHardIntent(text: string, mode: ConversationMode): HardInten
   if (LINK.test(t))                               return { kind: "link" };
   if (USAGE.test(t))                              return { kind: "usage" };
   if (UPGRADE.test(t))                            return { kind: "upgrade" };
+  if (PROJECT.test(t))                            return { kind: "project" };
   if (PAPERS.test(t))                             return { kind: "papers" };
   if (SIGNUP.test(t))                             return { kind: "signup" };
   if (SIGNIN.test(t))                             return { kind: "signin" };
 
   // Numbers resolve globally — each flow handler interprets meaning in context
-  const num = Number(t);
-  if (Number.isInteger(num) && num > 0 && num <= 20) return { kind: "number_select", n: num };
-
-  if (mode.kind === "browsing_papers") {
-    if (MORE.test(t)) return { kind: "more" };
-  }
-
-  if (mode.kind === "paper_study") {
-    if (START.test(t) && !mode.awaitingAnswer) return { kind: "start" };
-    if (NEXT.test(t))                          return { kind: "next" };
-    if (SKIP.test(t))                          return { kind: "skip" };
-
-    const em = EXPLAIN.exec(t);
-    if (em) {
-      const qStr = em[2]?.replace(/^q/i, "");
-      return { kind: "explain", explainQn: qStr ? Number(qStr) : 0 };
-    }
-
-    const em2 = /^explain\s+(q?(\d+))\s*$/i.exec(t);
-    if (em2) return { kind: "explain", explainQn: Number(em2[2]) };
-  }
-
-  if (SIX_DIGIT.test(t)) return { kind: "link_code", code: t };
-
-  return { kind: "none" };
-}
+  cons

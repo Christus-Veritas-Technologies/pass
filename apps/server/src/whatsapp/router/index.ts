@@ -160,6 +160,12 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
     return;
   }
 
+  if (hard.kind === "project") {
+    state = await startProjectBrief(msg, state);
+    await saveState(whatsappId, state);
+    return;
+  }
+
   // ── PDF resend: user asks for their last project as a PDF ─────────────────
   if (hard.kind === "send_pdf") {
     const lastProject = await prisma.project.findFirst({
@@ -351,31 +357,4 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
 
   if (action.kind === "study_paper") {
     const { newState, paperIds } = await showPapers(msg, action, 0, state);
-    setPaperListCache(whatsappId, paperIds);
-    await saveState(whatsappId, newState);
-    return;
-  }
-
-  if (action.kind === "generate_project") {
-    state = await startProjectBrief(msg, state, action);
-    await saveState(whatsappId, state);
-    return;
-  }
-
-  if (action.kind === "show_usage") {
-    await sendUsageCard(msg, userId);
-    await saveState(whatsappId, state);
-    return;
-  }
-
-  if (action.kind === "upgrade_plan") {
-    state = await startUpgrade(msg, state);
-    await saveState(whatsappId, state);
-    return;
-  }
-
-  // answer_question and unclear both go through handleAiChat which enforces quota
-  const question = action.kind === "answer_question" ? action.question : text;
-  state = await handleAiChat(msg, question, userId, state);
-  await saveState(whatsappId, state);
-}
+    setPa
