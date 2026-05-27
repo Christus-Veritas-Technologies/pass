@@ -123,10 +123,9 @@ export function MarkdownContent({
     } else if (/^\d+\.\s+/.test(line)) {
       flushBullets();
       numberedItems.push(line.replace(/^\d+\.\s+/, ""));
-    // ── Blank line → visible paragraph break ─────────────────────────────────
+    // ── Blank line ────────────────────────────────────────────────────────────
     } else if (line.trim() === "") {
       flushBullets(); flushNumbered();
-      elements.push(<div key={key++} className="h-2" />);
     // ── Paragraph ─────────────────────────────────────────────────────────────
     } else {
       flushBullets(); flushNumbered();
@@ -145,4 +144,5 @@ export function MarkdownContent({
     <div className={cn("space-y-2.5", className)}>
       {elements}
     </div>
-  )
+  );
+}

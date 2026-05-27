@@ -92,6 +92,9 @@ Return ONLY a JSON object — no markdown, no prose — with exactly these keys:
   "isCorrect": boolean (true if the answer earns most of the marks),
   "score": number (marks awarded),
   "maxScore": number (must equal ${question.marks}),
-  "feedback": string (2-4 encouraging sentences in plain text — no markdown, no bold, no bullet symbols),
-  "pointsEarned": string[] (rubric points the student made, each a short plain-text phrase),
-  "pointsMissed": string[] (rubric points the s
+  "feedback": string (2-4 encouraging sentences),
+  "pointsEarned": string[] (rubric points the student made),
+  "pointsMissed": string[] (rubric points the student missed).`,
+  });
+  return evaluationSchema.parse(JSON.parse(unfence(text)));
+}
