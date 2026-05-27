@@ -1,27 +1,43 @@
-# ── EAS Build Archive Ignore ──────────────────────────────────────────────────
-# EAS reinstalls all dependencies on their servers, so node_modules and build
-# artifacts are safe to exclude. All workspace package.json files MUST be
-# present in the archive so bun install resolves the same lockfile as locally.
+# Root-level .easignore — paths relative to the repo root
+# EAS archives the monorepo root; this file guards the top level.
 
-# ── Workspace node_modules (reinstalled on EAS) ─────────────────────────────
-node_modules/
-apps/native/node_modules/
-apps/web/node_modules/
-apps/server/node_modules/
-packages/env/node_modules/
-packages/config/node_modules/
-packages/db/node_modules/
-packages/ui/node_modules/
+# ── Version control ───────────────────────────────────────────────────────────
+.git
 
-# ── Build caches & outputs ─────────────────────────────────────────────────────
-.turbo/
-.next/
-dist/
-build/
-*.tsbuildinfo
-.cache/
+# ── Other apps (not needed for the Android build) ─────────────────────────────
+apps/server
+apps/web
 
-# ── Dev / editor artifacts ──────────────────────────────────────────────────────
-.DS_Store
-*.log
-.claude/
+# ── Large generated / downloaded assets ───────────────────────────────────────
+packages/papers/papers
+packages/papers/.ingest-cache
+packages/papers/ingested.json
+
+# ── All node_modules ──────────────────────────────────────────────────────────
+node_modules
+apps/native/node_modules
+apps/web/node_modules
+apps/server/node_modules
+packages/*/node_modules
+
+# ── Build outputs ─────────────────────────────────────────────────────────────
+apps/web/.next
+apps/server/dist
+
+# ── Android build caches (large on dev machines) ──────────────────────────────
+apps/native/android/.gradle
+apps/native/android/build
+apps/native/android/app/build
+apps/native/android/app/.cxx
+
+# ── Expo local state ──────────────────────────────────────────────────────────
+apps/native/.expo
+
+# ── WhatsApp session ──────────────────────────────────────────────────────────
+apps/server/.wwebjs_auth
+
+# ── Scripts / docs ────────────────────────────────────────────────────────────
+scripts
+DEPLOYMENT.md
+LANDING_PAGE_PLAN.md
+WHATSAPP_AUTH_PLAN.md
