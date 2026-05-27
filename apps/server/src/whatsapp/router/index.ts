@@ -356,4 +356,25 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
   }
 
   if (action.kind === "generate_project") {
-    state = await st
+    state = await startProjectBrief(msg, state, action);
+    await saveState(whatsappId, state);
+    return;
+  }
+
+  if (action.kind === "show_usage") {
+    await sendUsageCard(msg, userId);
+    await saveState(whatsappId, state);
+    return;
+  }
+
+  if (action.kind === "upgrade_plan") {
+    state = await startUpgrade(msg, state);
+    await saveState(whatsappId, state);
+    return;
+  }
+
+  // answer_question and unclear both go through handleAiChat which enforces quota
+  const question = action.kind === "answer_question" ? action.question : text;
+  state = await handleAiChat(msg, question, userId, state);
+  await saveState(whatsappId, state);
+}
