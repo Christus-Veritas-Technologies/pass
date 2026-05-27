@@ -38,9 +38,10 @@ export type ConversationMode =
     }
   | {
       kind: "project_brief";
-      awaiting: "name" | "centre" | "candidate" | "grade" | "subject" | "category";
+      awaiting: "name" | "school" | "centre" | "candidate" | "grade" | "subject" | "category";
       collected: {
         studentName?: string;
+        schoolName?: string;
         centreNumber?: string;
         candidateNumber?: string;
         grade?: string;
@@ -50,6 +51,18 @@ export type ConversationMode =
     }
   | { kind: "project_generating"; projectId: string }
   | { kind: "ai_chat" }
+  | {
+      kind: "signing_up";
+      step: "email" | "name" | "password" | "referral_code";
+      email?: string;
+      name?: string;
+      newUserId?: string;
+    }
+  | {
+      kind: "signing_in";
+      step: "email" | "password";
+      email?: string;
+    }
   | {
       kind: "upgrading";
       step: "choose_plan" | "choose_method" | "enter_phone" | "awaiting_payment";
