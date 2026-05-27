@@ -198,6 +198,22 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
 
   // ── Mode-specific routing ─────────────────────────────────────────────────
 
+  // A user can complete signup/signin and become "linked" while the state machine
+  // is still mid-flow (e.g. awaiting a referral code after password is set).
+  // Without these guards the messages fall through to NL/AI routing and produce
+  // an empty reply because the AI has nothing useful to say.
+  if (state.mode.kind === "signing_up") {
+    state = await handleSignupReply(msg, text, whatsappId, state);
+    await saveState(whatsappId, state);
+    return;
+  }
+
+  if (state.mode.kind === "signing_in") {
+    state = await handleSigninReply(msg, text, whatsappId, state);
+    await saveState(whatsappId, state);
+    return;
+  }
+
   if (state.mode.kind === "upgrading") {
     state = await handleUpgradeReply(client, msg, text, whatsappId, userId, state);
     await saveState(whatsappId, state);
@@ -340,25 +356,4 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
   }
 
   if (action.kind === "generate_project") {
-    state = await startProjectBrief(msg, state, action);
-    await saveState(whatsappId, state);
-    return;
-  }
-
-  if (action.kind === "show_usage") {
-    await sendUsageCard(msg, userId);
-    await saveState(whatsappId, state);
-    return;
-  }
-
-  if (action.kind === "upgrade_plan") {
-    state = await startUpgrade(msg, state);
-    await saveState(whatsappId, state);
-    return;
-  }
-
-  // answer_question and unclear both go through handleAiChat which enforces quota
-  const question = action.kind === "answer_question" ? action.question : text;
-  state = await handleAiChat(msg, question, userId, state);
-  await saveState(whatsappId, state);
-}
+    state = await st
