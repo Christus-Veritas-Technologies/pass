@@ -23,10 +23,10 @@ async function request<T>(path: string, init: RequestInit): Promise<T> {
   return json as T;
 }
 
-export function apiSignup(name: string, email: string, password: string) {
+export function apiSignup(name: string, email: string, password: string, referralCode?: string) {
   return request<{ user: AuthUser } & AuthTokens>("/auth/signup", {
     method: "POST",
-    body: JSON.stringify({ name, email, password }),
+    body: JSON.stringify({ name, email, password, ...(referralCode ? { referralCode } : {}) }),
   });
 }
 
