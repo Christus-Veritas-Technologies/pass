@@ -273,6 +273,6 @@ You can still use:
 export const AI_ERROR         = `I'm having trouble thinking right now — try again in a minute 🙏`;
 export const MEDIA_ONLY       = `I can only read text for now — could you type that out?`;
 export const RATE_LIMIT       = `You're going faster than I can think 😅 — give me a moment.`;
-export const PAPER_FILE_MISSING = `Sorry, that paper file isn't available right now. Try another.`;
+export const PAPER_FILE_MISSING = `📄 _The PDF for this paper isn't uploaded yet — but you can still study it question by question below._`;
 export const CANCEL_OK        = `Got it — cancelled. What would you like to do next? Reply *help* for options.`;
-export const UNCLEAR          = `I'm not sure what you mean. Try _"study a paper"_, _"generate a project"_, or just ask me a question.`;
+export const UNCLEAR          = `I'm not sure what you mean. Try _"study a paper"_, _"generat

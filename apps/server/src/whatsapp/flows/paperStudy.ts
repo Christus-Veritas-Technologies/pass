@@ -87,16 +87,14 @@ export async function startPaper(
   const sentPdf = await sendPaperPdf(client, whatsappId, resource);
   await chat.clearState();
 
-  if (!sentPdf) await msg.reply(PAPER_FILE_MISSING);
+  // Combine the (optional) missing-PDF note and the intro into one message
+  // so the student never sees a confusing "not available" followed by the paper starting anyway.
+  const introText = [
+    !sentPdf ? PAPER_FILE_MISSING : null,
+    paperIntroMessage({ title: resource.title, questionCount: questions.length, totalMarks, diagramCount }),
+  ].filter(Boolean).join("\n\n");
 
-  await msg.reply(
-    paperIntroMessage({
-      title: resource.title,
-      questionCount: questions.length,
-      totalMarks,
-      diagramCount,
-    }),
-  );
+  await msg.reply(introText);
 
   return {
     ...state,
@@ -427,11 +425,3 @@ async function finalisePaper(msg: Message, state: ConversationState): Promise<Co
   const [questions, attempts] = await Promise.all([
     prisma.paperQuestion.findMany({ where: { resourceId: s.resourceId }, orderBy: { questionNumber: "asc" } }),
     prisma.questionAttempt.findMany({ where: { sessionId: s.sessionId } }),
-  ]);
-
-  const score = recalculateScore(questions, attempts);
-
-  await msg.reply(completionMessage({ title: s.paperTitle, ...score }));
-
-  return { ...state, mode: { kind: "idle" } };
-}

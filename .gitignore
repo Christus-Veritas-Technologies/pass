@@ -54,7 +54,9 @@ temp
 .claude/worktrees/
 .claude/settings.local.json
 
-# Paper ingestion pipeline — local text-extraction cache and downloaded PDFs
-# PDFs are large binary files; download them with the scripts in packages/papers/
-packages/papers/.ingest-cache/
-packages/papers/papers/
+# Bun lockfile — EAS builds generate this fresh from package.json.
+# Committing it causes --frozen-lockfile failures when bun versions differ.
+bun.lock
+bun.lockb
+
+# Paper ingestion pipeline — local text-extracti
