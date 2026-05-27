@@ -1,5 +1,5 @@
 # Root-level .easignore — paths relative to the repo root
-# EAS archives the monorepo root; this file guards the top level.
+# EAS archives the monorepo root; this file is the primary guard.
 
 # ── Version control ───────────────────────────────────────────────────────────
 .git
@@ -13,31 +13,38 @@ packages/papers/papers
 packages/papers/.ingest-cache
 packages/papers/ingested.json
 
-# ── All node_modules ──────────────────────────────────────────────────────────
-node_modules
-apps/native/node_modules
-apps/web/node_modules
-apps/server/node_modules
-packages/*/node_modules
+# ── node_modules — match at every depth ──────────────────────────────────────
+**/node_modules
 
 # ── Build outputs ─────────────────────────────────────────────────────────────
 apps/web/.next
 apps/server/dist
+**/dist
+**/.next
 
 # ── Android build caches (large on dev machines) ──────────────────────────────
 apps/native/android/.gradle
 apps/native/android/build
 apps/native/android/app/build
 apps/native/android/app/.cxx
+**/.gradle
+**/build/intermediates
+**/build/outputs
+**/build/generated
+**/build/tmp
+**/build/kotlin
+**/.cxx
 
-# ── Expo local state ──────────────────────────────────────────────────────────
+# ── Expo / Metro local state ──────────────────────────────────────────────────
 apps/native/.expo
+**/.expo
+**/.metro-cache
+**/metro-cache
+
+# ── EAS local cache ───────────────────────────────────────────────────────────
+.eas
 
 # ── WhatsApp session ──────────────────────────────────────────────────────────
 apps/server/.wwebjs_auth
 
-# ── Scripts / docs ────────────────────────────────────────────────────────────
-scripts
-DEPLOYMENT.md
-LANDING_PAGE_PLAN.md
-WHATSAPP_AUTH_PLAN.md
+# ── Turbo / Nx caches ──────
