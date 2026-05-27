@@ -54,5 +54,8 @@ temp
 .claude/worktrees/
 .claude/settings.local.json
 
-# Paper ingestion pipeline — local text-extraction cache
+# Paper ingestion pipeline — local text-extraction cache and downloaded PDFs
+# PDFs are large binary files; download them with the scripts in packages/papers/
 packages/papers/.ingest-cache/
+packages/papers/papers/
+packages/papers/ingested.json
