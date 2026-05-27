@@ -12,14 +12,13 @@ export const WELCOME_UNLINKED = `Hi! I'm *Pass* 📚 — your ZIMSEC study buddy
 I can help you:
   • study A-Level and O-Level past exam papers, question by question
   • get AI explanations for any exam question or concept
-  • browse and download past-paper resources
-  • generate a full ZIMSEC project report for any subject
+  • generate a full ZIMSEC project report as a PDF
   • upgrade your plan to unlock more papers and AI replies
 
-To get started I need to link this number to your Pass account.
-Don't have one? Sign up free at https://pass.co.zw — takes 30 seconds.
-
-When you're ready, reply *link* and I'll send you instructions.`;
+To get started:
+  • Reply *signup* — create a new Pass account right here
+  • Reply *signin* — log in to an existing account
+  • Reply *link* — link using a code from the web or app`;
 
 export const LINK_INSTRUCTIONS = `Great. Open Pass on the web or in the app, go to
 *Settings → Connect WhatsApp* and you'll see a 6-digit code.
@@ -41,24 +40,17 @@ Try one of these:
 Or just ask me anything.`;
 }
 
-export const HELP_MESSAGE = `*Pass on WhatsApp — quick guide*
+export const HELP_MESSAGE = `*Pass — quick guide* 📚
 
-📄 *Study a paper*
-   _"I want to do a Maths paper"_
-   I'll show you a list, send the PDF, then walk you through it question by question.
+1️⃣  *Study a past paper* — attempt questions one by one with AI feedback
+2️⃣  *Generate an HBC project* — full ZIMSEC project report as PDF
+3️⃣  *Ask a question* — AI explanations for any ZIMSEC topic
+4️⃣  *Usage & limits* — see your plan and what's left this month
+5️⃣  *Upgrade plan* — unlock more papers and AI replies
+6️⃣  *Browse papers* — download any past-paper PDF
 
-📝 *Generate an HBC project*
-   _"generate project"_ or _"I need an HBC project"_
-   I'll collect your candidate info, then generate a complete formal ZIMSEC Heritage-Based Curriculum project and send it as a PDF. (Grade 7, Form 4, Form 6 only.)
-
-🧠 *Ask anything*
-   Just type your question. Equations, definitions, exam technique — anything ZIMSEC.
-
-*Useful commands:*
-  • \`papers\` — browse past papers
-  • \`usage\`  — see what's left this month
-  • \`cancel\` — quit the current flow
-  • \`link\`   — link a Pass account`;
+Reply a number or just type what you want.
+Reply *cancel* at any time to exit the current flow.`;
 
 // ─── Usage card ───────────────────────────────────────────────────────────────
 
@@ -207,6 +199,8 @@ export const PROJECT_ASK_NAME = `Let's create your ZIMSEC Heritage-Based Curricu
 
 *What is your full name?* (as it appears on your exam registration)`;
 
+export const PROJECT_ASK_SCHOOL = `What is the name of your *school*?`;
+
 export const PROJECT_ASK_CENTRE_CANDIDATE = `Got it! Please send your exam centre number and candidate number.
 e.g. _Centre: 1234, Candidate: 5678_`;
 
@@ -216,21 +210,23 @@ export const PROJECT_ASK_CANDIDATE = `And your *candidate number*? (e.g. _5678_)
 
 export const PROJECT_ASK_GRADE = `Which grade are you in?
 
-Reply with one of:
-• *Grade 7*
-• *Form 4*
-• *Form 6*`;
+1️⃣  Grade 7
+2️⃣  Form 4 (O-Level)
+3️⃣  Form 6 (A-Level)
 
-export const PROJECT_ASK_CATEGORY = `Choose a category for your project:
+Reply a number or type the grade.`;
 
-🏺 *Culture & History* — totems, liberation struggle, customs, languages
-🌿 *Indigenous Sciences* — traditional medicine, farming, energy systems
-🎭 *Arts & Lifestyle* — music, architecture, food, traditional games
+export const PROJECT_ASK_CATEGORY = `Choose a project category:
 
-Just reply with the name of the category (e.g. _Culture & History_).`;
+1️⃣  Culture & History — totems, liberation struggle, customs, languages
+2️⃣  Indigenous Sciences — traditional medicine, farming, energy systems
+3️⃣  Arts & Lifestyle — music, architecture, food, traditional games
+
+Reply a number or type the category name.`;
 
 export function projectConfirmMessage(slots: {
   studentName: string;
+  schoolName: string;
   centreNumber: string;
   candidateNumber: string;
   grade: string;
@@ -239,7 +235,7 @@ export function projectConfirmMessage(slots: {
 }): string {
   return `*Generating your HBC project…*
 
-📋 *${slots.studentName}*
+📋 *${slots.studentName}*${slots.schoolName ? `\nSchool: ${slots.schoolName}` : ""}
 Centre: ${slots.centreNumber} · Candidate: ${slots.candidateNumber}
 Grade: ${slots.grade} · Subject: ${slots.subject}
 Category: ${slots.category}
@@ -253,7 +249,7 @@ export function projectDoneMessage(subject: string, topic: string, pages: number
 *${topic}*
 ${subject} · ${pages}-page formal HBC report
 
-Includes: cover page, introduction, methodology, data presentation & analysis, recommendations & conclusion, and references. Review and add your school name before submitting.`;
+Includes: cover page, introduction, methodology, data presentation & analysis, recommendations & conclusion, and references. Review before submitting.`;
 }
 
 export function projectFallbackMessage(projectId: string): string {
