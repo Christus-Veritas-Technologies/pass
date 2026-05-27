@@ -14,7 +14,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { apiLogin, signInWithGoogle, storeTokens } from "@/lib/auth";
+import { apiLogin, signInWithGoogle, storeTokens, registerPushToken } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -46,6 +46,7 @@ export default function LoginScreen() {
     try {
       const data = await apiLogin(email.trim().toLowerCase(), password);
       await storeTokens(data);
+      registerPushToken().catch(() => undefined);
       if (!data.user.grade) {
         router.replace({ pathname: "/(onboarding)", params: { name: data.user.name } });
       } else {

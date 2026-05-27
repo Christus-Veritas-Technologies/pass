@@ -43,23 +43,33 @@ export async function startPaper(
   const chat = await msg.getChat();
   const whatsappId = chat.id._serialized;
 
-  // Enforce monthly paper quota
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } });
+  // Enforce monthly paper quota (bonus credits extend the limit)
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { plan: true, bonusPapers: true },
+  });
   if (user) {
     const limits = PLAN_LIMITS[user.plan as PlanKey];
     const month = currentMonthKey();
     const usage = await prisma.monthlyUsage.findUnique({
       where: { userId_month: { userId, month } },
     });
-    if ((usage?.papersUsed ?? 0) >= limits.papers) {
-      await msg.reply(papersQuotaMessage(user.plan, limits.papers));
-      return { ...state, mode: { kind: "idle" } };
+    const papersUsed = usage?.papersUsed ?? 0;
+    if (papersUsed >= limits.papers) {
+      if ((user.bonusPapers ?? 0) > 0) {
+        // Consume one bonus credit
+        await prisma.user.update({ where: { id: userId }, data: { bonusPapers: { decrement: 1 } } });
+      } else {
+        await msg.reply(papersQuotaMessage(user.plan, limits.papers));
+        return { ...state, mode: { kind: "idle" } };
+      }
+    } else {
+      await prisma.monthlyUsage.upsert({
+        where: { userId_month: { userId, month } },
+        create: { userId, month, papersUsed: 1, projectsUsed: 0, aiMessagesUsed: 0 },
+        update: { papersUsed: { increment: 1 } },
+      });
     }
-    await prisma.monthlyUsage.upsert({
-      where: { userId_month: { userId, month } },
-      create: { userId, month, papersUsed: 1, projectsUsed: 0, aiMessagesUsed: 0 },
-      update: { papersUsed: { increment: 1 } },
-    });
   }
 
   const session = await prisma.paperSession.create({
@@ -120,12 +130,12 @@ function formatQuestionForWhatsApp(raw: string): string {
   let passageBlock = "";
   let remainder = text;
 
-  if (passageMatch && passageMatch[1].trim().length > 60) {
-    const before = text.slice(0, passageMatch.index).trim();
+  if (passageMatch && passageMatch[1] != null && passageMatch[1].trim().length > 60) {
+    const before = text.slice(0, passageMatch.index ?? 0).trim();
     passageBlock =
       (before ? `_${before}_\n\n` : "") +
       `_${passageMatch[1].trim()}_`;
-    remainder = passageMatch[2].trim();
+    remainder = (passageMatch[2] ?? "").trim();
   }
 
   // Detect MCQ options inline: "… A opt B opt C opt D opt"
@@ -133,12 +143,12 @@ function formatQuestionForWhatsApp(raw: string): string {
   const lineOptions: Array<{ label: string; text: string; index: number }> = [];
   let lm: RegExpExecArray | null;
   while ((lm = MCQ_LINE_RE.exec(remainder)) !== null) {
-    lineOptions.push({ label: lm[1], text: lm[2].trim(), index: lm.index });
+    lineOptions.push({ label: lm[1] ?? "", text: (lm[2] ?? "").trim(), index: lm.index });
   }
 
   if (lineOptions.length >= 2) {
     // Options already on separate lines
-    const stem = remainder.slice(0, lineOptions[0].index).trim();
+    const stem = remainder.slice(0, lineOptions[0]!.index).trim();
     const opts = lineOptions.map((o) => `*${o.label}* ${o.text}`).join("\n");
     const questionPart = stem ? `${stem}\n\n${opts}` : opts;
     return passageBlock ? `${passageBlock}\n\n${questionPart}` : questionPart;
@@ -149,15 +159,16 @@ function formatQuestionForWhatsApp(raw: string): string {
   const positions: Array<{ label: string; matchStart: number; contentStart: number }> = [];
   let im: RegExpExecArray | null;
   while ((im = inlineRe.exec(remainder)) !== null) {
-    const labelIdx = im.index + im[0].indexOf(im[1]);
-    positions.push({ label: im[1], matchStart: labelIdx, contentStart: im.index + im[0].length });
+    const label = im[1] ?? "";
+    const labelIdx = im.index + im[0].indexOf(label);
+    positions.push({ label, matchStart: labelIdx, contentStart: im.index + im[0].length });
   }
 
-  if (positions.length >= 2 && positions[0].label === "A") {
-    const stem = remainder.slice(0, positions[0].matchStart).trim();
+  if (positions.length >= 2 && positions[0]!.label === "A") {
+    const stem = remainder.slice(0, positions[0]!.matchStart).trim();
     const opts = positions
       .map((p, i) => {
-        const end = i + 1 < positions.length ? positions[i + 1].matchStart : remainder.length;
+        const end = i + 1 < positions.length ? positions[i + 1]!.matchStart : remainder.length;
         return `*${p.label}* ${remainder.slice(p.contentStart, end).trim()}`;
       })
       .join("\n");

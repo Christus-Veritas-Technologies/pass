@@ -14,7 +14,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { apiSignup, signInWithGoogle, storeTokens } from "@/lib/auth";
+import { apiSignup, signInWithGoogle, storeTokens, registerPushToken } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -64,6 +64,7 @@ export default function SignupScreen() {
     try {
       const data = await apiSignup(name.trim(), email.trim().toLowerCase(), password);
       await storeTokens(data);
+      registerPushToken().catch(() => undefined);
       router.replace({ pathname: "/(onboarding)", params: { name: data.user.name } });
     } catch (err: unknown) {
       setErrors({ form: err instanceof Error ? err.message : "Sign up failed" });

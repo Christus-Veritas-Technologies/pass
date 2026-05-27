@@ -213,12 +213,61 @@ export async function sendSubscriptionExpiredEmail(
   });
 }
 
-// ─── Legacy stub kept for backwards compat ────────────────────────────────────
+export async function sendReferralRewardEmail(
+  to: string,
+  opts: { refereeName?: string },
+): Promise<void> {
+  const name = opts.refereeName ?? "someone";
+  const html = layout(`
+    ${heading("You earned referral bonus credits!")}
+    ${para(`${name} just signed up with your Pass referral code.`)}
+    <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:20px 24px;margin:20px 0 28px 0;">
+      <p style="margin:0 0 12px 0;font-size:13px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:0.5px;">Your reward</p>
+      <ul style="margin:0;padding:0 0 0 18px;font-size:14px;color:#374151;line-height:1.7;">
+        <li>+2 bonus paper credits</li>
+        <li>+1 bonus project credit</li>
+      </ul>
+    </div>
+    ${divider()}
+    ${note("Bonus credits are used automatically when you reach your monthly plan limit.")}
+  `);
+  const text = `${name} signed up with your Pass referral code!\n\nYou earned +2 paper credits and +1 project credit.`;
+  await createTransport().sendMail({
+    from: `"Pass" <${env.EMAIL_FROM}>`,
+    to,
+    subject: "You earned referral bonus credits! — Pass",
+    text,
+    html,
+  });
+}
+
+export async function sendNewDeviceSigninEmail(
+  to: string,
+  opts: { device?: string },
+): Promise<void> {
+  const device = opts.device ?? "a new device";
+  const html = layout(`
+    ${heading("New sign-in detected")}
+    ${para(`Your Pass account was just signed into via <strong>${device}</strong>.`)}
+    ${para("If this was you, no action is needed. If you don't recognise this sign-in, please change your password immediately.")}
+    <div style="margin:0 0 28px 0;">${btn(`${env.APP_URL}/profile`, "Review account security")}</div>
+    ${divider()}
+    ${note("You can manage your devices and sessions from your Pass profile page.")}
+  `);
+  const text = `Your Pass account was just signed into via ${device}.\n\nIf this wasn't you, change your password at ${env.APP_URL}/reset-password`;
+  await createTransport().sendMail({
+    from: `"Pass" <${env.EMAIL_FROM}>`,
+    to,
+    subject: "New sign-in to your Pass account",
+    text,
+    html,
+  });
+}
 
 export async function sendEmail(
   to: string,
   subject: string,
-  opts: { template: string; plan?: string; daysLeft?: number; expiryDate?: Date; renewalUrl?: string; upgradeUrl?: string },
+  opts: { template: string; plan?: string; daysLeft?: number; expiryDate?: Date; renewalUrl?: string; upgradeUrl?: string; refereeName?: unknown; device?: unknown },
 ): Promise<void> {
   switch (opts.template) {
     case "payment_confirmed":
@@ -233,6 +282,10 @@ export async function sendEmail(
       if (opts.plan)
         return sendSubscriptionExpiredEmail(to, { plan: opts.plan, upgradeUrl: opts.upgradeUrl });
       break;
+    case "referral_reward":
+      return sendReferralRewardEmail(to, { refereeName: opts.refereeName as string | undefined });
+    case "new_device_signin":
+      return sendNewDeviceSigninEmail(to, { device: opts.device as string | undefined });
   }
   console.log(`[EMAIL] Unhandled template "${opts.template}" for ${to}, subject: ${subject}`);
 }

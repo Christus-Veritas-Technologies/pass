@@ -1,7 +1,7 @@
 import prisma from "@pass/db";
 import type { Plan, SubscriptionStatus } from "@pass/db";
 import { PLAN_LIMITS } from "./planLimits";
-import { sendEmail } from "./emails";
+import { sendNotification } from "./notifications";
 
 /**
  * Check for subscriptions that are expiring soon and mark them for renewal.
@@ -33,15 +33,12 @@ export async function checkSubscriptionExpiry() {
       data: { renewalDue: true },
     });
 
-    // Send renewal reminder email
     const daysLeft = Math.ceil((sub.expiryDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
     if (daysLeft <= 7) {
-      await sendEmail(sub.user.email, "Subscription Renewal Reminder", {
-        template: "renewal_reminder",
+      await sendNotification(sub.userId, "subscription_expiring", {
         plan: sub.plan,
         daysLeft,
-        expiryDate: sub.expiryDate,
-        renewalUrl: `${process.env.APP_URL}/payments/renew`,
+        expiryDate: sub.expiryDate.toISOString(),
       });
     }
   }
@@ -67,12 +64,7 @@ export async function checkSubscriptionExpiry() {
       data: { plan: "FREE" },
     });
 
-    // Send expiration email
-    await sendEmail(sub.user.email, "Your Pass subscription has expired", {
-      template: "subscription_expired",
-      plan: sub.plan,
-      upgradeUrl: `${process.env.APP_URL}/pricing`,
-    });
+    await sendNotification(sub.userId, "subscription_expired", { plan: sub.plan });
   }
 }
 
