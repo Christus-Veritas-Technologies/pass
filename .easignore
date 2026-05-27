@@ -1,8 +1,10 @@
 # Root-level .easignore — repo-root-relative paths
 # EAS archives the monorepo root; this guards the top level.
 
+# ── Claude Code internal directory (large — projects, worktrees, caches) ──────
+.claude/
+
 # ── Version control ───────────────────────────────────────────────────────────
-.git
 .git/
 
 # ── Other apps (not needed for the Android build) ─────────────────────────────
@@ -44,7 +46,4 @@ apps/native/.expo/
 # ── EAS local cache ───────────────────────────────────────────────────────────
 .eas/
 
-# ── WhatsApp session ──────────────────────────────────────────────────────────
-apps/server/.wwebjs_auth/
-
-# �
+# ── WhatsApp session ─────────────────────────────────�
