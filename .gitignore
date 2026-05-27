@@ -58,4 +58,3 @@ temp
 # PDFs are large binary files; download them with the scripts in packages/papers/
 packages/papers/.ingest-cache/
 packages/papers/papers/
-packages/papers/ingested.json
