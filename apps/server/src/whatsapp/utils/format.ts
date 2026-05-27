@@ -44,16 +44,15 @@ export function truncate(s: string, max: number): string {
  * Convert standard markdown to WhatsApp markdown.
  *
  * Standard → WhatsApp:
- *   **bold**       → *bold*
- *   *italic*       → _italic_
- *   `code`         → `code`  (unchanged, WhatsApp supports mono)
- *   # / ## / ### / #### Heading → *Heading*  (bold line)
- *   - / * bullet   → • bullet
- *   > blockquote   → strip prefix, keep text
- *   ---            → ───────  (visual separator)
+ *   **bold**    → *bold*
+ *   *italic*    → _italic_
+ *   # Heading   → *Heading*
+ *   ## Heading  → *Heading*
+ *   ### Heading → *Heading*
+ *   - item      → • item
  */
 export function mdToWhatsApp(text: string): string {
-  /** Convert **bold** and *italic* inline spans in a single pass. */
+  /** Convert **bold** and *italic* spans in a single pass (no backtracking). */
   function convertInline(s: string): string {
     return s.replace(/\*\*([^*\n]+)\*\*|\*([^*\n]+)\*/g, (_, bold, italic) =>
       bold !== undefined ? `*${bold}*` : `_${italic}_`,
@@ -63,14 +62,10 @@ export function mdToWhatsApp(text: string): string {
   return text
     .split("\n")
     .map((line) => {
-      // Headings (any depth) → bold line
-      if (/^#{1,6}\s+/.test(line)) return `*${convertInline(line.replace(/^#{1,6}\s+/, ""))}*`;
-      // Bullet list
+      if (/^###\s+/.test(line)) return `*${convertInline(line.replace(/^###\s+/, ""))}*`;
+      if (/^##\s+/.test(line))  return `*${convertInline(line.replace(/^##\s+/, ""))}*`;
+      if (/^#\s+/.test(line))   return `*${convertInline(line.replace(/^#\s+/, ""))}*`;
       if (/^[-*]\s+/.test(line)) return `• ${convertInline(line.replace(/^[-*]\s+/, ""))}`;
-      // Blockquote — strip the > prefix, keep text in italic
-      if (/^>\s+/.test(line)) return `_${convertInline(line.replace(/^>\s+/, ""))}_`;
-      // Horizontal rule → visual separator
-      if (/^(-{3,}|\*{3,}|_{3,})$/.test(line.trim())) return "───────────";
       return convertInline(line);
     })
     .join("\n");

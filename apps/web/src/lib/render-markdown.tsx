@@ -74,15 +74,7 @@ export function MarkdownContent({
   }
 
   for (const line of text.split("\n")) {
-    // ── Headings (####, ###, ##, #) ──────────────────────────────────────────
-    if (/^#{4,}\s+/.test(line)) {
-      flushBullets(); flushNumbered();
-      elements.push(
-        <h4 key={key++} className="text-sm font-semibold mt-3 mb-1 first:mt-0 text-foreground/80">
-          <InlineText text={line.replace(/^#{4,}\s+/, "")} />
-        </h4>,
-      );
-    } else if (line.startsWith("### ")) {
+    if (line.startsWith("### ")) {
       flushBullets(); flushNumbered();
       elements.push(
         <h3 key={key++} className="text-sm font-semibold mt-4 mb-2 first:mt-0">
@@ -92,45 +84,30 @@ export function MarkdownContent({
     } else if (line.startsWith("## ")) {
       flushBullets(); flushNumbered();
       elements.push(
-        <h2 key={key++} className="text-base font-bold mt-5 mb-2 first:mt-0">
+        <h2 key={key++} className="text-base font-bold mt-5 mb-3 first:mt-0">
           <InlineText text={line.slice(3)} />
         </h2>,
       );
     } else if (line.startsWith("# ")) {
       flushBullets(); flushNumbered();
       elements.push(
-        <h1 key={key++} className="text-base font-bold mt-5 mb-2 first:mt-0">
+        <h1 key={key++} className="text-lg font-bold mt-6 mb-3 first:mt-0">
           <InlineText text={line.slice(2)} />
         </h1>,
       );
-    // ── Blockquote ────────────────────────────────────────────────────────────
-    } else if (line.startsWith("> ")) {
-      flushBullets(); flushNumbered();
-      elements.push(
-        <blockquote key={key++} className="border-l-2 border-primary/40 pl-3 italic text-sm text-muted-foreground my-1">
-          <InlineText text={line.slice(2)} />
-        </blockquote>,
-      );
-    // ── Horizontal rule ───────────────────────────────────────────────────────
-    } else if (/^(-{3,}|\*{3,}|_{3,})$/.test(line.trim())) {
-      flushBullets(); flushNumbered();
-      elements.push(<hr key={key++} className="border-border my-3" />);
-    // ── Bullet list ───────────────────────────────────────────────────────────
     } else if (/^[-*•]\s+/.test(line)) {
       flushNumbered();
       bulletItems.push(line.replace(/^[-*•]\s+/, ""));
-    // ── Numbered list ─────────────────────────────────────────────────────────
     } else if (/^\d+\.\s+/.test(line)) {
       flushBullets();
       numberedItems.push(line.replace(/^\d+\.\s+/, ""));
-    // ── Blank line ────────────────────────────────────────────────────────────
     } else if (line.trim() === "") {
       flushBullets(); flushNumbered();
-    // ── Paragraph ─────────────────────────────────────────────────────────────
+      elements.push(<div key={key++} className="h-2" />);
     } else {
       flushBullets(); flushNumbered();
       elements.push(
-        <p key={key++} className="text-sm leading-relaxed">
+        <p key={key++} className="text-sm leading-relaxed whitespace-normal break-words">
           <InlineText text={line} />
         </p>,
       );

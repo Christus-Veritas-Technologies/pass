@@ -61,48 +61,28 @@ function RenderMarkdown({ text, color = "#1E293B" }: { text: string; color?: str
   }
 
   for (const line of text.split("\n")) {
-    // ── Headings ──────────────────────────────────────────────────────────────
-    if (/^#{4,}\s+/.test(line)) {
+    if (line.startsWith("### ")) {
       flushBullets(); flushNumbered();
-      elements.push(<Text key={key++} style={{ fontSize: 13, fontWeight: "600", color, marginTop: 10, marginBottom: 3 }}>{line.replace(/^#{4,}\s+/, "")}</Text>);
-    } else if (line.startsWith("### ")) {
-      flushBullets(); flushNumbered();
-      elements.push(<Text key={key++} style={{ fontSize: 13, fontWeight: "700", color, marginTop: 12, marginBottom: 4 }}>{renderInline(line.slice(4), key)}</Text>);
+      elements.push(<Text key={key++} style={{ fontSize: 13, fontWeight: "700", color, marginTop: 12, marginBottom: 5, marginRight: 8 }}>{line.slice(4)}</Text>);
     } else if (line.startsWith("## ")) {
       flushBullets(); flushNumbered();
-      elements.push(<Text key={key++} style={{ fontSize: 14, fontWeight: "700", color, marginTop: 14, marginBottom: 5 }}>{renderInline(line.slice(3), key)}</Text>);
+      elements.push(<Text key={key++} style={{ fontSize: 14, fontWeight: "700", color, marginTop: 14, marginBottom: 6, marginRight: 8 }}>{line.slice(3)}</Text>);
     } else if (line.startsWith("# ")) {
       flushBullets(); flushNumbered();
-      elements.push(<Text key={key++} style={{ fontSize: 15, fontWeight: "700", color, marginTop: 14, marginBottom: 5 }}>{renderInline(line.slice(2), key)}</Text>);
-    // ── Blockquote ────────────────────────────────────────────────────────────
-    } else if (line.startsWith("> ")) {
-      flushBullets(); flushNumbered();
-      elements.push(
-        <View key={key++} style={{ borderLeftWidth: 2, borderLeftColor: "#4F46E5", paddingLeft: 10, marginVertical: 4 }}>
-          <Text style={{ fontSize: 13, color, fontStyle: "italic", lineHeight: 20 }}>{renderInline(line.slice(2), key)}</Text>
-        </View>,
-      );
-    // ── Horizontal rule ───────────────────────────────────────────────────────
-    } else if (/^(-{3,}|\*{3,}|_{3,})$/.test(line.trim())) {
-      flushBullets(); flushNumbered();
-      elements.push(<View key={key++} style={{ height: 1, backgroundColor: "#E5E7EB", marginVertical: 8 }} />);
-    // ── Bullet list ───────────────────────────────────────────────────────────
+      elements.push(<Text key={key++} style={{ fontSize: 15, fontWeight: "700", color, marginTop: 16, marginBottom: 7, marginRight: 8 }}>{line.slice(2)}</Text>);
     } else if (/^[-*•]\s+/.test(line)) {
       flushNumbered();
       bulletBuffer.push(line.replace(/^[-*•]\s+/, ""));
-    // ── Numbered list ─────────────────────────────────────────────────────────
     } else if (/^\d+\.\s+/.test(line)) {
       flushBullets();
       numberedBuffer.push(line.replace(/^\d+\.\s+/, ""));
-    // ── Blank line ────────────────────────────────────────────────────────────
     } else if (line.trim() === "") {
       flushBullets(); flushNumbered();
-      elements.push(<View key={key++} style={{ height: 6 }} />);
-    // ── Paragraph ─────────────────────────────────────────────────────────────
+      elements.push(<View key={key++} style={{ height: 10 }} />);
     } else {
       flushBullets(); flushNumbered();
       elements.push(
-        <Text key={key++} style={{ fontSize: 13, color, lineHeight: 21, marginBottom: 2 }}>
+        <Text key={key++} style={{ fontSize: 13, color, lineHeight: 21, marginBottom: 3, marginRight: 8 }}>
           {renderInline(line, key)}
         </Text>,
       );
@@ -559,4 +539,64 @@ export default function PaperSessionScreen() {
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 }}>
                   <Sparkle size={15} color={BRAND} />
                   <Text style={{ fontSize: 13, fontWeight: "600", color: BRAND }}>
-            
+                    AI {mode === "GUIDE" ? "Feedback" : "Solution"}
+                  </Text>
+                  {streaming && <ActivityIndicator size="small" color={BRAND} style={{ marginLeft: 4 }} />}
+                  {mode === "GUIDE" && !streaming && (
+                    <Text
+                      style={{
+                        marginLeft: "auto",
+                        fontSize: 10,
+                        fontWeight: "600",
+                        color: currentQ.guideSource === "OFFICIAL" ? "#16A34A" : "#9CA3AF",
+                      }}
+                    >
+                      {currentQ.guideSource === "OFFICIAL"
+                        ? "Official marking scheme"
+                        : "AI-estimated marking"}
+                    </Text>
+                  )}
+                </View>
+                <RenderMarkdown text={aiResponses[currentQ.questionNumber] ?? ""} color="#1E293B" />
+              </View>
+            )}
+
+            {/* Previous / Next navigation */}
+            {completed.has(currentQ.questionNumber) && (
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                {currentIndex > 0 && (
+                  <Button
+                    onPress={() => setCurrentIndex((i) => i - 1)}
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 rounded-[12px]"
+                  >
+                    Previous
+                  </Button>
+                )}
+                {currentIndex < questions.length - 1 ? (
+                  <Button
+                    onPress={() => setCurrentIndex((i) => i + 1)}
+                    size="sm"
+                    className="flex-1 rounded-[12px]"
+                  >
+                    Next
+                  </Button>
+                ) : allDone ? (
+                  <Button
+                    onPress={handleComplete}
+                    variant="success"
+                    size="sm"
+                    className="flex-1 rounded-[12px]"
+                  >
+                    Complete session
+                  </Button>
+                ) : null}
+              </View>
+            )}
+          </View>
+        )}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
