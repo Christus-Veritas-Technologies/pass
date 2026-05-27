@@ -15,6 +15,7 @@ import { Paynow } from "paynow";
 import { env } from "@pass/env/server";
 import { PLAN_PRICES, PLAN_DESCRIPTIONS } from "@pass/pricing";
 import type { ConversationState } from "../types";
+import { sendNotification } from "../../lib/notifications";
 
 const RESULT_URL = "https://pass.co.zw/api/paynow/result";
 const RETURN_URL = "https://pass.co.zw/pricing";
@@ -179,7 +180,7 @@ export async function handleUpgradeReply(
 }
 
 /**
- * Polls Paynow every 5 seconds for up to 2 minutes.
+ * Polls Paynow every 30 seconds for up to 15 minutes.
  * Upgrades the user's plan and sends a WhatsApp confirmation on success.
  */
 function pollUpgradePayment(
@@ -191,7 +192,7 @@ function pollUpgradePayment(
   plan: "STUDY" | "PASS",
   pn: Paynow,
 ): void {
-  const MAX_ATTEMPTS = 24; // 24 × 5s = 2 min
+  const MAX_ATTEMPTS = 30; // 30 × 30s = 15 min
   let attempts = 0;
 
   const timer = setInterval(async () => {
@@ -243,6 +244,10 @@ function pollUpgradePayment(
           whatsappId,
           `🎉 *Payment confirmed!* You're now on the *${planName}* plan.\n\nYour new limits are active immediately. Reply *usage* to see them, or just ask me anything.`,
         );
+        sendNotification(userId, "payment_confirmed", {
+          plan: planName,
+          expiryDate: expiryDate.toISOString(),
+        }).catch(() => undefined);
         return;
       }
     } catch (err) {
@@ -253,8 +258,8 @@ function pollUpgradePayment(
       clearInterval(timer);
       await client.sendMessage(
         whatsappId,
-        `⏳ I haven't received payment confirmation yet. If you completed the payment, please wait a few minutes — it sometimes takes a little longer. You can check your plan at https://pass.co.zw/pricing`,
+        `⏳ I haven't received payment confirmation after 15 minutes. If you completed the payment, please wait a little longer — it sometimes takes time. You can also check your plan at https://pass.co.zw/pricing`,
       ).catch(() => undefined);
     }
-  }, 5_000);
+  }, 30_000);
 }
