@@ -1,67 +1,50 @@
-# Root-level .easignore — paths relative to the repo root
-# EAS archives the monorepo root; this file is the primary guard.
+# Root-level .easignore — repo-root-relative paths
+# EAS archives the monorepo root; this guards the top level.
 
 # ── Version control ───────────────────────────────────────────────────────────
 .git
+.git/
 
 # ── Other apps (not needed for the Android build) ─────────────────────────────
-apps/server
-apps/web
+apps/server/
+apps/web/
 
-# ── Large generated / downloaded assets ───────────────────────────────────────
-packages/papers/papers
-packages/papers/.ingest-cache
-packages/papers/ingested.json
+# ── Papers package (large PDFs + scripts not needed for build) ────────────────
+packages/papers/
 
-# ── node_modules — match at every depth ──────────────────────────────────────
-**/node_modules
+# ── node_modules — explicit at every known location ──────────────────────────
+node_modules/
+apps/native/node_modules/
+apps/web/node_modules/
+apps/server/node_modules/
+packages/db/node_modules/
+packages/env/node_modules/
+packages/ui/node_modules/
+packages/config/node_modules/
+packages/papers/node_modules/
+packages/pricing/node_modules/
 
 # ── Build outputs ─────────────────────────────────────────────────────────────
-apps/web/.next
-apps/server/dist
-**/dist
-**/.next
+apps/web/.next/
+apps/server/dist/
+dist/
+build/
 
-# ── Android build caches (large on dev machines) ──────────────────────────────
-apps/native/android/.gradle
-apps/native/android/build
-apps/native/android/app/build
-apps/native/android/app/.cxx
-**/.gradle
-**/build/intermediates
-**/build/outputs
-**/build/generated
-**/build/tmp
-**/build/kotlin
-**/.cxx
+# ── Android build caches ──────────────────────────────────────────────────────
+apps/native/android/.gradle/
+apps/native/android/build/
+apps/native/android/app/build/
+apps/native/android/app/.cxx/
+apps/native/android/.cxx/
 
 # ── Expo / Metro local state ──────────────────────────────────────────────────
-apps/native/.expo
-**/.expo
-**/.metro-cache
-**/metro-cache
+apps/native/.expo/
+.expo/
 
 # ── EAS local cache ───────────────────────────────────────────────────────────
-.eas
+.eas/
 
 # ── WhatsApp session ──────────────────────────────────────────────────────────
-apps/server/.wwebjs_auth
+apps/server/.wwebjs_auth/
 
-# ── Turbo / Nx caches ────────────────────────────────────────────────────────
-.turbo
-.nx
-**/.turbo
-
-# ── Scripts / docs ────────────────────────────────────────────────────────────
-scripts
-DEPLOYMENT.md
-LANDING_PAGE_PLAN.md
-WHATSAPP_AUTH_PLAN.md
-
-# ── Logs & temp ───────────────────────────────────────────────────────────────
-**/*.log
-**/logs
-tmp
-temp
-.cache
-**/.cache
+# �
