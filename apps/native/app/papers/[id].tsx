@@ -18,7 +18,14 @@ import { FormattedQuestionText } from "@/lib/format-question";
 
 const BRAND = "#4F46E5";
 
-/** Renders AI markdown (# ## ### **bold** *italic* - bullets 1. numbered) as native elements. */
+/**
+ * Renders AI plain-text responses with:
+ *   * bullet support  ("* item" lines → bullet points)
+ *   blank-line paragraph breaks
+ *   numbered lists    ("1. item" lines)
+ * The AI no longer emits markdown headings or bold/italic, but we keep
+ * basic inline handling as a safety net.
+ */
 function RenderMarkdown({ text, color = "#1E293B" }: { text: string; color?: string }) {
   const elements: React.ReactNode[] = [];
   let bulletBuffer: string[] = [];
@@ -29,9 +36,10 @@ function RenderMarkdown({ text, color = "#1E293B" }: { text: string; color?: str
     if (!bulletBuffer.length) return;
     bulletBuffer.forEach((item) => {
       elements.push(
-        <Text key={key++} style={{ fontSize: 13, color, marginLeft: 12, marginBottom: 6, lineHeight: 21, marginTop: 2 }}>
-          {"• "}{renderInline(item, key++)}
-        </Text>,
+        <View key={key++} style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, marginBottom: 5 }}>
+          <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: BRAND, marginTop: 8, flexShrink: 0 }} />
+          <Text style={{ flex: 1, fontSize: 13, color, lineHeight: 21 }}>{item}</Text>
+        </View>,
       );
     });
     bulletBuffer = [];
@@ -41,69 +49,38 @@ function RenderMarkdown({ text, color = "#1E293B" }: { text: string; color?: str
     if (!numberedBuffer.length) return;
     numberedBuffer.forEach((item, idx) => {
       elements.push(
-        <Text key={key++} style={{ fontSize: 13, color, marginLeft: 12, marginBottom: 6, lineHeight: 21, marginTop: 2 }}>
-          {`${idx + 1}. `}{renderInline(item, key++)}
-        </Text>,
+        <View key={key++} style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, marginBottom: 5 }}>
+          <Text style={{ fontSize: 13, color: BRAND, fontWeight: "600", minWidth: 18 }}>{idx + 1}.</Text>
+          <Text style={{ flex: 1, fontSize: 13, color, lineHeight: 21 }}>{item}</Text>
+        </View>,
       );
     });
     numberedBuffer = [];
   }
 
-  function renderInline(line: string, baseKey: number): React.ReactNode {
-    const parts = line.split(/(\*\*[^*]+\*\*|\*[^*\n]+\*)/g);
-    return parts.map((part, j) => {
-      if (part.startsWith("**") && part.endsWith("**"))
-        return <Text key={baseKey + j} style={{ fontWeight: "700" }}>{part.slice(2, -2)}</Text>;
-      if (part.startsWith("*") && part.endsWith("*") && part.length > 2)
-        return <Text key={baseKey + j} style={{ fontStyle: "italic" }}>{part.slice(1, -1)}</Text>;
-      return part;
-    });
-  }
-
   for (const line of text.split("\n")) {
-    // ── Headings ──────────────────────────────────────────────────────────────
-    if (/^#{4,}\s+/.test(line)) {
-      flushBullets(); flushNumbered();
-      elements.push(<Text key={key++} style={{ fontSize: 13, fontWeight: "600", color, marginTop: 10, marginBottom: 3 }}>{line.replace(/^#{4,}\s+/, "")}</Text>);
-    } else if (line.startsWith("### ")) {
-      flushBullets(); flushNumbered();
-      elements.push(<Text key={key++} style={{ fontSize: 13, fontWeight: "700", color, marginTop: 12, marginBottom: 4 }}>{renderInline(line.slice(4), key)}</Text>);
-    } else if (line.startsWith("## ")) {
-      flushBullets(); flushNumbered();
-      elements.push(<Text key={key++} style={{ fontSize: 14, fontWeight: "700", color, marginTop: 14, marginBottom: 5 }}>{renderInline(line.slice(3), key)}</Text>);
-    } else if (line.startsWith("# ")) {
-      flushBullets(); flushNumbered();
-      elements.push(<Text key={key++} style={{ fontSize: 15, fontWeight: "700", color, marginTop: 14, marginBottom: 5 }}>{renderInline(line.slice(2), key)}</Text>);
-    // ── Blockquote ────────────────────────────────────────────────────────────
-    } else if (line.startsWith("> ")) {
-      flushBullets(); flushNumbered();
-      elements.push(
-        <View key={key++} style={{ borderLeftWidth: 2, borderLeftColor: "#4F46E5", paddingLeft: 10, marginVertical: 4 }}>
-          <Text style={{ fontSize: 13, color, fontStyle: "italic", lineHeight: 20 }}>{renderInline(line.slice(2), key)}</Text>
-        </View>,
-      );
-    // ── Horizontal rule ───────────────────────────────────────────────────────
-    } else if (/^(-{3,}|\*{3,}|_{3,})$/.test(line.trim())) {
-      flushBullets(); flushNumbered();
-      elements.push(<View key={key++} style={{ height: 1, backgroundColor: "#E5E7EB", marginVertical: 8 }} />);
-    // ── Bullet list ───────────────────────────────────────────────────────────
-    } else if (/^[-*•]\s+/.test(line)) {
+    // ── * bullet (AI plain-text format) ──────────────────────────────────────
+    if (/^\*\s+/.test(line)) {
       flushNumbered();
-      bulletBuffer.push(line.replace(/^[-*•]\s+/, ""));
+      bulletBuffer.push(line.replace(/^\*\s+/, ""));
+    // ── - or • bullet ─────────────────────────────────────────────────────────
+    } else if (/^[-•]\s+/.test(line)) {
+      flushNumbered();
+      bulletBuffer.push(line.replace(/^[-•]\s+/, ""));
     // ── Numbered list ─────────────────────────────────────────────────────────
     } else if (/^\d+\.\s+/.test(line)) {
       flushBullets();
       numberedBuffer.push(line.replace(/^\d+\.\s+/, ""));
-    // ── Blank line ────────────────────────────────────────────────────────────
+    // ── Blank line → paragraph break ─────────────────────────────────────────
     } else if (line.trim() === "") {
       flushBullets(); flushNumbered();
-      elements.push(<View key={key++} style={{ height: 6 }} />);
-    // ── Paragraph ─────────────────────────────────────────────────────────────
+      elements.push(<View key={key++} style={{ height: 8 }} />);
+    // ── Plain text paragraph ──────────────────────────────────────────────────
     } else {
       flushBullets(); flushNumbered();
       elements.push(
         <Text key={key++} style={{ fontSize: 13, color, lineHeight: 21, marginBottom: 2 }}>
-          {renderInline(line, key)}
+          {line}
         </Text>,
       );
     }
@@ -620,3 +597,4 @@ export default function PaperSessionScreen() {
     </SafeAreaView>
   );
 }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
