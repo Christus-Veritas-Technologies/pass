@@ -13,6 +13,7 @@ import { getLinkedUser } from "../middleware/ensureLinked";
 import { matchHardIntent } from "./hardIntents";
 import { sendWelcomeUnlinked, sendHelp, sendUsageCard } from "../flows/welcome";
 import { startLinking, tryConsumeCode } from "../flows/linking";
+import { startSignup, handleSignupReply, startSignin, handleSigninReply } from "../flows/auth";
 import { showPapers, setPaperListCache, getPaperFromCache } from "../flows/paperBrowse";
 import { startPaper, poseNextQuestion, gradeStudentAnswer, explainQuestion } from "../flows/paperStudy";
 import { startProjectBrief, handleProjectBriefReply } from "../flows/projectBrief";
@@ -87,6 +88,24 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
   const userId = await getLinkedUser(whatsappId);
 
   if (!userId) {
+    // WhatsApp-native signup flow
+    if (hard.kind === "signup" || state.mode.kind === "signing_up") {
+      state = state.mode.kind === "signing_up"
+        ? await handleSignupReply(msg, text, whatsappId, state)
+        : await startSignup(msg, state);
+      await saveState(whatsappId, state);
+      return;
+    }
+
+    // WhatsApp-native signin flow
+    if (hard.kind === "signin" || state.mode.kind === "signing_in") {
+      state = state.mode.kind === "signing_in"
+        ? await handleSigninReply(msg, text, whatsappId, state)
+        : await startSignin(msg, state);
+      await saveState(whatsappId, state);
+      return;
+    }
+
     if (hard.kind === "link_code" && hard.code) {
       const { newState } = await tryConsumeCode(msg, hard.code, whatsappId, state);
       await saveState(whatsappId, newState);
@@ -264,6 +283,41 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
     setPaperListCache(whatsappId, paperIds);
     await saveState(whatsappId, newState);
     return;
+  }
+
+  // ── Main menu number dispatcher (idle mode, no AI needed) ───────────────────
+
+  if (hard.kind === "number_select" && state.mode.kind === "idle" && hard.n !== undefined) {
+    switch (hard.n) {
+      case 1: {
+        const { newState, paperIds } = await showPapers(msg, {}, 0, state);
+        setPaperListCache(whatsappId, paperIds);
+        await saveState(whatsappId, newState);
+        return;
+      }
+      case 2: {
+        state = await startProjectBrief(msg, state);
+        await saveState(whatsappId, state);
+        return;
+      }
+      case 4: {
+        await sendUsageCard(msg, userId);
+        await saveState(whatsappId, state);
+        return;
+      }
+      case 5: {
+        state = await startUpgrade(msg, state);
+        await saveState(whatsappId, state);
+        return;
+      }
+      case 6: {
+        const { newState: ns, paperIds: ids } = await showPapers(msg, {}, 0, state);
+        setPaperListCache(whatsappId, ids);
+        await saveState(whatsappId, ns);
+        return;
+      }
+      // 3 (ask a question) falls through to NL/AI routing below
+    }
   }
 
   // ── Quota wall: no further AI calls in rigid mode ─────────────────────────

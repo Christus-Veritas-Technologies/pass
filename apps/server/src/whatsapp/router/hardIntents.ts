@@ -18,6 +18,8 @@ const NEXT      = /^(next|done|continue)\s*$/i;
 const SKIP      = /^skip\s*$/i;
 const SIX_DIGIT = /^\d{6}$/;
 const EXPLAIN   = /^explain(\s+(q?\d+))?\s*$/i;
+const SIGNUP    = /^(sign\s*up|register|create\s+account|new\s+account)\s*$/i;
+const SIGNIN    = /^(sign\s*in|login|log\s*in|my\s+account)\s*$/i;
 // PDF / download request — "pdf", "send pdf", "download", "send my project", "resend"
 const SEND_PDF  = /^(pdf|send\s*pdf|download(\s+(pdf|project))?|send\s*(my\s*)?(last\s*)?project|resend(\s*pdf)?)\s*$/i;
 // Session history
@@ -41,6 +43,8 @@ export interface HardIntentResult {
     | "number_select"
     | "send_pdf"
     | "history"
+    | "signup"
+    | "signin"
     | "none";
   explainQn?: number;
   code?: string;
@@ -50,19 +54,23 @@ export interface HardIntentResult {
 export function matchHardIntent(text: string, mode: ConversationMode): HardIntentResult {
   const t = text.trim();
 
-  if (SEND_PDF.test(t))                            return { kind: "send_pdf" };
-  if (HISTORY.test(t))                             return { kind: "history" };
-  if (GREETINGS.test(t) && mode.kind === "idle") return { kind: "greeting" };
+  if (SEND_PDF.test(t))                           return { kind: "send_pdf" };
+  if (HISTORY.test(t))                            return { kind: "history" };
+  if (GREETINGS.test(t) && mode.kind === "idle")  return { kind: "greeting" };
   if (HELP.test(t))                               return { kind: "help" };
   if (CANCEL.test(t))                             return { kind: "cancel" };
   if (LINK.test(t))                               return { kind: "link" };
   if (USAGE.test(t))                              return { kind: "usage" };
   if (UPGRADE.test(t))                            return { kind: "upgrade" };
   if (PAPERS.test(t))                             return { kind: "papers" };
+  if (SIGNUP.test(t))                             return { kind: "signup" };
+  if (SIGNIN.test(t))                             return { kind: "signin" };
+
+  // Numbers resolve globally — each flow handler interprets meaning in context
+  const num = Number(t);
+  if (Number.isInteger(num) && num > 0 && num <= 20) return { kind: "number_select", n: num };
 
   if (mode.kind === "browsing_papers") {
-    const n = Number(t);
-    if (Number.isInteger(n) && n > 0) return { kind: "number_select", n };
     if (MORE.test(t)) return { kind: "more" };
   }
 

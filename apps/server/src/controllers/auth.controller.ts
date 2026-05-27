@@ -14,6 +14,8 @@ import {
   verifyGoogleIdToken,
 } from "../lib/google";
 import { isEmailConfigured, sendPasswordResetEmail } from "../lib/email";
+import { generateReferralCode, validateReferralCode, applyReferralReward } from "../lib/referrals";
+import { sendNotification } from "../lib/notifications";
 
 // ─── Schemas ─────────────────────────────────────────────────────────────────
 
@@ -21,6 +23,7 @@ const signupSchema = z.object({
   email: z.email(),
   password: z.string().min(8),
   name: z.string().min(1),
+  referralCode: z.string().max(12).optional(),
 });
 
 const loginSchema = z.object({
@@ -68,13 +71,23 @@ export async function signup(c: Context) {
   const parsed = signupSchema.safeParse(body);
   if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
-  const { email, password, name } = parsed.data;
+  const { email, password, name, referralCode } = parsed.data;
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) return c.json({ error: "Email already registered" }, 409);
 
   const passwordHash = await hashPassword(password);
   const user = await prisma.user.create({ data: { email, name, passwordHash } });
+
+  // Auto-generate referral code and apply any incoming referral (non-fatal)
+  generateReferralCode(user.id).catch(() => undefined);
+  if (referralCode) {
+    validateReferralCode(referralCode.toUpperCase()).then((ref) => {
+      if (ref && ref.userId !== user.id) {
+        applyReferralReward(ref.userId, user.id).catch(() => undefined);
+      }
+    }).catch(() => undefined);
+  }
 
   const { accessToken, refreshToken } = await createSession(user.id);
   return c.json({ user: safeUser(user), accessToken, refreshToken }, 201);
@@ -96,6 +109,11 @@ export async function login(c: Context) {
   if (!valid) return c.json({ error: "Invalid credentials" }, 401);
 
   const { accessToken, refreshToken } = await createSession(user.id);
+
+  const ua = c.req.header("user-agent") ?? "";
+  const device = /mobile|android|iphone/i.test(ua) ? "mobile app" : "web browser";
+  sendNotification(user.id, "new_device_signin", { device }).catch(() => undefined);
+
   return c.json({ user: safeUser(user), accessToken, refreshToken });
 }
 
@@ -261,6 +279,7 @@ async function findOrCreateGoogleUser(googleUser: { id: string; email: string; n
   user = await prisma.user.create({
     data: { email: googleUser.email, name: googleUser.name, googleId: googleUser.id },
   });
+  generateReferralCode(user.id).catch(() => undefined);
   return { user, isNew: true };
 }
 
