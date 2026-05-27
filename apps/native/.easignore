@@ -13,4 +13,6 @@ android/app/.cxx
 # ── Android extra caches ─────────────────────────────────────────────────────
 android/.cxx
 
-# ── node_modu
+# ── node_modules ──────────────────────────────────────────────────────────────
+node_modules
+**/node_modules

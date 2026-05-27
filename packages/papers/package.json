@@ -14,4 +14,8 @@
     "seed": "bun --env-file=../../apps/server/.env scripts/seed.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.9
+    "@anthropic-ai/sdk": "^0.96.0",
+    "@pass/db": "workspace:*",
+    "unpdf": "^1.6.2"
+  }
+}

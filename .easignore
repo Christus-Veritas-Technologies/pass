@@ -47,4 +47,21 @@ apps/native/.expo
 # ── WhatsApp session ──────────────────────────────────────────────────────────
 apps/server/.wwebjs_auth
 
-# ── Turbo / Nx caches ──────
+# ── Turbo / Nx caches ────────────────────────────────────────────────────────
+.turbo
+.nx
+**/.turbo
+
+# ── Scripts / docs ────────────────────────────────────────────────────────────
+scripts
+DEPLOYMENT.md
+LANDING_PAGE_PLAN.md
+WHATSAPP_AUTH_PLAN.md
+
+# ── Logs & temp ───────────────────────────────────────────────────────────────
+**/*.log
+**/logs
+tmp
+temp
+.cache
+**/.cache
