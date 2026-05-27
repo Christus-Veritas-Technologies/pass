@@ -3,6 +3,7 @@ import type { Context } from "hono";
 import { z } from "zod";
 import prisma from "@pass/db";
 import { PLAN_LIMITS, type PlanKey, currentMonthKey } from "../lib/planLimits";
+import { getReferralCode } from "../lib/referrals";
 
 const USER_SELECT = {
   id: true, email: true, name: true, grade: true, school: true, plan: true,
@@ -50,17 +51,19 @@ export async function getMe(c: Context): Promise<Response> {
     weeklyProgress,
   };
 
-  // WhatsApp link status
+  // WhatsApp link status + bonus credits
   const userFull = await prisma.user.findUnique({
     where: { id: userId },
-    select: { whatsappId: true, whatsappLinkedAt: true, phone: true },
+    select: { whatsappId: true, whatsappLinkedAt: true, phone: true, bonusPapers: true, bonusProjects: true },
   });
 
   // AI messages usage this month
   const month = currentMonthKey();
-  const monthlyUsage = await prisma.monthlyUsage.findUnique({
-    where: { userId_month: { userId, month } },
-  });
+  const [monthlyUsage, referralCode] = await Promise.all([
+    prisma.monthlyUsage.findUnique({ where: { userId_month: { userId, month } } }),
+    getReferralCode(userId).catch(() => null),
+  ]);
+
   const planUsageWithAi = {
     ...planUsage,
     aiMessages: { used: monthlyUsage?.aiMessagesUsed ?? 0, limit: limits.aiMessages },
@@ -72,7 +75,13 @@ export async function getMe(c: Context): Promise<Response> {
     linkedAt: userFull?.whatsappLinkedAt ?? null,
   };
 
-  return c.json({ user, stats, planUsage: planUsageWithAi, whatsapp });
+  const referral = {
+    code:         referralCode,
+    bonusPapers:  userFull?.bonusPapers  ?? 0,
+    bonusProjects: userFull?.bonusProjects ?? 0,
+  };
+
+  return c.json({ user, stats, planUsage: planUsageWithAi, whatsapp, referral });
 }
 
 const updateMeSchema = z.object({
