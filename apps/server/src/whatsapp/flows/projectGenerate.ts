@@ -32,23 +32,32 @@ export async function generateProject(
   const chat = await msg.getChat();
   const whatsappId = chat.id._serialized;
 
-  // Enforce project quota
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } });
+  // Enforce project quota (bonus credits extend the limit)
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { plan: true, bonusProjects: true },
+  });
   if (user) {
     const limits = PLAN_LIMITS[user.plan as PlanKey];
     const month = currentMonthKey();
     const usage = await prisma.monthlyUsage.findUnique({
       where: { userId_month: { userId, month } },
     });
-    if ((usage?.projectsUsed ?? 0) >= limits.projects) {
-      await msg.reply(projectsQuotaMessage(user.plan, limits.projects));
-      return { ...state, mode: { kind: "idle" } };
+    const projectsUsed = usage?.projectsUsed ?? 0;
+    if (projectsUsed >= limits.projects) {
+      if ((user.bonusProjects ?? 0) > 0) {
+        await prisma.user.update({ where: { id: userId }, data: { bonusProjects: { decrement: 1 } } });
+      } else {
+        await msg.reply(projectsQuotaMessage(user.plan, limits.projects));
+        return { ...state, mode: { kind: "idle" } };
+      }
+    } else {
+      await prisma.monthlyUsage.upsert({
+        where: { userId_month: { userId, month } },
+        create: { userId, month, papersUsed: 0, projectsUsed: 1, aiMessagesUsed: 0 },
+        update: { projectsUsed: { increment: 1 } },
+      });
     }
-    await prisma.monthlyUsage.upsert({
-      where: { userId_month: { userId, month } },
-      create: { userId, month, papersUsed: 0, projectsUsed: 1, aiMessagesUsed: 0 },
-      update: { projectsUsed: { increment: 1 } },
-    });
   }
 
   // Check AI quota
@@ -67,6 +76,7 @@ export async function generateProject(
   const prompt = `You are an expert in ZIMSEC Heritage-Based Education 5.0. Generate a complete, formal ZIMSEC HBC project document for a ${slots.grade} student.
 
 Student: ${displayName}
+School: ${slots.schoolName}
 Centre Number: ${slots.centreNumber}
 Candidate Number: ${slots.candidateNumber}
 Subject: ${slots.subject}
@@ -84,6 +94,7 @@ Then write the complete project with these exact sections:
 Centre Number: ${slots.centreNumber}
 Candidate Number: ${slots.candidateNumber}
 Name: ${displayName}
+School: ${slots.schoolName}
 Grade: ${slots.grade}
 Subject: ${slots.subject}
 Year: ${year}
@@ -116,6 +127,7 @@ Write formally and academically. Use British English. Make the content authentic
       centreNumber: slots.centreNumber,
       candidateNumber: slots.candidateNumber,
       studentName: slots.studentName,
+      schoolName: slots.schoolName,
       category: slots.category,
     },
   });
