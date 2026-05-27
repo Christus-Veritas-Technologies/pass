@@ -59,4 +59,7 @@ temp
 bun.lock
 bun.lockb
 
-# Paper ingestion pipeline — local text-extracti
+# Paper ingestion pipeline — local text-extraction cache and downloaded PDFs
+# PDFs are large binary files; download them with the scripts in packages/papers/
+packages/papers/.ingest-cache/
+packages/papers/papers/

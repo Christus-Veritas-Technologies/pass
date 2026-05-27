@@ -425,3 +425,11 @@ async function finalisePaper(msg: Message, state: ConversationState): Promise<Co
   const [questions, attempts] = await Promise.all([
     prisma.paperQuestion.findMany({ where: { resourceId: s.resourceId }, orderBy: { questionNumber: "asc" } }),
     prisma.questionAttempt.findMany({ where: { sessionId: s.sessionId } }),
+  ]);
+
+  const score = recalculateScore(questions, attempts);
+
+  await msg.reply(completionMessage({ title: s.paperTitle, ...score }));
+
+  return { ...state, mode: { kind: "idle" } };
+}
