@@ -13,10 +13,11 @@ import prisma from "@pass/db";
 import type { Client, Message } from "whatsapp-web.js";
 import type { Resource } from "@pass/db";
 import type { ConversationState } from "../types";
+import { generateText } from "ai";
 import { gradeAnswer, effectiveGuide } from "../../lib/grading";
 import { checkAndIncrementAiMessage } from "../../lib/aiQuota";
 import { PLAN_LIMITS, currentMonthKey, type PlanKey } from "../../lib/planLimits";
-import { passAgent } from "../../mastra";
+import { anthropic, CLAUDE_TUTOR_MODEL } from "../../lib/anthropic";
 import { sendPaperPdf } from "../media/sendPaper";
 import { recalculateScore } from "./scoring";
 import {
@@ -377,24 +378,32 @@ export async function explainQuestion(
   const guide = effectiveGuide(question);
 
   try {
-    const stream = await passAgent.stream([
-      {
-        role: "user" as const,
-        content:
-          `A ZIMSEC student is studying on WhatsApp and needs an explanation for Question ${qn}.\n\n` +
-          `Question: ${question.text}\n\n` +
-          (attempt?.userAnswer ? `Student's answer: ${attempt.userAnswer}\n\n` : "") +
-          `Marking rubric:\n${guide}\n\n` +
-          `Explain in 150–200 words covering:\n` +
-          `1. What the correct answer requires\n` +
-          `2. The key concept\n` +
-          `3. One exam tip\n\n` +
-          `Write in plain text only. Use blank lines to separate paragraphs. If you need a list, start each item with "* " (asterisk space). Do not use any markdown — no **bold**, no *italic*, no # headings, no - bullets. End with "Reply next when ready."`,
-      },
-    ]);
+    const result = await generateText({
+      model: anthropic(CLAUDE_TUTOR_MODEL),
+      system:
+        `You are a ZIMSEC exam tutor explaining past-paper questions to students via WhatsApp.\n` +
+        `Write in plain text only. Use blank lines to separate paragraphs. ` +
+        `If you need a list, start each item with "* " (asterisk space). ` +
+        `Do not use any markdown — no **bold**, no *italic*, no # headings, no - bullets. ` +
+        `End your explanation with "Reply *next* when ready."`,
+      messages: [
+        {
+          role: "user",
+          content:
+            `Explain Question ${qn} to me.\n\n` +
+            `Question: ${question.text}\n\n` +
+            (attempt?.userAnswer ? `My answer was: ${attempt.userAnswer}\n\n` : "") +
+            `Marking rubric:\n${guide}\n\n` +
+            `Cover in 150–200 words:\n` +
+            `1. What the correct answer requires\n` +
+            `2. The key concept\n` +
+            `3. One exam tip`,
+        },
+      ],
+      maxTokens: 500,
+    });
 
-    let text = "";
-    for await (const chunk of stream.textStream) text += chunk;
+    const text = result.text?.trim() ?? "";
     await chat.clearState();
 
     if (attempt) {
@@ -422,14 +431,4 @@ async function finalisePaper(msg: Message, state: ConversationState): Promise<Co
     data: { completedAt: new Date() },
   });
 
-  const [questions, attempts] = await Promise.all([
-    prisma.paperQuestion.findMany({ where: { resourceId: s.resourceId }, orderBy: { questionNumber: "asc" } }),
-    prisma.questionAttempt.findMany({ where: { sessionId: s.sessionId } }),
-  ]);
-
-  const score = recalculateScore(questions, attempts);
-
-  await msg.reply(completionMessage({ title: s.paperTitle, ...score }));
-
-  return { ...state, mode: { kind: "idle" } };
-}
+  const [que
