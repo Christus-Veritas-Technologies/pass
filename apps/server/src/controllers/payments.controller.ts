@@ -217,9 +217,11 @@ export async function pollTransactionStatus(c: Context): Promise<Response> {
 
     // Poll Paynow
     const status = await paynow.pollTransaction(transaction.pollUrl);
+    // Handle both paynow library versions: paid() method or status string property
+    const isPaid = typeof status.paid === "function" ? status.paid() : status.status?.toLowerCase() === "paid";
 
     // Update transaction
-    if (status.paid()) {
+    if (isPaid) {
       await prisma.paymentTransaction.update({
         where: { id: transaction.id },
         data: {
@@ -258,8 +260,8 @@ export async function pollTransactionStatus(c: Context): Promise<Response> {
     }
 
     return c.json({
-      status: status.paid() ? "paid" : "pending",
-      isPaid: status.paid(),
+      status: isPaid ? "paid" : "pending",
+      isPaid,
     });
   } catch (error) {
     console.error("Error polling transaction:", error);

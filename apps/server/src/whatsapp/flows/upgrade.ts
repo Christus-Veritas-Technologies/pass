@@ -199,8 +199,10 @@ function pollUpgradePayment(
     attempts++;
     try {
       const status = await pn.pollTransaction(pollUrl);
+      // The paynow library may return paid as a method or a property depending on version
+      const isPaid = typeof status.paid === "function" ? status.paid() : status.status?.toLowerCase() === "paid";
 
-      if (status.paid()) {
+      if (isPaid) {
         clearInterval(timer);
 
         const startDate = new Date();

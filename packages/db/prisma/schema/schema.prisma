@@ -69,7 +69,7 @@ model User {
   plan         Plan    @default(FREE)
 
   // WhatsApp linking
-  phone            String?   @unique        // E.164, e.g. "+263771234567"
+  phone            String?                  // E.164, e.g. "+263771234567"
   whatsappId       String?   @unique        // wwebjs chat id, e.g. "263771234567@c.us"
   whatsappLinkedAt DateTime?
 
