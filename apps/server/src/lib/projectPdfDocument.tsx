@@ -140,9 +140,11 @@ const S = StyleSheet.create({
   },
 
   // ── Cover: footer strip ────────────────────────────────────────────────────
+  coverSpacer: {
+    flex: 1,
+  },
   coverFooter: {
     backgroundColor: GREEN,
-    marginTop: "auto",
     paddingVertical: 14,
     paddingHorizontal: 50,
     flexDirection: "row",
@@ -601,6 +603,9 @@ function CoverPage({ project }: { project: Project }) {
           </View>
         ))}
       </View>
+
+      {/* Flex spacer pushes footer to the bottom */}
+      <View style={S.coverSpacer} />
 
       {/* Footer */}
       <View style={S.coverFooter}>

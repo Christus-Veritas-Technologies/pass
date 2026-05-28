@@ -214,6 +214,9 @@ export async function generateProject(
   }
 
   await msg.reply(projectConfirmMessage(slots));
+  await msg.reply(
+    `📝 Heads up — we're putting together a fully structured, high-quality project for you, so this one takes a bit longer than usual. Grab a snack, it should be ready within 2–5 minutes 🙂`,
+  );
   await chat.sendStateTyping();
 
   const year = new Date().getFullYear();
