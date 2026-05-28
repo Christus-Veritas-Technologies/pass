@@ -70,7 +70,7 @@ model User {
 
   // WhatsApp linking
   phone            String?                  // E.164, e.g. "+263771234567"
-  whatsappId       String?   @unique        // wwebjs chat id, e.g. "263771234567@c.us"
+  whatsappId       String?                  // wwebjs chat id, e.g. "263771234567@c.us"
   whatsappLinkedAt DateTime?
 
   // Referral bonus credits (lifetime pool, decremented when monthly limit is exceeded)
