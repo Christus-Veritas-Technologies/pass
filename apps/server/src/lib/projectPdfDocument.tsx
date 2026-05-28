@@ -62,11 +62,9 @@ const S = StyleSheet.create({
     alignItems: "center",
   },
   coverBannerLabel: {
-    fontFamily: "Helvetica",
+    fontFamily: "Helvetica-Bold",
     fontSize: 9,
     color: GOLD,
-    letterSpacing: 2.5,
-    textTransform: "uppercase",
     marginBottom: 14,
   },
   coverBannerTitle: {
@@ -109,8 +107,6 @@ const S = StyleSheet.create({
     fontFamily: "Helvetica-Bold",
     fontSize: 9,
     color: WHITE,
-    letterSpacing: 1.5,
-    textTransform: "uppercase",
   },
   coverRow: {
     flexDirection: "row",
@@ -162,16 +158,13 @@ const S = StyleSheet.create({
     color: WHITE,
   },
 
-  // ── Body: running header ───────────────────────────────────────────────────
+  // ── Body: running header (fixed, in-flow — no position:absolute) ──────────
   runningHeader: {
-    position: "absolute",
-    top: 20,
-    left: 60,
-    right: 60,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingBottom: 5,
+    marginBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: GOLD,
   },
@@ -181,18 +174,6 @@ const S = StyleSheet.create({
     color: GREEN,
   },
   runningHeaderRight: {
-    fontFamily: "Helvetica",
-    fontSize: 8,
-    color: GREY_TEXT,
-  },
-
-  // ── Body: page number ──────────────────────────────────────────────────────
-  pageNumber: {
-    position: "absolute",
-    bottom: 20,
-    left: 60,
-    right: 60,
-    textAlign: "center",
     fontFamily: "Helvetica",
     fontSize: 8,
     color: GREY_TEXT,
@@ -211,7 +192,6 @@ const S = StyleSheet.create({
     fontFamily: "Helvetica-Bold",
     fontSize: 13,
     color: WHITE,
-    letterSpacing: 0.5,
   },
   h2Wrapper: {
     marginTop: 16,
@@ -314,8 +294,6 @@ const S = StyleSheet.create({
     fontFamily: "Helvetica-Bold",
     fontSize: 9,
     color: WHITE,
-    letterSpacing: 1,
-    textTransform: "uppercase",
   },
   infoBoxRow: {
     flexDirection: "row",
@@ -630,17 +608,13 @@ function BodyPages({ project, blocks }: { project: Project; blocks: Block[] }) {
       {/* Running header */}
       <View style={S.runningHeader} fixed>
         <Text style={S.runningHeaderLeft}>{shortTitle}</Text>
-        <Text style={S.runningHeaderRight}>{project.subject} · {project.grade}</Text>
+        <Text
+          style={S.runningHeaderRight}
+          render={({ pageNumber, totalPages }) =>
+            `${project.grade} · Page ${pageNumber} of ${totalPages}`
+          }
+        />
       </View>
-
-      {/* Page number */}
-      <Text
-        style={S.pageNumber}
-        fixed
-        render={({ pageNumber, totalPages }) =>
-          `Page ${pageNumber} of ${totalPages}`
-        }
-      />
 
       {/* Content */}
       {blocks.map((block, i) => (
