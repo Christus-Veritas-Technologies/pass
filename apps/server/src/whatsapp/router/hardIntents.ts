@@ -75,4 +75,29 @@ export function matchHardIntent(text: string, mode: ConversationMode): HardInten
   if (SIGNIN.test(t))                             return { kind: "signin" };
 
   // Numbers resolve globally — each flow handler interprets meaning in context
-  cons
+  const num = Number(t);
+  if (Number.isInteger(num) && num > 0 && num <= 20) return { kind: "number_select", n: num };
+
+  if (mode.kind === "browsing_papers") {
+    if (MORE.test(t)) return { kind: "more" };
+  }
+
+  if (mode.kind === "paper_study") {
+    if (START.test(t) && !mode.awaitingAnswer) return { kind: "start" };
+    if (NEXT.test(t))                          return { kind: "next" };
+    if (SKIP.test(t))                          return { kind: "skip" };
+
+    const em = EXPLAIN.exec(t);
+    if (em) {
+      const qStr = em[2]?.replace(/^q/i, "");
+      return { kind: "explain", explainQn: qStr ? Number(qStr) : 0 };
+    }
+
+    const em2 = /^explain\s+(q?(\d+))\s*$/i.exec(t);
+    if (em2) return { kind: "explain", explainQn: Number(em2[2]) };
+  }
+
+  if (SIX_DIGIT.test(t)) return { kind: "link_code", code: t };
+
+  return { kind: "none" };
+}

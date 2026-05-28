@@ -79,6 +79,17 @@ export async function handleProjectBriefReply(
   const { collected, awaiting } = state.mode;
   const needed = missingFields(collected);
 
+  // Name step: the whole message is the student name — no NLP needed
+  if (awaiting === "name" && text.trim()) {
+    const merged: Collected = { ...collected, studentName: text.trim() };
+    const newState: ConversationState = {
+      ...state,
+      mode: { kind: "project_brief", awaiting: getAwaiting(merged), collected: merged },
+    };
+    if (isComplete(merged)) return { state: newState, ready: merged as ProjectSlots };
+    return { state: await promptNextSlot(msg, newState, merged) };
+  }
+
   // School step: the whole message is the school name — no NLP needed
   if (awaiting === "school" && text.trim()) {
     const merged: Collected = { ...collected, schoolName: text.trim() };
