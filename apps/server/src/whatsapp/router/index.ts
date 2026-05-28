@@ -8,7 +8,7 @@
 
 import type { Message, Client } from "whatsapp-web.js";
 import prisma from "@pass/db";
-import { loadState, saveState } from "../state/repo";
+import { loadState, saveState, unlinkUser } from "../state/repo";
 import { getLinkedUser } from "../middleware/ensureLinked";
 import { matchHardIntent } from "./hardIntents";
 import { sendWelcomeUnlinked, sendHelp, sendUsageCard } from "../flows/welcome";
@@ -23,7 +23,7 @@ import { handleAiChat } from "../flows/aiChat";
 import { startUpgrade, handleUpgradeReply } from "../flows/upgrade";
 import { routeWithNL } from "../flows/nlRouter";
 import { getAiMessageUsage } from "../../lib/aiQuota";
-import { CANCEL_OK, MEDIA_ONLY, RATE_LIMIT, AI_QUOTA_EXHAUSTED } from "../utils/messages";
+import { CANCEL_OK, LOGOUT_OK, WELCOME_UNLINKED, MEDIA_ONLY, RATE_LIMIT, AI_QUOTA_EXHAUSTED } from "../utils/messages";
 
 const RATE_WINDOW_MS   = 60_000;
 const RATE_MAX_PER_MIN = 30;
@@ -80,6 +80,14 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
     state = { ...state, mode: { kind: "idle" } };
     await msg.reply(CANCEL_OK);
     await saveState(whatsappId, state);
+    return;
+  }
+
+  // ── Logout: unlink account then show welcome ───────────────────────────────
+  if (hard.kind === "logout") {
+    await unlinkUser(whatsappId);
+    await msg.reply(LOGOUT_OK);
+    await msg.reply(WELCOME_UNLINKED);
     return;
   }
 

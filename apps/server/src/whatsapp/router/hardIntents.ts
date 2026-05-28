@@ -28,6 +28,8 @@ const SIGNIN    = /^(sign\s*in|login|log\s*in|my\s+account)\s*$/i;
 const SEND_PDF  = /^(pdf|send\s*pdf|download(\s+(pdf|project))?|send\s*(my\s*)?(last\s*)?project|resend(\s*pdf)?)\s*$/i;
 // Session history
 const HISTORY   = /^(history|past\s*sessions?|my\s*sessions?|results?)\s*$/i;
+// Logout / unlink account
+const LOGOUT    = /^(logout|log\s*out|unlink|disconnect(\s+account)?|sign\s*out)\s*$/i;
 
 export interface HardIntentResult {
   kind:
@@ -50,6 +52,7 @@ export interface HardIntentResult {
     | "history"
     | "signup"
     | "signin"
+    | "logout"
     | "none";
   explainQn?: number;
   code?: string;
@@ -59,6 +62,7 @@ export interface HardIntentResult {
 export function matchHardIntent(text: string, mode: ConversationMode): HardIntentResult {
   const t = text.trim();
 
+  if (LOGOUT.test(t))                              return { kind: "logout" };
   if (SEND_PDF.test(t))                            return { kind: "send_pdf" };
   if (HISTORY.test(t))                             return { kind: "history" };
   // Greetings reset the conversation unless actively mid-study
