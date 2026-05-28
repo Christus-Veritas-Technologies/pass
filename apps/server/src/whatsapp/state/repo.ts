@@ -53,6 +53,20 @@ export async function getLinkedUserId(whatsappId: string): Promise<string | null
   return row?.userId ?? null;
 }
 
+/**
+ * Unlink a WhatsApp number from its user account.
+ * Clears the userId on the conversation row and resets conversation state.
+ */
+export async function unlinkUser(whatsappId: string): Promise<void> {
+  await prisma.whatsappConversation.upsert({
+    where: { whatsappId },
+    create: { whatsappId, userId: null, state: DEFAULT_STATE as object },
+    update: { userId: null, state: DEFAULT_STATE as object },
+  });
+  // Bust the in-memory cache so the next read sees no userId
+  cacheSet(whatsappId, { ...DEFAULT_STATE });
+}
+
 export async function purgeStaleConversations(days = 30): Promise<number> {
   const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1_000);
   const result = await prisma.whatsappConversation.deleteMany({
