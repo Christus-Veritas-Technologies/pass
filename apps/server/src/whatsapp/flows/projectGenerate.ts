@@ -150,12 +150,17 @@ Write formally and academically. Use British English. Make the content authentic
       data: { content, topic },
     });
 
-    // Render PDF and upload (or save to tmp)
-    const pdfUrl = await renderProjectPdfAndUpload(
-      await prisma.project.findUniqueOrThrow({ where: { id: project.id } }),
-    );
-    if (pdfUrl) {
-      await prisma.project.update({ where: { id: project.id }, data: { pdfUrl } });
+    // Render PDF and upload — isolated so a storage failure doesn't lose the project
+    try {
+      const pdfUrl = await renderProjectPdfAndUpload(
+        await prisma.project.findUniqueOrThrow({ where: { id: project.id } }),
+      );
+      if (pdfUrl) {
+        await prisma.project.update({ where: { id: project.id }, data: { pdfUrl } });
+      }
+    } catch (pdfErr) {
+      console.error("[whatsapp] generateProject PDF render/upload error:", pdfErr);
+      // PDF failed — sendProjectPdf will use its text fallback below
     }
 
     await chat.clearState();

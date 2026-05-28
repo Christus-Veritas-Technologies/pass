@@ -11,7 +11,13 @@ export async function sendProjectPdf(
   project: Project,
 ): Promise<void> {
   let pdfUrl = project.pdfUrl;
-  if (!pdfUrl) pdfUrl = await renderProjectPdfAndUpload(project);
+  if (!pdfUrl) {
+    try {
+      pdfUrl = await renderProjectPdfAndUpload(project);
+    } catch (err) {
+      console.error("[whatsapp] sendProjectPdf renderProjectPdfAndUpload failed:", err);
+    }
+  }
 
   const pages   = estimatePageCount(project.content);
   const caption = projectDoneMessage(project.subject, project.topic, pages);
@@ -35,7 +41,7 @@ export async function sendProjectPdf(
     }
   }
 
-  // Fallback: send URL + first text chunk
+  // Fallback: send project text in chunks
   await client.sendMessage(chatId, projectFallbackMessage(project.id));
   const preview = chunkMessage(project.content)[0];
   if (preview) await client.sendMessage(chatId, preview);
