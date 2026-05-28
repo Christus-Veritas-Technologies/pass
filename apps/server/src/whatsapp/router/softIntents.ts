@@ -15,6 +15,14 @@ Classify the student's message into exactly ONE of these intents:
 - ai_chat: they are asking a study question or want help understanding something
 - unclear: cannot determine intent
 
+IMPORTANT — generate_project rules:
+Any message that mentions the word "project" in the context of a ZIMSEC school assignment MUST be classified as generate_project. This includes:
+- Bare keywords: "project", "my project", "a project"
+- With qualifiers: "HBC project", "ZIMSEC project", "heritage project", "O-Level project", "Form 4 project"
+- With verbs: "generate project", "write my project", "I need a project", "create a project"
+- Subject-specific: "Science project", "Agriculture project", etc.
+Do NOT classify these as ai_chat. If the word "project" appears in a school context, always use generate_project.
+
 Return ONLY a JSON object, no prose:
 {
   "kind": "<intent>",

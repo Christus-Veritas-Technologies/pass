@@ -147,7 +147,16 @@ QUALITY REQUIREMENTS (MANDATORY):
 - Be specific to Zimbabwe: mention actual provinces, real institutions, authentic cultural practices
 - Make all interview respondents have realistic Zimbabwean names and titles
 - Data in tables must be realistic and internally consistent
-- Do NOT pad with repetition — every paragraph must add substance`;
+- Do NOT pad with repetition — every paragraph must add substance
+
+SPECIAL CHARACTER RULES (MANDATORY — the PDF renderer requires these):
+- Chemical subscripts: use HTML tags — CO<sub>2</sub>, H<sub>2</sub>O, NH<sub>3</sub>, H<sub>2</sub>SO<sub>4</sub>, N<sub>2</sub>
+- Ion charges: use HTML sup tags — Ca<sup>2+</sup>, Fe<sup>3+</sup>, SO<sub>4</sub><sup>2-</sup>
+- Math exponents: use HTML sup tags — x<sup>2</sup>, 10<sup>-3</sup>, m<sup>3</sup>, cm<sup>2</sup>
+- NEVER use Unicode subscripts (₂ ₃ ₄ etc.) or Unicode superscripts (² ³ etc.) — use the HTML tags above
+- NEVER use Unicode Greek letters (α β γ δ π Ω μ) — spell them out: alpha, beta, gamma, delta, pi, Omega, mu
+- NEVER use Unicode arrows (→ ← ↑ ↓ ⇒) — use ASCII: ->, <-, ^, v, =>
+- NEVER use Unicode math symbols (≥ ≤ ≠ ≈ √ ∞ ∑) — use ASCII: >=, <=, !=, ~=, sqrt, infinity, sum`;
 }
 
 function buildExpansionPrompt(existing: string, slots: ProjectSlots, targetWords: number): string {

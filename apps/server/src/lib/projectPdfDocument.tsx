@@ -323,9 +323,187 @@ const S = StyleSheet.create({
   },
 });
 
+// ── Content preprocessor ─────────────────────────────────────────────────────
+/**
+ * Normalises AI-generated markdown before PDF rendering.
+ *
+ * Handles:
+ *  1. HTML entities (& lt; &amp; &deg; etc.)
+ *  2. HTML <sub> / <sup> tags  →  [[sub:X]] / [[sup:X]] internal markers
+ *  3. Unicode subscript chars (₀–₉, ₐₑₒₓₙ…)  →  [[sub:X]] markers
+ *  4. Unicode superscript chars (⁰–⁹, ²³…)   →  [[sup:X]] markers
+ *  5. Non-WinAnsi characters (arrows, Greek, math) → ASCII equivalents
+ *     (standard PDF fonts — Helvetica / Times-Roman — use WinAnsi encoding;
+ *      characters outside that range render as blank boxes)
+ */
+function preprocessContent(raw: string): string {
+  let s = raw;
+
+  // ── 1. HTML entities ────────────────────────────────────────────────────────
+  s = s
+    .replace(/&amp;/g,    "&")
+    .replace(/&lt;/g,     "<")
+    .replace(/&gt;/g,     ">")
+    .replace(/&nbsp;/g,   " ")
+    .replace(/&hellip;/g, "...")
+    .replace(/&mdash;/g,  "—")   // em dash  — WinAnsi ✓
+    .replace(/&ndash;/g,  "–")   // en dash  – WinAnsi ✓
+    .replace(/&ldquo;/g,  "“")   // "  WinAnsi ✓
+    .replace(/&rdquo;/g,  "”")   // "  WinAnsi ✓
+    .replace(/&lsquo;/g,  "‘")   // '  WinAnsi ✓
+    .replace(/&rsquo;/g,  "’")   // '  WinAnsi ✓
+    .replace(/&deg;/g,    "°")   // °  WinAnsi ✓
+    .replace(/&plusmn;/g, "±")   // ±  WinAnsi ✓
+    .replace(/&times;/g,  "×")   // ×  WinAnsi ✓
+    .replace(/&divide;/g, "÷")   // ÷  WinAnsi ✓
+    .replace(/&micro;/g,  "µ")   // µ  WinAnsi ✓
+    .replace(/&copy;/g,   "©")   // ©  WinAnsi ✓
+    .replace(/&reg;/g,    "®")   // ®  WinAnsi ✓
+    .replace(/&trade;/g,  "™")   // ™  WinAnsi ✓
+    .replace(/&frac12;/g, "½")   // ½  WinAnsi ✓
+    .replace(/&frac14;/g, "¼")   // ¼  WinAnsi ✓
+    .replace(/&frac34;/g, "¾")   // ¾  WinAnsi ✓
+    // Superscript HTML entities → our markers
+    .replace(/&sup1;/g,   "[[sup:1]]")
+    .replace(/&sup2;/g,   "[[sup:2]]")
+    .replace(/&sup3;/g,   "[[sup:3]]");
+
+  // ── 2. HTML <sub>/<sup> tags ────────────────────────────────────────────────
+  // Handle multi-character content and nested text
+  s = s.replace(/<sub>([\s\S]*?)<\/sub>/gi, (_m, inner: string) => `[[sub:${inner.trim()}]]`);
+  s = s.replace(/<sup>([\s\S]*?)<\/sup>/gi, (_m, inner: string) => `[[sup:${inner.trim()}]]`);
+
+  // ── 3. Unicode subscript chars → [[sub:X]] ─────────────────────────────────
+  const subCharMap: Record<string, string> = {
+    "₀": "0", "₁": "1", "₂": "2", "₃": "3", "₄": "4",
+    "₅": "5", "₆": "6", "₇": "7", "₈": "8", "₉": "9",
+    "ₐ": "a", "ₑ": "e", "ₒ": "o", "ₓ": "x",
+    "ₔ": "e", "ₕ": "h", "ₖ": "k", "ₗ": "l",
+    "ₘ": "m", "ₙ": "n", "ₚ": "p", "ₛ": "s", "ₜ": "t",
+  };
+  // Match runs of Unicode subscript chars
+  s = s.replace(/[₀-ₜ]+/g, (m) =>
+    `[[sub:${[...m].map(c => subCharMap[c] ?? c).join("")}]]`
+  );
+
+  // ── 4. Unicode superscript chars → [[sup:X]] ───────────────────────────────
+  // ² (U+00B2) and ³ (U+00B3) are in WinAnsi but visually confusing — normalise them too
+  const supCharMap: Record<string, string> = {
+    "⁰": "0", "¹": "1", "²": "2", "³": "3",
+    "⁴": "4", "⁵": "5", "⁶": "6",
+    "⁷": "7", "⁸": "8", "⁹": "9",
+    "ⁿ": "n", "ⁱ": "i",
+  };
+  s = s.replace(/[⁰¹²³⁴-⁹ⁿⁱ]+/g, (m) =>
+    `[[sup:${[...m].map(c => supCharMap[c] ?? c).join("")}]]`
+  );
+
+  // ── 5. Non-WinAnsi special characters → safe ASCII equivalents ─────────────
+
+  // Arrows (not in WinAnsi)
+  s = s
+    .replace(/→/g, "->")    // →
+    .replace(/←/g, "<-")    // ←
+    .replace(/↑/g, "^")     // ↑
+    .replace(/↓/g, "v")     // ↓
+    .replace(/⇒/g, "=>")    // ⇒
+    .replace(/⇐/g, "<=")    // ⇐
+    .replace(/⇔/g, "<=>")   // ⇔
+    .replace(/↔/g, "<->")   // ↔
+    .replace(/↖/g, "^")     // ↖
+    .replace(/↗/g, "^")     // ↗
+    .replace(/↘/g, "v")     // ↘
+    .replace(/↙/g, "v");    // ↙
+
+  // Math comparison / operators (not in WinAnsi)
+  s = s
+    .replace(/≥/g, ">=")        // ≥
+    .replace(/≤/g, "<=")        // ≤
+    .replace(/≠/g, "!=")        // ≠
+    .replace(/≈/g, "~=")        // ≈
+    .replace(/∞/g, "infinity")  // ∞
+    .replace(/√/g, "sqrt")      // √
+    .replace(/∑/g, "sum")       // ∑
+    .replace(/∏/g, "product")   // ∏
+    .replace(/∫/g, "integral")  // ∫
+    .replace(/∂/g, "d")         // ∂ (partial derivative — read as plain 'd')
+    .replace(/Δ/g, "delta")     // Δ (capital delta)
+    .replace(/∆/g, "delta")     // ∆ (increment)
+    .replace(/−/g, "-")         // − (minus sign, not hyphen)
+    .replace(/·/g, "*")         // · (middle dot / multiplication)
+    .replace(/⋅/g, "*")         // ⋅ (dot product)
+    .replace(/∧/g, "AND")       // ∧
+    .replace(/∨/g, "OR")        // ∨
+    .replace(/¬/g, "NOT")       // ¬
+    .replace(/∀/g, "for all")   // ∀
+    .replace(/∃/g, "exists")    // ∃
+    .replace(/∈/g, "in")        // ∈
+    .replace(/∉/g, "not in")    // ∉
+    .replace(/⊂/g, "subset")    // ⊂
+    .replace(/⊃/g, "superset")  // ⊃
+    .replace(/∩/g, "intersect") // ∩
+    .replace(/∪/g, "union");    // ∪
+
+  // Greek alphabet (not in WinAnsi — µ U+00B5 IS in WinAnsi, leave it)
+  s = s
+    .replace(/α/g, "alpha")    // α
+    .replace(/β/g, "beta")     // β
+    .replace(/γ/g, "gamma")    // γ
+    .replace(/δ/g, "delta")    // δ
+    .replace(/ε/g, "epsilon")  // ε
+    .replace(/ζ/g, "zeta")     // ζ
+    .replace(/η/g, "eta")      // η
+    .replace(/θ/g, "theta")    // θ
+    .replace(/ι/g, "iota")     // ι
+    .replace(/κ/g, "kappa")    // κ
+    .replace(/λ/g, "lambda")   // λ
+    .replace(/μ/g, "mu")       // μ (Greek mu — different from µ micro sign U+00B5)
+    .replace(/ν/g, "nu")       // ν
+    .replace(/ξ/g, "xi")       // ξ
+    .replace(/ο/g, "o")        // ο (omicron)
+    .replace(/π/g, "pi")       // π
+    .replace(/ρ/g, "rho")      // ρ
+    .replace(/σ/g, "sigma")    // σ
+    .replace(/τ/g, "tau")      // τ
+    .replace(/υ/g, "upsilon")  // υ
+    .replace(/φ/g, "phi")      // φ
+    .replace(/χ/g, "chi")      // χ
+    .replace(/ψ/g, "psi")      // ψ
+    .replace(/ω/g, "omega")    // ω
+    // Greek uppercase
+    .replace(/Α/g, "Alpha")    // Α
+    .replace(/Β/g, "Beta")     // Β
+    .replace(/Γ/g, "Gamma")    // Γ
+    .replace(/Θ/g, "Theta")    // Θ
+    .replace(/Λ/g, "Lambda")   // Λ
+    .replace(/Ξ/g, "Xi")       // Ξ
+    .replace(/Π/g, "Pi")       // Π
+    .replace(/Σ/g, "Sigma")    // Σ
+    .replace(/Φ/g, "Phi")      // Φ
+    .replace(/Ψ/g, "Psi")      // Ψ
+    .replace(/Ω/g, "Omega")    // Ω
+
+  // Fractions (beyond ½ ¼ ¾ which ARE in WinAnsi)
+  s = s
+    .replace(/⅓/g, "1/3")   // ⅓
+    .replace(/⅔/g, "2/3")   // ⅔
+    .replace(/⅕/g, "1/5")   // ⅕
+    .replace(/⅖/g, "2/5")   // ⅖
+    .replace(/⅗/g, "3/5")   // ⅗
+    .replace(/⅘/g, "4/5")   // ⅘
+    .replace(/⅙/g, "1/6")   // ⅙
+    .replace(/⅚/g, "5/6")   // ⅚
+    .replace(/⅛/g, "1/8")   // ⅛
+    .replace(/⅜/g, "3/8")   // ⅜
+    .replace(/⅝/g, "5/8")   // ⅝
+    .replace(/⅞/g, "7/8");  // ⅞
+
+  return s;
+}
+
 // ── Markdown types ────────────────────────────────────────────────────────────
 
-type Span = { text: string; bold: boolean; italic?: boolean };
+type Span = { text: string; bold: boolean; italic?: boolean; sub?: boolean; sup?: boolean };
 
 type Block =
   | { type: "h1" | "h2" | "h3"; text: string }
@@ -334,12 +512,12 @@ type Block =
   | { type: "table"; headers: string[]; rows: string[][] }
   | { type: "spacer" };
 
-// ── Span parser — handles **bold** and _italic_ ───────────────────────────────
+// ── Span parser — handles **bold**, _italic_, [[sub:X]], [[sup:X]] ───────────
 
 function parseSpans(line: string): Span[] {
   const spans: Span[] = [];
-  // Match **bold** or _italic_
-  const regex = /\*\*([^*]+)\*\*|_([^_]+)_/g;
+  // Groups: 1=bold, 2=italic, 3=subscript, 4=superscript
+  const regex = /\*\*([^*]+)\*\*|_([^_]+)_|\[\[sub:([^\]]+)\]\]|\[\[sup:([^\]]+)\]\]/g;
   let last = 0;
   let m: RegExpExecArray | null;
   // eslint-disable-next-line no-cond-assign
@@ -349,6 +527,10 @@ function parseSpans(line: string): Span[] {
       spans.push({ text: m[1], bold: true });
     } else if (m[2] !== undefined) {
       spans.push({ text: m[2], bold: false, italic: true });
+    } else if (m[3] !== undefined) {
+      spans.push({ text: m[3], bold: false, sub: true });
+    } else if (m[4] !== undefined) {
+      spans.push({ text: m[4], bold: false, sup: true });
     }
     last = m.index + m[0].length;
   }
@@ -460,6 +642,14 @@ function extractCandidateInfo(blocks: Block[]): { infoBlock: { label: string; va
 }
 
 // ── Span renderer ─────────────────────────────────────────────────────────────
+// Subscript/superscript: rendered at 65% of the surrounding font size.
+// `rise` shifts the baseline vertically (positive = up, negative = down).
+// @react-pdf/renderer passes `rise` through to pdfkit's text rise operator.
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const SUB_STYLE: any = { fontSize: 7, rise: -2 };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const SUP_STYLE: any = { fontSize: 7, rise: 4 };
 
 function Spans({ spans }: { spans: Span[] }) {
   return (
@@ -467,6 +657,8 @@ function Spans({ spans }: { spans: Span[] }) {
       {spans.map((s, i) => {
         if (s.bold)   return <Text key={i} style={{ fontFamily: "Helvetica-Bold" }}>{s.text}</Text>;
         if (s.italic) return <Text key={i} style={{ fontFamily: "Helvetica-Oblique" }}>{s.text}</Text>;
+        if (s.sub)    return <Text key={i} style={SUB_STYLE}>{s.text}</Text>;
+        if (s.sup)    return <Text key={i} style={SUP_STYLE}>{s.text}</Text>;
         return <Text key={i}>{s.text}</Text>;
       })}
     </>
@@ -646,8 +838,9 @@ function ProjectDocument({ project, blocks }: { project: Project; blocks: Block[
  * Generate a PDF buffer for a project using @react-pdf/renderer.
  */
 export async function generateProjectPdfBuffer(project: Project): Promise<Buffer> {
-  // Parse the AI-generated markdown
-  let blocks = parseMarkdown(project.content ?? "");
+  // Normalise special characters BEFORE parsing markdown
+  const processedContent = preprocessContent(project.content ?? "");
+  let blocks = parseMarkdown(processedContent);
 
   // Upgrade "Candidate Information" paragraph block to styled InfoBox if present
   const candidateExtract = extractCandidateInfo(blocks);
