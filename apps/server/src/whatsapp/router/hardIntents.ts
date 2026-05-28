@@ -62,7 +62,7 @@ export function matchHardIntent(text: string, mode: ConversationMode): HardInten
   if (SEND_PDF.test(t))                            return { kind: "send_pdf" };
   if (HISTORY.test(t))                             return { kind: "history" };
   // Greetings reset the conversation unless actively mid-study
-  if (GREETINGS.test(t) && mode.kind !== "paper_study" && mode.kind !== "browsing_papers")
+  if (GREETINGS.test(t) && mode.kind !== "paper_study")
                                                    return { kind: "greeting" };
   if (HELP.test(t))                               return { kind: "help" };
   if (CANCEL.test(t))                             return { kind: "cancel" };
