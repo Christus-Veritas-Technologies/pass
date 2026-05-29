@@ -21,9 +21,9 @@
     "@pass/env": "workspace:*",
     "@prisma/adapter-pg": "^7.7.0",
     "@prisma/client": "^7.7.0",
-    "dotenv": "catalog:",
+    "dotenv": "^17.2.2",
     "pg": "^8.17.1",
-    "zod": "catalog:"
+    "zod": "^4.1.13"
   },
   "devDependencies": {
     "@pass/config": "workspace:*",

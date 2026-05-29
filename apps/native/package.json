@@ -27,7 +27,7 @@
     "@vuduc0801/react-native-phosphor-icons": "^2.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "dotenv": "catalog:",
+    "dotenv": "^17.2.2",
     "eas-cli": "^19.0.8",
     "expo": "^55.0.17",
     "expo-auth-session": "~55.0.16",
@@ -76,7 +76,7 @@
     "tailwind-variants": "^3.2.2",
     "tailwindcss": "^4.2.4",
     "uniwind": "^1.6.3",
-    "zod": "catalog:"
+    "zod": "^4.1.13"
   },
   "devDependencies": {
     "@pass/config": "workspace:*",
