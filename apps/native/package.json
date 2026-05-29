@@ -28,6 +28,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dotenv": "^17.2.2",
+    "eas": "^0.1.0",
     "eas-cli": "^19.0.8",
     "expo": "^55.0.17",
     "expo-auth-session": "~55.0.16",
