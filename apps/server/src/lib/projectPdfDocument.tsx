@@ -3,12 +3,14 @@
  * @react-pdf/renderer document for ZIMSEC HBC projects.
  *
  * Features:
- * - Stunning green/gold cover page with professional layout
+ * - 8 distinct visual themes — each project gets its own colour palette
+ * - 3 heading style variants (banner, sideline, underline)
+ * - 3 H2 sub-heading variants (accent-line, primary-topline, accent-fill)
  * - Markdown table parser (| col | col | format)
  * - Running page headers with page numbers
- * - Color-coded section headings
- * - Styled tables with alternating rows
- * - Bold/italic inline span support
+ * - Bold/italic/subscript/superscript inline span support
+ * - Full special-character pre-processor (HTML entities, Unicode sub/sup,
+ *   non-WinAnsi Greek/arrows/math → ASCII equivalents)
  */
 
 import {
@@ -21,359 +23,236 @@ import {
 } from "@react-pdf/renderer";
 import type { Project } from "@pass/db";
 
-// ── Brand colours ─────────────────────────────────────────────────────────────
+// ── Shared neutrals (independent of theme) ────────────────────────────────────
 
-const GREEN      = "#1a5c2e";
-const GREEN_MID  = "#2d7a45";
-const GREEN_LIGHT = "#e8f5ed";
-const GOLD       = "#c8a84b";
-const GOLD_LIGHT = "#fdf6e3";
-const WHITE      = "#ffffff";
-const BLACK      = "#111111";
-const GREY_TEXT  = "#444444";
-const GREY_RULE  = "#cccccc";
-const ROW_ALT    = "#f4f9f6";
+const WHITE     = "#ffffff";
+const BLACK     = "#111111";
+const GREY_TEXT = "#555555";
+const GREY_RULE = "#cccccc";
 
-// ── Styles ────────────────────────────────────────────────────────────────────
+// ── Theme definitions ─────────────────────────────────────────────────────────
 
-const S = StyleSheet.create({
-  // ── Page layouts ──────────────────────────────────────────────────────────
-  coverPage: {
-    backgroundColor: WHITE,
-    flexDirection: "column",
-  },
-  bodyPage: {
-    fontFamily: "Times-Roman",
-    fontSize: 11,
-    lineHeight: 1.7,
-    color: BLACK,
-    paddingTop: 60,
-    paddingBottom: 60,
-    paddingLeft: 60,
-    paddingRight: 60,
-  },
+type H1Style = "banner" | "sideline" | "underline";
+type H2Style = "accent-line" | "primary-topline" | "accent-fill";
+type BodyFont = "Times-Roman" | "Helvetica";
 
-  // ── Cover: top green banner ────────────────────────────────────────────────
-  coverBanner: {
-    backgroundColor: GREEN,
-    paddingTop: 48,
-    paddingBottom: 40,
-    paddingHorizontal: 50,
-    alignItems: "center",
-  },
-  coverBannerLabel: {
-    fontFamily: "Helvetica-Bold",
-    fontSize: 9,
-    color: GOLD,
-    marginBottom: 14,
-  },
-  coverBannerTitle: {
-    fontFamily: "Helvetica-Bold",
-    fontSize: 22,
-    color: WHITE,
-    textAlign: "center",
-    lineHeight: 1.4,
-    marginBottom: 10,
-  },
-  coverBannerSubtitle: {
-    fontFamily: "Helvetica",
-    fontSize: 11,
-    color: GOLD,
-    textAlign: "center",
-  },
+interface Theme {
+  primary:      string;   // dark — banner backgrounds, borders
+  primaryMid:   string;   // mid  — h3 text, secondary accents
+  primaryLight: string;   // pale — tint backgrounds, alt rows
+  accent:       string;   // accent — dividers, bullet dots, underlines
+  accentLight:  string;   // very pale accent — info-box alt rows
+  h1Style:      H1Style;
+  h2Style:      H2Style;
+  bodyFont:     BodyFont;
+  bodyFontBold: string;
+  bodyFontItalic: string;
+}
 
-  // ── Cover: gold divider ────────────────────────────────────────────────────
-  coverGoldBar: {
-    height: 6,
-    backgroundColor: GOLD,
+const THEMES: Theme[] = [
+  // 1 · Emerald & Gold  (classic)
+  {
+    primary: "#1a5c2e", primaryMid: "#2d7a45", primaryLight: "#e8f5ed",
+    accent: "#c8a84b", accentLight: "#fdf6e3",
+    h1Style: "banner",    h2Style: "accent-line",
+    bodyFont: "Times-Roman", bodyFontBold: "Times-Bold", bodyFontItalic: "Times-Italic",
   },
+  // 2 · Navy & Steel
+  {
+    primary: "#1c2f5e", primaryMid: "#2d4a8a", primaryLight: "#e8edf8",
+    accent: "#5a82b8", accentLight: "#eaf0f7",
+    h1Style: "sideline",  h2Style: "primary-topline",
+    bodyFont: "Times-Roman", bodyFontBold: "Times-Bold", bodyFontItalic: "Times-Italic",
+  },
+  // 3 · Crimson & Amber
+  {
+    primary: "#7a1a1a", primaryMid: "#a03030", primaryLight: "#f8ecec",
+    accent: "#c8922a", accentLight: "#fdf4e0",
+    h1Style: "banner",    h2Style: "accent-line",
+    bodyFont: "Times-Roman", bodyFontBold: "Times-Bold", bodyFontItalic: "Times-Italic",
+  },
+  // 4 · Violet & Gold
+  {
+    primary: "#4a1a78", primaryMid: "#6a30a0", primaryLight: "#f2ecfb",
+    accent: "#c89030", accentLight: "#fdf5e0",
+    h1Style: "underline", h2Style: "accent-fill",
+    bodyFont: "Times-Roman", bodyFontBold: "Times-Bold", bodyFontItalic: "Times-Italic",
+  },
+  // 5 · Teal & Terracotta
+  {
+    primary: "#1a5c5a", primaryMid: "#2a8078", primaryLight: "#e8f5f4",
+    accent: "#c86030", accentLight: "#fdf0ea",
+    h1Style: "sideline",  h2Style: "accent-line",
+    bodyFont: "Times-Roman", bodyFontBold: "Times-Bold", bodyFontItalic: "Times-Italic",
+  },
+  // 6 · Slate & Coral
+  {
+    primary: "#2c3e52", primaryMid: "#3d5570", primaryLight: "#eaecef",
+    accent: "#c04a30", accentLight: "#fdecea",
+    h1Style: "banner",    h2Style: "primary-topline",
+    bodyFont: "Helvetica", bodyFontBold: "Helvetica-Bold", bodyFontItalic: "Helvetica-Oblique",
+  },
+  // 7 · Maroon & Copper
+  {
+    primary: "#5e1a30", primaryMid: "#7a2848", primaryLight: "#f8ecf0",
+    accent: "#b87840", accentLight: "#fdf3e8",
+    h1Style: "underline", h2Style: "primary-topline",
+    bodyFont: "Times-Roman", bodyFontBold: "Times-Bold", bodyFontItalic: "Times-Italic",
+  },
+  // 8 · Forest & Saffron
+  {
+    primary: "#2a4a18", primaryMid: "#3d6828", primaryLight: "#eef5e8",
+    accent: "#c89030", accentLight: "#fdf8e0",
+    h1Style: "sideline",  h2Style: "accent-fill",
+    bodyFont: "Times-Roman", bodyFontBold: "Times-Bold", bodyFontItalic: "Times-Italic",
+  },
+];
 
-  // ── Cover: info card ──────────────────────────────────────────────────────
-  coverCard: {
-    marginHorizontal: 50,
-    marginTop: 36,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: GREY_RULE,
-    borderRadius: 4,
+/** Pick a theme deterministically from the project ID so the same project
+ *  always renders identically, but different projects look different. */
+function pickTheme(projectId: string): Theme {
+  let hash = 0;
+  for (const c of projectId) hash = (hash * 31 + c.charCodeAt(0)) >>> 0;
+  return THEMES[hash % THEMES.length]!;
+}
 
-  },
-  coverCardHeader: {
-    backgroundColor: GREEN,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  coverCardHeaderText: {
-    fontFamily: "Helvetica-Bold",
-    fontSize: 9,
-    color: WHITE,
-  },
-  coverRow: {
-    flexDirection: "row",
-    borderBottomWidth: 1,
-    borderBottomColor: GREY_RULE,
-  },
-  coverRowAlt: {
-    backgroundColor: GREEN_LIGHT,
-  },
-  coverLabel: {
-    fontFamily: "Helvetica-Bold",
-    fontSize: 10,
-    color: GREEN,
-    width: 140,
-    paddingVertical: 7,
-    paddingHorizontal: 14,
-    borderRightWidth: 1,
-    borderRightColor: GREY_RULE,
-  },
-  coverValue: {
-    fontFamily: "Helvetica",
-    fontSize: 10,
-    color: BLACK,
-    flex: 1,
-    paddingVertical: 7,
-    paddingHorizontal: 14,
-  },
+// ── Style factory ─────────────────────────────────────────────────────────────
 
-  // ── Cover: footer strip ────────────────────────────────────────────────────
-  coverSpacer: {
-    flex: 1,
-  },
-  coverFooter: {
-    backgroundColor: GREEN,
-    paddingVertical: 14,
-    paddingHorizontal: 50,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  coverFooterText: {
-    fontFamily: "Helvetica",
-    fontSize: 9,
-    color: GOLD,
-  },
-  coverFooterBold: {
-    fontFamily: "Helvetica-Bold",
-    fontSize: 9,
-    color: WHITE,
-  },
+function buildStyles(t: Theme) {
+  // ── H1 heading variants ────────────────────────────────────────────────────
+  const h1Wrapper =
+    t.h1Style === "banner"
+      ? { backgroundColor: t.primary, marginTop: 22, marginBottom: 10, paddingVertical: 7, paddingHorizontal: 12, borderRadius: 2 }
+      : t.h1Style === "sideline"
+      ? { borderLeftWidth: 4, borderLeftColor: t.primary, marginTop: 22, marginBottom: 10, paddingVertical: 6, paddingHorizontal: 12, backgroundColor: t.primaryLight }
+      : /* underline */
+        { paddingBottom: 5, paddingTop: 4, borderBottomWidth: 3, borderBottomColor: t.primary, marginTop: 22, marginBottom: 10 };
 
-  // ── Body: running header (fixed, in-flow — no position:absolute) ──────────
-  runningHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingBottom: 5,
-    marginBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: GOLD,
-  },
-  runningHeaderLeft: {
-    fontFamily: "Helvetica",
-    fontSize: 8,
-    color: GREEN,
-  },
-  runningHeaderRight: {
-    fontFamily: "Helvetica",
-    fontSize: 8,
-    color: GREY_TEXT,
-  },
+  const h1Text =
+    t.h1Style === "banner"
+      ? { fontFamily: "Helvetica-Bold", fontSize: 13, color: WHITE }
+      : { fontFamily: "Helvetica-Bold", fontSize: 14, color: t.primary };
 
-  // ── Body: headings ────────────────────────────────────────────────────────
-  h1Wrapper: {
-    backgroundColor: GREEN,
-    marginTop: 22,
-    marginBottom: 10,
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: 2,
-  },
-  h1Text: {
-    fontFamily: "Helvetica-Bold",
-    fontSize: 13,
-    color: WHITE,
-  },
-  h2Wrapper: {
-    marginTop: 16,
-    marginBottom: 6,
-    paddingBottom: 4,
-    borderBottomWidth: 2,
-    borderBottomColor: GOLD,
-  },
-  h2Text: {
-    fontFamily: "Helvetica-Bold",
-    fontSize: 12,
-    color: GREEN,
-  },
-  h3Text: {
-    fontFamily: "Helvetica-Bold",
-    fontSize: 11,
-    color: GREEN_MID,
-    marginTop: 12,
-    marginBottom: 4,
-  },
+  // ── H2 heading variants ────────────────────────────────────────────────────
+  const h2Wrapper =
+    t.h2Style === "accent-line"
+      ? { marginTop: 16, marginBottom: 6, paddingBottom: 4, borderBottomWidth: 2, borderBottomColor: t.accent }
+      : t.h2Style === "primary-topline"
+      ? { marginTop: 16, marginBottom: 6, paddingTop: 6, paddingBottom: 4, borderTopWidth: 2, borderTopColor: t.primary }
+      : /* accent-fill */
+        { marginTop: 16, marginBottom: 6, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: t.accentLight, borderLeftWidth: 3, borderLeftColor: t.accent };
 
-  // ── Body: paragraph & bullet ──────────────────────────────────────────────
-  paragraph: {
-    marginBottom: 5,
-    textAlign: "justify",
-    fontSize: 11,
-    color: BLACK,
-  },
-  bulletRow: {
-    flexDirection: "row",
-    marginBottom: 3,
-    paddingLeft: 14,
-  },
-  bulletDot: {
-    width: 14,
-    color: GOLD,
-    fontFamily: "Helvetica-Bold",
-    fontSize: 12,
-  },
-  bulletText: {
-    flex: 1,
-    textAlign: "justify",
-    fontSize: 11,
-    color: BLACK,
-  },
-  spacer: { height: 6 },
+  return StyleSheet.create({
+    // ── Cover page ───────────────────────────────────────────────────────────
+    coverPage:           { backgroundColor: WHITE, flexDirection: "column" },
+    coverBanner:         { backgroundColor: t.primary, paddingTop: 48, paddingBottom: 40, paddingHorizontal: 50, alignItems: "center" },
+    coverBannerLabel:    { fontFamily: "Helvetica-Bold", fontSize: 9, color: t.accent, marginBottom: 14 },
+    coverBannerTitle:    { fontFamily: "Helvetica-Bold", fontSize: 22, color: WHITE, textAlign: "center", lineHeight: 1.4, marginBottom: 10 },
+    coverBannerSubtitle: { fontFamily: "Helvetica", fontSize: 11, color: t.accent, textAlign: "center" },
+    coverAccentBar:      { height: 6, backgroundColor: t.accent },
+    coverCard:           { marginHorizontal: 50, marginTop: 36, marginBottom: 24, borderWidth: 1, borderColor: GREY_RULE, borderRadius: 4 },
+    coverCardHeader:     { backgroundColor: t.primary, paddingVertical: 8, paddingHorizontal: 16 },
+    coverCardHeaderText: { fontFamily: "Helvetica-Bold", fontSize: 9, color: WHITE },
+    coverRow:            { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: GREY_RULE },
+    coverRowAlt:         { backgroundColor: t.primaryLight },
+    coverLabel:          { fontFamily: "Helvetica-Bold", fontSize: 10, color: t.primary, width: 140, paddingVertical: 7, paddingHorizontal: 14, borderRightWidth: 1, borderRightColor: GREY_RULE },
+    coverValue:          { fontFamily: "Helvetica", fontSize: 10, color: BLACK, flex: 1, paddingVertical: 7, paddingHorizontal: 14 },
+    coverSpacer:         { flex: 1 },
+    coverFooter:         { backgroundColor: t.primary, paddingVertical: 14, paddingHorizontal: 50, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+    coverFooterText:     { fontFamily: "Helvetica", fontSize: 9, color: t.accent },
+    coverFooterBold:     { fontFamily: "Helvetica-Bold", fontSize: 9, color: WHITE },
 
-  // ── Table ─────────────────────────────────────────────────────────────────
-  tableWrapper: {
-    marginTop: 10,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: GREEN,
-    borderRadius: 3,
-  },
-  tableHeaderRow: {
-    flexDirection: "row",
-    backgroundColor: GREEN,
-  },
-  tableRow: {
-    flexDirection: "row",
-    borderTopWidth: 1,
-    borderTopColor: GREY_RULE,
-  },
-  tableRowAlt: {
-    backgroundColor: ROW_ALT,
-  },
-  tableHeaderCell: {
-    flex: 1,
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    fontFamily: "Helvetica-Bold",
-    fontSize: 9,
-    color: WHITE,
-  },
-  tableCell: {
-    flex: 1,
-    paddingVertical: 5,
-    paddingHorizontal: 8,
-    fontFamily: "Helvetica",
-    fontSize: 9,
-    color: BLACK,
-  },
+    // ── Body page ────────────────────────────────────────────────────────────
+    bodyPage: { fontFamily: t.bodyFont, fontSize: 11, lineHeight: 1.7, color: BLACK, paddingTop: 60, paddingBottom: 60, paddingLeft: 60, paddingRight: 60 },
 
-  // ── Info box (for "Candidate Information" table-style block) ──────────────
-  infoBox: {
-    marginTop: 8,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: GREEN,
-    borderRadius: 3,
+    // ── Running header ───────────────────────────────────────────────────────
+    runningHeader:      { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingBottom: 5, marginBottom: 12, borderBottomWidth: 1, borderBottomColor: t.accent },
+    runningHeaderLeft:  { fontFamily: "Helvetica", fontSize: 8, color: t.primary },
+    runningHeaderRight: { fontFamily: "Helvetica", fontSize: 8, color: GREY_TEXT },
 
-  },
-  infoBoxHeader: {
-    backgroundColor: GREEN,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-  },
-  infoBoxHeaderText: {
-    fontFamily: "Helvetica-Bold",
-    fontSize: 9,
-    color: WHITE,
-  },
-  infoBoxRow: {
-    flexDirection: "row",
-    borderTopWidth: 1,
-    borderTopColor: GREY_RULE,
-  },
-  infoBoxRowAlt: {
-    backgroundColor: GOLD_LIGHT,
-  },
-  infoBoxLabel: {
-    fontFamily: "Helvetica-Bold",
-    fontSize: 9,
-    color: GREEN,
-    width: 130,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRightWidth: 1,
-    borderRightColor: GREY_RULE,
-  },
-  infoBoxValue: {
-    fontFamily: "Helvetica",
-    fontSize: 9,
-    color: BLACK,
-    flex: 1,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-  },
-});
+    // ── Headings ─────────────────────────────────────────────────────────────
+    h1Wrapper,
+    h1Text,
+    h2Wrapper,
+    h2Text: { fontFamily: "Helvetica-Bold", fontSize: 12, color: t.primary },
+    h3Text: { fontFamily: "Helvetica-Bold", fontSize: 11, color: t.primaryMid, marginTop: 12, marginBottom: 4 },
+
+    // ── Paragraph & bullet ───────────────────────────────────────────────────
+    paragraph:  { marginBottom: 5, textAlign: "justify", fontSize: 11, color: BLACK },
+    bulletRow:  { flexDirection: "row", marginBottom: 3, paddingLeft: 14 },
+    bulletDot:  { width: 14, color: t.accent, fontFamily: "Helvetica-Bold", fontSize: 12 },
+    bulletText: { flex: 1, textAlign: "justify", fontSize: 11, color: BLACK },
+    spacer:     { height: 6 },
+
+    // ── Table ────────────────────────────────────────────────────────────────
+    tableWrapper:    { marginTop: 10, marginBottom: 12, borderWidth: 1, borderColor: t.primary, borderRadius: 3 },
+    tableHeaderRow:  { flexDirection: "row", backgroundColor: t.primary },
+    tableRow:        { flexDirection: "row", borderTopWidth: 1, borderTopColor: GREY_RULE },
+    tableRowAlt:     { backgroundColor: t.primaryLight },
+    tableHeaderCell: { flex: 1, paddingVertical: 6, paddingHorizontal: 8, fontFamily: "Helvetica-Bold", fontSize: 9, color: WHITE },
+    tableCell:       { flex: 1, paddingVertical: 5, paddingHorizontal: 8, fontFamily: "Helvetica", fontSize: 9, color: BLACK },
+
+    // ── Info box (Candidate Information) ─────────────────────────────────────
+    infoBox:           { marginTop: 8, marginBottom: 12, borderWidth: 1, borderColor: t.primary, borderRadius: 3 },
+    infoBoxHeader:     { backgroundColor: t.primary, paddingVertical: 6, paddingHorizontal: 12 },
+    infoBoxHeaderText: { fontFamily: "Helvetica-Bold", fontSize: 9, color: WHITE },
+    infoBoxRow:        { flexDirection: "row", borderTopWidth: 1, borderTopColor: GREY_RULE },
+    infoBoxRowAlt:     { backgroundColor: t.accentLight },
+    infoBoxLabel:      { fontFamily: "Helvetica-Bold", fontSize: 9, color: t.primary, width: 130, paddingVertical: 6, paddingHorizontal: 10, borderRightWidth: 1, borderRightColor: GREY_RULE },
+    infoBoxValue:      { fontFamily: "Helvetica", fontSize: 9, color: BLACK, flex: 1, paddingVertical: 6, paddingHorizontal: 10 },
+  });
+}
+
+type Styles = ReturnType<typeof buildStyles>;
 
 // ── Content preprocessor ─────────────────────────────────────────────────────
 /**
  * Normalises AI-generated markdown before PDF rendering.
  *
  * Handles:
- *  1. HTML entities (& lt; &amp; &deg; etc.)
+ *  1. HTML entities (&amp; &lt; &deg; etc.)
  *  2. HTML <sub> / <sup> tags  →  [[sub:X]] / [[sup:X]] internal markers
  *  3. Unicode subscript chars (₀–₉, ₐₑₒₓₙ…)  →  [[sub:X]] markers
  *  4. Unicode superscript chars (⁰–⁹, ²³…)   →  [[sup:X]] markers
  *  5. Non-WinAnsi characters (arrows, Greek, math) → ASCII equivalents
- *     (standard PDF fonts — Helvetica / Times-Roman — use WinAnsi encoding;
- *      characters outside that range render as blank boxes)
+ *     (Helvetica / Times-Roman use WinAnsi; chars outside that range → blanks)
  */
 function preprocessContent(raw: string): string {
   let s = raw;
 
-  // ── 1. HTML entities ────────────────────────────────────────────────────────
+  // ── 1. HTML entities ──────────────────────────────────────────────────────
   s = s
     .replace(/&amp;/g,    "&")
     .replace(/&lt;/g,     "<")
     .replace(/&gt;/g,     ">")
     .replace(/&nbsp;/g,   " ")
     .replace(/&hellip;/g, "...")
-    .replace(/&mdash;/g,  "—")   // em dash  — WinAnsi ✓
-    .replace(/&ndash;/g,  "–")   // en dash  – WinAnsi ✓
-    .replace(/&ldquo;/g,  "“")   // "  WinAnsi ✓
-    .replace(/&rdquo;/g,  "”")   // "  WinAnsi ✓
-    .replace(/&lsquo;/g,  "‘")   // '  WinAnsi ✓
-    .replace(/&rsquo;/g,  "’")   // '  WinAnsi ✓
-    .replace(/&deg;/g,    "°")   // °  WinAnsi ✓
-    .replace(/&plusmn;/g, "±")   // ±  WinAnsi ✓
-    .replace(/&times;/g,  "×")   // ×  WinAnsi ✓
-    .replace(/&divide;/g, "÷")   // ÷  WinAnsi ✓
-    .replace(/&micro;/g,  "µ")   // µ  WinAnsi ✓
-    .replace(/&copy;/g,   "©")   // ©  WinAnsi ✓
-    .replace(/&reg;/g,    "®")   // ®  WinAnsi ✓
-    .replace(/&trade;/g,  "™")   // ™  WinAnsi ✓
-    .replace(/&frac12;/g, "½")   // ½  WinAnsi ✓
-    .replace(/&frac14;/g, "¼")   // ¼  WinAnsi ✓
-    .replace(/&frac34;/g, "¾")   // ¾  WinAnsi ✓
-    // Superscript HTML entities → our markers
+    .replace(/&mdash;/g,  "—")  // — WinAnsi ✓
+    .replace(/&ndash;/g,  "–")  // – WinAnsi ✓
+    .replace(/&ldquo;/g,  "“")  // " WinAnsi ✓
+    .replace(/&rdquo;/g,  "”")  // " WinAnsi ✓
+    .replace(/&lsquo;/g,  "‘")  // ' WinAnsi ✓
+    .replace(/&rsquo;/g,  "’")  // ' WinAnsi ✓
+    .replace(/&deg;/g,    "°")
+    .replace(/&plusmn;/g, "±")
+    .replace(/&times;/g,  "×")
+    .replace(/&divide;/g, "÷")
+    .replace(/&micro;/g,  "µ")
+    .replace(/&copy;/g,   "©")
+    .replace(/&reg;/g,    "®")
+    .replace(/&trade;/g,  "™")
+    .replace(/&frac12;/g, "½")
+    .replace(/&frac14;/g, "¼")
+    .replace(/&frac34;/g, "¾")
     .replace(/&sup1;/g,   "[[sup:1]]")
     .replace(/&sup2;/g,   "[[sup:2]]")
     .replace(/&sup3;/g,   "[[sup:3]]");
 
-  // ── 2. HTML <sub>/<sup> tags ────────────────────────────────────────────────
-  // Handle multi-character content and nested text
+  // ── 2. HTML <sub>/<sup> tags → internal markers ───────────────────────────
   s = s.replace(/<sub>([\s\S]*?)<\/sub>/gi, (_m, inner: string) => `[[sub:${inner.trim()}]]`);
   s = s.replace(/<sup>([\s\S]*?)<\/sup>/gi, (_m, inner: string) => `[[sup:${inner.trim()}]]`);
 
-  // ── 3. Unicode subscript chars → [[sub:X]] ─────────────────────────────────
+  // ── 3. Unicode subscript chars → [[sub:X]] ────────────────────────────────
   const subCharMap: Record<string, string> = {
     "₀": "0", "₁": "1", "₂": "2", "₃": "3", "₄": "4",
     "₅": "5", "₆": "6", "₇": "7", "₈": "8", "₉": "9",
@@ -381,13 +260,12 @@ function preprocessContent(raw: string): string {
     "ₔ": "e", "ₕ": "h", "ₖ": "k", "ₗ": "l",
     "ₘ": "m", "ₙ": "n", "ₚ": "p", "ₛ": "s", "ₜ": "t",
   };
-  // Match runs of Unicode subscript chars
   s = s.replace(/[₀-ₜ]+/g, (m) =>
     `[[sub:${[...m].map(c => subCharMap[c] ?? c).join("")}]]`
   );
 
-  // ── 4. Unicode superscript chars → [[sup:X]] ───────────────────────────────
-  // ² (U+00B2) and ³ (U+00B3) are in WinAnsi but visually confusing — normalise them too
+  // ── 4. Unicode superscript chars → [[sup:X]] ──────────────────────────────
+  // ² (U+00B2) and ³ (U+00B3) are in WinAnsi but ambiguous — normalise anyway
   const supCharMap: Record<string, string> = {
     "⁰": "0", "¹": "1", "²": "2", "³": "3",
     "⁴": "4", "⁵": "5", "⁶": "6",
@@ -398,112 +276,54 @@ function preprocessContent(raw: string): string {
     `[[sup:${[...m].map(c => supCharMap[c] ?? c).join("")}]]`
   );
 
-  // ── 5. Non-WinAnsi special characters → safe ASCII equivalents ─────────────
-
-  // Arrows (not in WinAnsi)
+  // ── 5. Non-WinAnsi → ASCII equivalents ───────────────────────────────────
+  // Arrows
   s = s
-    .replace(/→/g, "->")    // →
-    .replace(/←/g, "<-")    // ←
-    .replace(/↑/g, "^")     // ↑
-    .replace(/↓/g, "v")     // ↓
-    .replace(/⇒/g, "=>")    // ⇒
-    .replace(/⇐/g, "<=")    // ⇐
-    .replace(/⇔/g, "<=>")   // ⇔
-    .replace(/↔/g, "<->")   // ↔
-    .replace(/↖/g, "^")     // ↖
-    .replace(/↗/g, "^")     // ↗
-    .replace(/↘/g, "v")     // ↘
-    .replace(/↙/g, "v");    // ↙
+    .replace(/→/g, "->").replace(/←/g, "<-").replace(/↑/g, "^").replace(/↓/g, "v")
+    .replace(/⇒/g, "=>").replace(/⇐/g, "<=").replace(/⇔/g, "<=>").replace(/↔/g, "<->")
+    .replace(/↖/g, "^").replace(/↗/g, "^").replace(/↘/g, "v").replace(/↙/g, "v");
 
-  // Math comparison / operators (not in WinAnsi)
+  // Math operators
   s = s
-    .replace(/≥/g, ">=")        // ≥
-    .replace(/≤/g, "<=")        // ≤
-    .replace(/≠/g, "!=")        // ≠
-    .replace(/≈/g, "~=")        // ≈
-    .replace(/∞/g, "infinity")  // ∞
-    .replace(/√/g, "sqrt")      // √
-    .replace(/∑/g, "sum")       // ∑
-    .replace(/∏/g, "product")   // ∏
-    .replace(/∫/g, "integral")  // ∫
-    .replace(/∂/g, "d")         // ∂ (partial derivative — read as plain 'd')
-    .replace(/Δ/g, "delta")     // Δ (capital delta)
-    .replace(/∆/g, "delta")     // ∆ (increment)
-    .replace(/−/g, "-")         // − (minus sign, not hyphen)
-    .replace(/·/g, "*")         // · (middle dot / multiplication)
-    .replace(/⋅/g, "*")         // ⋅ (dot product)
-    .replace(/∧/g, "AND")       // ∧
-    .replace(/∨/g, "OR")        // ∨
-    .replace(/¬/g, "NOT")       // ¬
-    .replace(/∀/g, "for all")   // ∀
-    .replace(/∃/g, "exists")    // ∃
-    .replace(/∈/g, "in")        // ∈
-    .replace(/∉/g, "not in")    // ∉
-    .replace(/⊂/g, "subset")    // ⊂
-    .replace(/⊃/g, "superset")  // ⊃
-    .replace(/∩/g, "intersect") // ∩
-    .replace(/∪/g, "union");    // ∪
+    .replace(/≥/g, ">=").replace(/≤/g, "<=").replace(/≠/g, "!=").replace(/≈/g, "~=")
+    .replace(/∞/g, "infinity").replace(/√/g, "sqrt").replace(/∑/g, "sum")
+    .replace(/∏/g, "product").replace(/∫/g, "integral").replace(/∂/g, "d")
+    .replace(/Δ/g, "delta").replace(/∆/g, "delta").replace(/−/g, "-")
+    .replace(/·/g, "*").replace(/⋅/g, "*")
+    .replace(/∧/g, "AND").replace(/∨/g, "OR").replace(/¬/g, "NOT")
+    .replace(/∀/g, "for all").replace(/∃/g, "exists")
+    .replace(/∈/g, "in").replace(/∉/g, "not in")
+    .replace(/⊂/g, "subset").replace(/⊃/g, "superset")
+    .replace(/∩/g, "intersect").replace(/∪/g, "union");
 
-  // Greek alphabet (not in WinAnsi — µ U+00B5 IS in WinAnsi, leave it)
+  // Greek (µ U+00B5 IS in WinAnsi — leave it; handle only Unicode Greek block)
   s = s
-    .replace(/α/g, "alpha")    // α
-    .replace(/β/g, "beta")     // β
-    .replace(/γ/g, "gamma")    // γ
-    .replace(/δ/g, "delta")    // δ
-    .replace(/ε/g, "epsilon")  // ε
-    .replace(/ζ/g, "zeta")     // ζ
-    .replace(/η/g, "eta")      // η
-    .replace(/θ/g, "theta")    // θ
-    .replace(/ι/g, "iota")     // ι
-    .replace(/κ/g, "kappa")    // κ
-    .replace(/λ/g, "lambda")   // λ
-    .replace(/μ/g, "mu")       // μ (Greek mu — different from µ micro sign U+00B5)
-    .replace(/ν/g, "nu")       // ν
-    .replace(/ξ/g, "xi")       // ξ
-    .replace(/ο/g, "o")        // ο (omicron)
-    .replace(/π/g, "pi")       // π
-    .replace(/ρ/g, "rho")      // ρ
-    .replace(/σ/g, "sigma")    // σ
-    .replace(/τ/g, "tau")      // τ
-    .replace(/υ/g, "upsilon")  // υ
-    .replace(/φ/g, "phi")      // φ
-    .replace(/χ/g, "chi")      // χ
-    .replace(/ψ/g, "psi")      // ψ
-    .replace(/ω/g, "omega")    // ω
-    // Greek uppercase
-    .replace(/Α/g, "Alpha")    // Α
-    .replace(/Β/g, "Beta")     // Β
-    .replace(/Γ/g, "Gamma")    // Γ
-    .replace(/Θ/g, "Theta")    // Θ
-    .replace(/Λ/g, "Lambda")   // Λ
-    .replace(/Ξ/g, "Xi")       // Ξ
-    .replace(/Π/g, "Pi")       // Π
-    .replace(/Σ/g, "Sigma")    // Σ
-    .replace(/Φ/g, "Phi")      // Φ
-    .replace(/Ψ/g, "Psi")      // Ψ
-    .replace(/Ω/g, "Omega")    // Ω
+    .replace(/α/g, "alpha").replace(/β/g, "beta").replace(/γ/g, "gamma")
+    .replace(/δ/g, "delta").replace(/ε/g, "epsilon").replace(/ζ/g, "zeta")
+    .replace(/η/g, "eta").replace(/θ/g, "theta").replace(/ι/g, "iota")
+    .replace(/κ/g, "kappa").replace(/λ/g, "lambda").replace(/μ/g, "mu")
+    .replace(/ν/g, "nu").replace(/ξ/g, "xi").replace(/ο/g, "o")
+    .replace(/π/g, "pi").replace(/ρ/g, "rho").replace(/σ/g, "sigma")
+    .replace(/τ/g, "tau").replace(/υ/g, "upsilon").replace(/φ/g, "phi")
+    .replace(/χ/g, "chi").replace(/ψ/g, "psi").replace(/ω/g, "omega")
+    .replace(/Α/g, "Alpha").replace(/Β/g, "Beta").replace(/Γ/g, "Gamma")
+    .replace(/Θ/g, "Theta").replace(/Λ/g, "Lambda").replace(/Ξ/g, "Xi")
+    .replace(/Π/g, "Pi").replace(/Σ/g, "Sigma").replace(/Φ/g, "Phi")
+    .replace(/Ψ/g, "Psi").replace(/Ω/g, "Omega");
 
-  // Fractions (beyond ½ ¼ ¾ which ARE in WinAnsi)
+  // Fractions beyond ½ ¼ ¾ (which are in WinAnsi)
   s = s
-    .replace(/⅓/g, "1/3")   // ⅓
-    .replace(/⅔/g, "2/3")   // ⅔
-    .replace(/⅕/g, "1/5")   // ⅕
-    .replace(/⅖/g, "2/5")   // ⅖
-    .replace(/⅗/g, "3/5")   // ⅗
-    .replace(/⅘/g, "4/5")   // ⅘
-    .replace(/⅙/g, "1/6")   // ⅙
-    .replace(/⅚/g, "5/6")   // ⅚
-    .replace(/⅛/g, "1/8")   // ⅛
-    .replace(/⅜/g, "3/8")   // ⅜
-    .replace(/⅝/g, "5/8")   // ⅝
-    .replace(/⅞/g, "7/8");  // ⅞
+    .replace(/⅓/g, "1/3").replace(/⅔/g, "2/3").replace(/⅕/g, "1/5")
+    .replace(/⅖/g, "2/5").replace(/⅗/g, "3/5").replace(/⅘/g, "4/5")
+    .replace(/⅙/g, "1/6").replace(/⅚/g, "5/6").replace(/⅛/g, "1/8")
+    .replace(/⅜/g, "3/8").replace(/⅝/g, "5/8").replace(/⅞/g, "7/8");
 
   return s;
 }
 
 // ── Markdown types ────────────────────────────────────────────────────────────
 
-type Span = { text: string; bold: boolean; italic?: boolean; sub?: boolean; sup?: boolean };
+type Span  = { text: string; bold: boolean; italic?: boolean; sub?: boolean; sup?: boolean };
 
 type Block =
   | { type: "h1" | "h2" | "h3"; text: string }
@@ -512,26 +332,21 @@ type Block =
   | { type: "table"; headers: string[]; rows: string[][] }
   | { type: "spacer" };
 
-// ── Span parser — handles **bold**, _italic_, [[sub:X]], [[sup:X]] ───────────
+// ── Span parser ───────────────────────────────────────────────────────────────
+// Handles **bold**, _italic_, [[sub:X]], [[sup:X]]
 
 function parseSpans(line: string): Span[] {
   const spans: Span[] = [];
-  // Groups: 1=bold, 2=italic, 3=subscript, 4=superscript
   const regex = /\*\*([^*]+)\*\*|_([^_]+)_|\[\[sub:([^\]]+)\]\]|\[\[sup:([^\]]+)\]\]/g;
   let last = 0;
   let m: RegExpExecArray | null;
   // eslint-disable-next-line no-cond-assign
   while ((m = regex.exec(line)) !== null) {
     if (m.index > last) spans.push({ text: line.slice(last, m.index), bold: false });
-    if (m[1] !== undefined) {
-      spans.push({ text: m[1], bold: true });
-    } else if (m[2] !== undefined) {
-      spans.push({ text: m[2], bold: false, italic: true });
-    } else if (m[3] !== undefined) {
-      spans.push({ text: m[3], bold: false, sub: true });
-    } else if (m[4] !== undefined) {
-      spans.push({ text: m[4], bold: false, sup: true });
-    }
+    if      (m[1] !== undefined) spans.push({ text: m[1], bold: true });
+    else if (m[2] !== undefined) spans.push({ text: m[2], bold: false, italic: true });
+    else if (m[3] !== undefined) spans.push({ text: m[3], bold: false, sub: true });
+    else if (m[4] !== undefined) spans.push({ text: m[4], bold: false, sup: true });
     last = m.index + m[0].length;
   }
   if (last < line.length) spans.push({ text: line.slice(last), bold: false });
@@ -544,77 +359,62 @@ function parseMarkdown(content: string): Block[] {
   const blocks: Block[] = [];
   const lines = content.split("\n");
   let i = 0;
-
   while (i < lines.length) {
-    const raw = lines[i] ?? "";
+    const raw  = lines[i] ?? "";
     const line = raw.trimEnd();
 
-    // Headings
-    if (line.startsWith("# "))   { blocks.push({ type: "h1", text: line.slice(2).trim() }); i++; continue; }
-    if (line.startsWith("## "))  { blocks.push({ type: "h2", text: line.slice(3).trim() }); i++; continue; }
-    if (line.startsWith("### ")) { blocks.push({ type: "h3", text: line.slice(4).trim() }); i++; continue; }
+    if (line.startsWith("# "))   { blocks.push({ type: "h1", text: line.slice(2).trim()  }); i++; continue; }
+    if (line.startsWith("## "))  { blocks.push({ type: "h2", text: line.slice(3).trim()  }); i++; continue; }
+    if (line.startsWith("### ")) { blocks.push({ type: "h3", text: line.slice(4).trim()  }); i++; continue; }
 
-    // Tables — detect | ... | lines
     if (/^\s*\|/.test(line)) {
       const tableLines: string[] = [];
       while (i < lines.length && /^\s*\|/.test(lines[i] ?? "")) {
-        tableLines.push(lines[i] ?? "");
-        i++;
+        tableLines.push(lines[i] ?? ""); i++;
       }
-      // Parse the table
       const parsed = parseTable(tableLines);
       if (parsed) blocks.push(parsed);
       continue;
     }
 
-    // Bullets
     if (line.startsWith("- ") || line.startsWith("* ")) {
-      blocks.push({ type: "li", spans: parseSpans(line.slice(2).trim()) });
-      i++; continue;
+      blocks.push({ type: "li", spans: parseSpans(line.slice(2).trim()) }); i++; continue;
     }
     if (/^\d+\.\s/.test(line)) {
-      blocks.push({ type: "li", spans: parseSpans(line.replace(/^\d+\.\s/, "").trim()) });
-      i++; continue;
+      blocks.push({ type: "li", spans: parseSpans(line.replace(/^\d+\.\s/, "").trim()) }); i++; continue;
     }
 
-    // Key: Value lines (e.g. "Centre Number: 12345") — keep as paragraphs, handled naturally
     if (line.trim() === "") { blocks.push({ type: "spacer" }); i++; continue; }
-
     blocks.push({ type: "p", spans: parseSpans(line) });
     i++;
   }
-
   return blocks;
 }
 
 // ── Table parser ──────────────────────────────────────────────────────────────
 
-function parseTable(tableLines: string[]): Block & { type: "table" } | null {
-  // Split each line into cells, stripping leading/trailing |
+function parseTable(tableLines: string[]): (Block & { type: "table" }) | null {
   const splitCells = (line: string): string[] =>
-    line.split("|").map(c => c.trim()).filter((c, idx, arr) => idx > 0 && idx < arr.length - 1 || (arr.length <= 2));
-
+    line.split("|").map(c => c.trim()).filter((c, idx, arr) =>
+      idx > 0 && idx < arr.length - 1 || arr.length <= 2
+    );
   const rows = tableLines.map(splitCells);
-
   if (rows.length === 0) return null;
-
-  // First row is always headers
-  const headers = rows[0] ?? [];
-
-  // Second row might be separator (|---|---|) — skip it
-  const dataStart = (rows.length > 1 && (rows[1] ?? []).every(c => /^[-: ]+$/.test(c))) ? 2 : 1;
-  const dataRows = rows.slice(dataStart).filter(r => r.length > 0 && r.some(c => c.trim().length > 0));
-
+  const headers  = rows[0] ?? [];
+  const dataStart = rows.length > 1 && (rows[1] ?? []).every(c => /^[-: ]+$/.test(c)) ? 2 : 1;
+  const dataRows  = rows.slice(dataStart).filter(r => r.length > 0 && r.some(c => c.trim().length > 0));
   if (headers.length === 0) return null;
-
   return { type: "table", headers, rows: dataRows };
 }
 
 // ── Candidate info block detector ─────────────────────────────────────────────
-// Detects lines like "Centre Number: 12345\nName: ..." after "## Candidate Information"
 
-function extractCandidateInfo(blocks: Block[]): { infoBlock: { label: string; value: string }[]; rest: Block[] } | null {
-  const idx = blocks.findIndex(b => b.type === "h2" && (b as { type: "h2"; text: string }).text.toLowerCase().includes("candidate"));
+function extractCandidateInfo(
+  blocks: Block[],
+): { infoBlock: { label: string; value: string }[]; rest: Block[] } | null {
+  const idx = blocks.findIndex(b =>
+    b.type === "h2" && (b as { type: "h2"; text: string }).text.toLowerCase().includes("candidate")
+  );
   if (idx === -1) return null;
 
   const pairs: { label: string; value: string }[] = [];
@@ -624,8 +424,7 @@ function extractCandidateInfo(blocks: Block[]): { infoBlock: { label: string; va
   while (j < blocks.length && (blocks[j]?.type === "p" || blocks[j]?.type === "spacer")) {
     const b = blocks[j];
     if (b?.type === "p") {
-      // Join all span text
-      const full = (b as { type: "p"; spans: Span[] }).spans.map(s => s.text).join("").trim();
+      const full     = (b as { type: "p"; spans: Span[] }).spans.map(s => s.text).join("").trim();
       const colonIdx = full.indexOf(":");
       if (colonIdx > 0) {
         pairs.push({ label: full.slice(0, colonIdx).trim(), value: full.slice(colonIdx + 1).trim() });
@@ -636,20 +435,17 @@ function extractCandidateInfo(blocks: Block[]): { infoBlock: { label: string; va
     j++;
   }
   rest.push(...blocks.slice(j));
-
-  if (pairs.length > 0) return { infoBlock: pairs, rest };
-  return null;
+  return pairs.length > 0 ? { infoBlock: pairs, rest } : null;
 }
 
 // ── Span renderer ─────────────────────────────────────────────────────────────
-// Subscript/superscript: rendered at 65% of the surrounding font size.
-// `rise` shifts the baseline vertically (positive = up, negative = down).
-// @react-pdf/renderer passes `rise` through to pdfkit's text rise operator.
+// `rise` shifts baseline: negative = down (subscript), positive = up (superscript).
+// react-pdf passes this through to pdfkit's text rise operator.
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const SUB_STYLE: any = { fontSize: 7, rise: -2 };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const SUP_STYLE: any = { fontSize: 7, rise: 4 };
+const SUP_STYLE: any = { fontSize: 7, rise:  4 };
 
 function Spans({ spans }: { spans: Span[] }) {
   return (
@@ -665,30 +461,24 @@ function Spans({ spans }: { spans: Span[] }) {
   );
 }
 
-// ── Table renderer ────────────────────────────────────────────────────────────
+// ── Themed sub-components ─────────────────────────────────────────────────────
 
-function TableBlock({ headers, rows }: { headers: string[]; rows: string[][] }) {
+function TableBlock({ headers, rows, S }: { headers: string[]; rows: string[][]; S: Styles }) {
   return (
     <View style={S.tableWrapper}>
       <View style={S.tableHeaderRow}>
-        {headers.map((h, i) => (
-          <Text key={i} style={S.tableHeaderCell}>{h}</Text>
-        ))}
+        {headers.map((h, i) => <Text key={i} style={S.tableHeaderCell}>{h}</Text>)}
       </View>
       {rows.map((row, ri) => (
         <View key={ri} style={[S.tableRow, ri % 2 !== 0 ? S.tableRowAlt : {}]}>
-          {row.map((cell, ci) => (
-            <Text key={ci} style={S.tableCell}>{cell}</Text>
-          ))}
+          {row.map((cell, ci) => <Text key={ci} style={S.tableCell}>{cell}</Text>)}
         </View>
       ))}
     </View>
   );
 }
 
-// ── Info box renderer ─────────────────────────────────────────────────────────
-
-function InfoBox({ label, pairs }: { label: string; pairs: { label: string; value: string }[] }) {
+function InfoBox({ label, pairs, S }: { label: string; pairs: { label: string; value: string }[]; S: Styles }) {
   return (
     <View style={S.infoBox}>
       <View style={S.infoBoxHeader}>
@@ -704,19 +494,13 @@ function InfoBox({ label, pairs }: { label: string; pairs: { label: string; valu
   );
 }
 
-// ── Block renderer ────────────────────────────────────────────────────────────
-
-function BlockView({ block }: { block: Block }) {
+function BlockView({ block, S }: { block: Block; S: Styles }) {
   if (block.type === "spacer") return <View style={S.spacer} />;
   if (block.type === "h1") return (
-    <View style={S.h1Wrapper}>
-      <Text style={S.h1Text}>{block.text}</Text>
-    </View>
+    <View style={S.h1Wrapper}><Text style={S.h1Text}>{block.text}</Text></View>
   );
   if (block.type === "h2") return (
-    <View style={S.h2Wrapper}>
-      <Text style={S.h2Text}>{block.text}</Text>
-    </View>
+    <View style={S.h2Wrapper}><Text style={S.h2Text}>{block.text}</Text></View>
   );
   if (block.type === "h3") return <Text style={S.h3Text}>{block.text}</Text>;
   if (block.type === "li") return (
@@ -725,8 +509,7 @@ function BlockView({ block }: { block: Block }) {
       <Text style={S.bulletText}><Spans spans={block.spans} /></Text>
     </View>
   );
-  if (block.type === "table") return <TableBlock headers={block.headers} rows={block.rows} />;
-  // paragraph
+  if (block.type === "table") return <TableBlock headers={block.headers} rows={block.rows} S={S} />;
   return (
     <Text style={S.paragraph}>
       <Spans spans={(block as { type: "p"; spans: Span[] }).spans} />
@@ -736,32 +519,28 @@ function BlockView({ block }: { block: Block }) {
 
 // ── Cover Page ────────────────────────────────────────────────────────────────
 
-function CoverPage({ project }: { project: Project }) {
+function CoverPage({ project, S }: { project: Project; S: Styles }) {
   const year = new Date(project.createdAt).getFullYear();
-
   const infoRows = [
-    { label: "Student Name",      value: project.studentName || "Student" },
+    { label: "Student Name",     value: project.studentName || "Student" },
     ...(project.schoolName ? [{ label: "School", value: project.schoolName }] : []),
-    { label: "Centre Number",     value: project.centreNumber || "—" },
-    { label: "Candidate Number",  value: project.candidateNumber || "—" },
-    { label: "Grade / Form",      value: project.grade },
-    { label: "Subject",           value: project.subject },
-    { label: "Academic Year",     value: String(year) },
+    { label: "Centre Number",    value: project.centreNumber || "—" },
+    { label: "Candidate Number", value: project.candidateNumber || "—" },
+    { label: "Grade / Form",     value: project.grade },
+    { label: "Subject",          value: project.subject },
+    { label: "Academic Year",    value: String(year) },
   ];
 
   return (
     <Page size="A4" style={S.coverPage}>
-      {/* Top green banner */}
       <View style={S.coverBanner}>
         <Text style={S.coverBannerLabel}>Zimbabwe School Examinations Council</Text>
         <Text style={S.coverBannerTitle}>{project.topic || `${project.subject} Heritage Project`}</Text>
         <Text style={S.coverBannerSubtitle}>Heritage-Based Curriculum (HBC 5.0) — {project.subject}</Text>
       </View>
 
-      {/* Gold divider */}
-      <View style={S.coverGoldBar} />
+      <View style={S.coverAccentBar} />
 
-      {/* Info card */}
       <View style={S.coverCard}>
         <View style={S.coverCardHeader}>
           <Text style={S.coverCardHeaderText}>Candidate Information</Text>
@@ -774,10 +553,8 @@ function CoverPage({ project }: { project: Project }) {
         ))}
       </View>
 
-      {/* Flex spacer pushes footer to the bottom */}
       <View style={S.coverSpacer} />
 
-      {/* Footer */}
       <View style={S.coverFooter}>
         <Text style={S.coverFooterText}>Generated via Pass Study Platform</Text>
         <Text style={S.coverFooterBold}>pass.ac.zw</Text>
@@ -788,16 +565,12 @@ function CoverPage({ project }: { project: Project }) {
 
 // ── Body Pages ────────────────────────────────────────────────────────────────
 
-function BodyPages({ project, blocks }: { project: Project; blocks: Block[] }) {
-  const shortTitle = (project.topic || project.subject).slice(0, 55) + ((project.topic || "").length > 55 ? "…" : "");
+function BodyPages({ project, blocks, S }: { project: Project; blocks: Block[]; S: Styles }) {
+  const raw       = project.topic || project.subject;
+  const shortTitle = raw.length > 55 ? raw.slice(0, 55) + "…" : raw;
 
   return (
-    <Page
-      size="A4"
-      style={S.bodyPage}
-      wrap
-    >
-      {/* Running header */}
+    <Page size="A4" style={S.bodyPage} wrap>
       <View style={S.runningHeader} fixed>
         <Text style={S.runningHeaderLeft}>{shortTitle}</Text>
         <Text
@@ -808,17 +581,14 @@ function BodyPages({ project, blocks }: { project: Project; blocks: Block[] }) {
         />
       </View>
 
-      {/* Content */}
-      {blocks.map((block, i) => (
-        <BlockView key={i} block={block} />
-      ))}
+      {blocks.map((block, i) => <BlockView key={i} block={block} S={S} />)}
     </Page>
   );
 }
 
 // ── Document ──────────────────────────────────────────────────────────────────
 
-function ProjectDocument({ project, blocks }: { project: Project; blocks: Block[] }) {
+function ProjectDocument({ project, blocks, S }: { project: Project; blocks: Block[]; S: Styles }) {
   return (
     <Document
       title={project.topic ?? project.subject}
@@ -826,8 +596,8 @@ function ProjectDocument({ project, blocks }: { project: Project; blocks: Block[
       subject={`ZIMSEC HBC Project — ${project.subject}`}
       keywords="ZIMSEC, HBC, Zimbabwe, heritage"
     >
-      <CoverPage project={project} />
-      <BodyPages project={project} blocks={blocks} />
+      <CoverPage project={project} S={S} />
+      <BodyPages project={project} blocks={blocks} S={S} />
     </Document>
   );
 }
@@ -836,20 +606,25 @@ function ProjectDocument({ project, blocks }: { project: Project; blocks: Block[
 
 /**
  * Generate a PDF buffer for a project using @react-pdf/renderer.
+ * Each project gets a deterministic visual theme derived from its ID.
  */
 export async function generateProjectPdfBuffer(project: Project): Promise<Buffer> {
+  // Pick theme from project ID (deterministic — same project = same theme)
+  const theme = pickTheme(project.id);
+  const S     = buildStyles(theme);
+
   // Normalise special characters BEFORE parsing markdown
   const processedContent = preprocessContent(project.content ?? "");
   let blocks = parseMarkdown(processedContent);
 
-  // Upgrade "Candidate Information" paragraph block to styled InfoBox if present
+  // Upgrade "Candidate Information" paragraph block → styled InfoBox
   const candidateExtract = extractCandidateInfo(blocks);
   if (candidateExtract) {
-    // Rebuild blocks: replace the h2 + paragraph pairs with h2 + InfoBox trigger
     const { infoBlock, rest } = candidateExtract;
-    const h2Idx = rest.findIndex(b => b.type === "h2" && (b as { type: "h2"; text: string }).text.toLowerCase().includes("candidate"));
+    const h2Idx = rest.findIndex(b =>
+      b.type === "h2" && (b as { type: "h2"; text: string }).text.toLowerCase().includes("candidate")
+    );
     if (h2Idx !== -1 && infoBlock.length > 0) {
-      // Insert a special sentinel that BlockView will render as InfoBox
       rest.splice(h2Idx + 1, 0, {
         type: "table",
         headers: ["Field", "Details"],
@@ -860,7 +635,7 @@ export async function generateProjectPdfBuffer(project: Project): Promise<Buffer
   }
 
   const buffer = await renderToBuffer(
-    <ProjectDocument project={project} blocks={blocks} />
+    <ProjectDocument project={project} blocks={blocks} S={S} />
   );
   return Buffer.from(buffer);
 }
