@@ -35,6 +35,7 @@ export default function ProjectDetailPage() {
   const [error, setError] = useState("");
   const [iframeLoading, setIframeLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
+  const [downloadingDocx, setDownloadingDocx] = useState(false);
 
   const token = getAccessToken();
 
@@ -84,6 +85,31 @@ export default function ProjectDetailPage() {
     }
   }
 
+  async function handleDownloadDocx() {
+    if (downloadingDocx) return;
+    setDownloadingDocx(true);
+    try {
+      const docxSrc = `${API}/projects/${id}/docx${token ? `?token=${token}` : ""}`;
+      const res = await fetch(docxSrc);
+      if (!res.ok) throw new Error("Document unavailable");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const cd = res.headers.get("Content-Disposition") ?? "";
+      const match = cd.match(/filename="([^"]+)"/);
+      a.download = match?.[1] ?? `${project?.topic ?? "project"}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert((err as Error).message || "Download failed. Please try again.");
+    } finally {
+      setDownloadingDocx(false);
+    }
+  }
+
   return (
     // Break out of layout's p-6 padding; fill the entire visible main area
     <div className="-m-6 flex flex-col h-[calc(100dvh-3.5rem)] lg:h-[100dvh] overflow-hidden">
@@ -120,6 +146,16 @@ export default function ProjectDetailPage() {
             </div>
           ) : null}
         </div>
+
+        {/* Download as Word Document (secondary) */}
+        <button
+          type="button"
+          onClick={handleDownloadDocx}
+          disabled={loading || !!error || downloadingDocx}
+          className="shrink-0 text-xs text-muted-foreground underline-offset-2 hover:underline disabled:opacity-40 hidden sm:block"
+        >
+          {downloadingDocx ? "Preparing…" : "Download as Word Document"}
+        </button>
 
         {/* Download as PDF */}
         <Button
