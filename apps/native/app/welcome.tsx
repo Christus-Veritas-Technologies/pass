@@ -16,7 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const BRAND = "#4F46E5";
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
-const IMAGE_HEIGHT = SCREEN_HEIGHT * 0.52;
+const IMAGE_HEIGHT = SCREEN_HEIGHT * 0.50;
 const ONBOARDING_KEY = "onboarding_complete";
 
 const SLIDES = [
@@ -68,8 +68,6 @@ export default function LaunchScreen() {
   const listRef = useRef<FlatList>(null);
   const slide = SLIDES[activeIndex]!;
 
-  // index.tsx handles all routing on launch — no redirect check needed here.
-
   const onViewableItemsChanged = useRef(
     ({ viewableItems }: { viewableItems: ViewToken[] }) => {
       if (viewableItems[0]) setActiveIndex(viewableItems[0].index ?? 0);
@@ -99,7 +97,7 @@ export default function LaunchScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
-      {/* Image carousel — swipeable */}
+      {/* ── Image carousel ─────────────────────────────────────────────────── */}
       <View style={{ height: IMAGE_HEIGHT, overflow: "hidden" }}>
         <FlatList
           ref={listRef}
@@ -142,87 +140,96 @@ export default function LaunchScreen() {
         )}
       </View>
 
-      {/* Text content — re-animates on each slide change via key */}
-      <MotiView
-        key={activeIndex}
-        from={{ opacity: 0, translateY: 18 }}
-        animate={{ opacity: 1, translateY: 0 }}
-        transition={{ type: "timing", duration: 320, easing: Easing.bezier(0.23, 1, 0.32, 1) }}
-        style={{ flex: 1, paddingHorizontal: 28, paddingTop: 28, paddingBottom: 8 }}
-      >
-        {/* Badge */}
-        <View
-          style={{
-            alignSelf: "flex-start",
-            backgroundColor: `${slide.accent}18`,
-            borderRadius: 20,
-            paddingHorizontal: 12,
-            paddingVertical: 5,
-            marginBottom: 14,
-          }}
+      {/* ── Content section below image ─────────────────────────────────────
+            justifyContent: "space-between" keeps text at the top and controls
+            pinned to the bottom regardless of how many controls are shown.
+            This prevents the "mushed" appearance on step 3 when the sign-in
+            link joins the dots + button at the bottom. ─────────────────────── */}
+      <View style={{ flex: 1, justifyContent: "space-between" }}>
+
+        {/* Animated text content — sits at the top of the flex space */}
+        <MotiView
+          key={activeIndex}
+          from={{ opacity: 0, translateY: 18 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: "timing", duration: 320, easing: Easing.bezier(0.23, 1, 0.32, 1) }}
+          style={{ paddingHorizontal: 28, paddingTop: 28 }}
         >
-          <Text style={{ fontSize: 12, fontWeight: "700", color: slide.accent, letterSpacing: 0.3 }}>
-            {slide.badge}
-          </Text>
-        </View>
-
-        <Text
-          style={{
-            fontSize: 28,
-            fontWeight: "800",
-            color: "#111827",
-            letterSpacing: -0.8,
-            lineHeight: 34,
-            marginBottom: 12,
-          }}
-        >
-          {slide.title}
-        </Text>
-        <Text style={{ fontSize: 15, color: "#6B7280", lineHeight: 24 }}>
-          {slide.description}
-        </Text>
-      </MotiView>
-
-      {/* Bottom controls */}
-      <View style={{ paddingHorizontal: 24, paddingBottom: 36, gap: 20 }}>
-        {/* Progress dots */}
-        <View style={{ flexDirection: "row", gap: 6, alignItems: "center" }}>
-          {SLIDES.map((s, i) => (
-            <Dot key={s.key} active={i === activeIndex} color={slide.accent} />
-          ))}
-        </View>
-
-        {/* Primary CTA */}
-        <Pressable
-          onPress={handleNext}
-          style={({ pressed }) => ({
-            backgroundColor: pressed ? `${slide.accent}e0` : slide.accent,
-            borderRadius: 14,
-            paddingVertical: 16,
-            alignItems: "center",
-            transform: [{ scale: pressed ? 0.98 : 1 }],
-          })}
-        >
-          <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "700", letterSpacing: 0.1 }}>
-            {isLast ? "Get Started" : "Next"}
-          </Text>
-        </Pressable>
-
-        {/* Secondary: already have an account */}
-        {isLast && (
-          <MotiView
-            from={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ type: "timing", duration: 200, delay: 100 }}
+          {/* Badge */}
+          <View
+            style={{
+              alignSelf: "flex-start",
+              backgroundColor: `${slide.accent}18`,
+              borderRadius: 20,
+              paddingHorizontal: 12,
+              paddingVertical: 5,
+              marginBottom: 14,
+            }}
           >
-            <Pressable onPress={handleLogin} hitSlop={8}>
-              <Text style={{ textAlign: "center", fontSize: 14, color: "#6B7280" }}>
-                Already have an account?{" "}
-                <Text style={{ color: slide.accent, fontWeight: "700" }}>Sign in</Text>
-              </Text>
-            </Pressable>
-          </MotiView>
-        )}
+            <Text style={{ fontSize: 12, fontWeight: "700", color: slide.accent, letterSpacing: 0.3 }}>
+              {slide.badge}
+            </Text>
+          </View>
+
+          <Text
+            style={{
+              fontSize: 28,
+              fontWeight: "800",
+              color: "#111827",
+              letterSpacing: -0.8,
+              lineHeight: 34,
+              marginBottom: 12,
+            }}
+          >
+            {slide.title}
+          </Text>
+          <Text style={{ fontSize: 15, color: "#6B7280", lineHeight: 24 }}>
+            {slide.description}
+          </Text>
+        </MotiView>
+
+        {/* ── Bottom controls — pinned to the bottom of the flex space ─────── */}
+        <View style={{ paddingHorizontal: 24, paddingBottom: 36 }}>
+          {/* Progress dots */}
+          <View style={{ flexDirection: "row", gap: 6, alignItems: "center", marginBottom: 16 }}>
+            {SLIDES.map((s, i) => (
+              <Dot key={s.key} active={i === activeIndex} color={slide.accent} />
+            ))}
+          </View>
+
+          {/* Primary CTA */}
+          <Pressable
+            onPress={handleNext}
+            style={({ pressed }) => ({
+              backgroundColor: pressed ? `${slide.accent}e0` : slide.accent,
+              borderRadius: 14,
+              paddingVertical: 16,
+              alignItems: "center",
+              transform: [{ scale: pressed ? 0.98 : 1 }],
+            })}
+          >
+            <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "700", letterSpacing: 0.1 }}>
+              {isLast ? "Get Started" : "Next"}
+            </Text>
+          </Pressable>
+
+          {/* Sign-in link — only on last slide, fades in below the button */}
+          {isLast && (
+            <MotiView
+              from={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ type: "timing", duration: 200, delay: 100 }}
+              style={{ marginTop: 16 }}
+            >
+              <Pressable onPress={handleLogin} hitSlop={8}>
+                <Text style={{ textAlign: "center", fontSize: 14, color: "#6B7280" }}>
+                  Already have an account?{" "}
+                  <Text style={{ color: slide.accent, fontWeight: "700" }}>Sign in</Text>
+                </Text>
+              </Pressable>
+            </MotiView>
+          )}
+        </View>
       </View>
     </SafeAreaView>
   );
