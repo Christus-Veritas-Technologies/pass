@@ -14,7 +14,6 @@ import {
   PROJECT_ASK_CENTRE_CANDIDATE,
   PROJECT_ASK_GRADE,
   PROJECT_ASK_SUBJECT,
-  PROJECT_ASK_CATEGORY,
   PROJECT_ASK_TITLE,
   PROJECT_ASK_CENTRE,
   PROJECT_ASK_CANDIDATE,
@@ -33,7 +32,26 @@ export type ProjectSlots = {
 };
 
 type Collected = Partial<ProjectSlots>;
-type Awaiting = "name" | "school" | "centre" | "candidate" | "grade" | "subject" | "category" | "title";
+type Awaiting = "name" | "school" | "centre" | "candidate" | "grade" | "subject" | "title";
+
+// Category is auto-selected — never asked from the user.
+const VALID_CATEGORIES = ["Culture & History", "Indigenous Sciences", "Arts & Lifestyle"] as const;
+
+/** Pick a random category. Called once subject is confirmed. */
+function randomCategory(): string {
+  return VALID_CATEGORIES[Math.floor(Math.random() * VALID_CATEGORIES.length)]!;
+}
+
+/**
+ * Auto-assign any fields that don't need user input.
+ * Currently: category is always auto-selected once subject is known.
+ */
+function withAutoFields(c: Collected): Collected {
+  if (c.subject && !c.category) {
+    return { ...c, category: randomCategory() };
+  }
+  return c;
+}
 
 const SUBJECTS_BY_GRADE: Record<string, string[]> = {
   "Grade 7": ["Heritage Studies", "Mathematics", "English", "Science", "Shona/Ndebele"],
@@ -64,12 +82,6 @@ const GRADE_BY_NUMBER: Record<number, string> = {
   1: "Grade 7",
   2: "Form 4",
   3: "Form 6",
-};
-
-const CATEGORY_BY_NUMBER: Record<number, string> = {
-  1: "Culture & History",
-  2: "Indigenous Sciences",
-  3: "Arts & Lifestyle",
 };
 
 /**
@@ -129,7 +141,8 @@ export async function handleProjectBriefReply(
       );
       return { state };
     }
-    const merged: Collected = { ...collected, subject: normalized };
+    // Auto-assign category immediately — no need to ask
+    const merged = withAutoFields({ ...collected, subject: normalized });
     const newState: ConversationState = {
       ...state,
       mode: { kind: "project_brief", awaiting: getAwaiting(merged), collected: merged },
@@ -158,12 +171,12 @@ export async function handleProjectBriefReply(
     return { state: await promptNextSlot(msg, newState, merged) };
   }
 
-  // Title step: user types their own title or "next" to let the AI choose.
+  // Topic step: user types their own topic or "next" to let the AI choose.
   if (awaiting === "title") {
-    // "next", "skip", "auto", blank → AI will generate the title (empty string)
-    const AUTO = /^(next|skip|auto|generate|let\s+(ai|pass|you)\s+(choose|decide|generate)|no\s+title)\s*$/i;
+    // "next", "skip", "auto", blank → AI will generate the topic (empty string)
+    const AUTO = /^(next|skip|auto|generate|let\s+(ai|pass|you)\s+(choose|decide|generate)|no\s+(title|topic))\s*$/i;
     const chosenTitle = AUTO.test(text.trim()) ? "" : text.trim();
-    const merged: Collected = { ...collected, title: chosenTitle };
+    const merged = withAutoFields({ ...collected, title: chosenTitle });
     const newState: ConversationState = {
       ...state,
       mode: { kind: "project_brief", awaiting: getAwaiting(merged), collected: merged },
@@ -182,13 +195,11 @@ export async function handleProjectBriefReply(
 
     if (awaiting === "grade" && GRADE_BY_NUMBER[num]) {
       directSlot = { grade: GRADE_BY_NUMBER[num] };
-    } else if (awaiting === "category" && CATEGORY_BY_NUMBER[num]) {
-      directSlot = { category: CATEGORY_BY_NUMBER[num] };
     }
 
     if (directSlot) {
       // Valid number — apply immediately, skip regex/NLP entirely
-      const merged: Collected = { ...collected, ...directSlot };
+      const merged = withAutoFields({ ...collected, ...directSlot });
       const newState: ConversationState = {
         ...state,
         mode: { kind: "project_brief", awaiting: getAwaiting(merged), collected: merged },
@@ -217,28 +228,32 @@ export async function handleProjectBriefReply(
     }
   }
 
-  // Merge into collected (only fill gaps — don't overwrite confirmed values)
+  // Merge into collected (only fill gaps — don't overwrite confirmed values).
+  // Category is excluded: it's always auto-assigned, never NLP-extracted.
   const merged: Collected = { ...collected };
   for (const k of Object.keys(extracted) as (keyof HbcFields)[]) {
+    if (k === "category") continue; // always auto-assigned
     if (extracted[k] && !merged[k as keyof Collected]) {
       (merged as Record<string, string | undefined>)[k] = extracted[k];
     }
   }
+  // Auto-assign category as soon as subject is known
+  const mergedWithAuto = withAutoFields(merged);
 
   const newState: ConversationState = {
     ...state,
     mode: {
       kind: "project_brief",
-      awaiting: getAwaiting(merged),
-      collected: merged,
+      awaiting: getAwaiting(mergedWithAuto),
+      collected: mergedWithAuto,
     },
   };
 
-  if (isComplete(merged)) {
-    return { state: newState, ready: merged as ProjectSlots };
+  if (isComplete(mergedWithAuto)) {
+    return { state: newState, ready: mergedWithAuto as ProjectSlots };
   }
 
-  return { state: await promptNextSlot(msg, newState, merged) };
+  return { state: await promptNextSlot(msg, newState, mergedWithAuto) };
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -247,12 +262,13 @@ function isComplete(c: Collected): c is ProjectSlots {
   return !!(
     c.studentName && c.schoolName && c.centreNumber && c.candidateNumber &&
     c.grade && c.subject && c.category &&
-    c.title !== undefined   // "" is valid (AI-generated title)
+    c.title !== undefined   // "" is valid (AI-generated topic)
   );
 }
 
 function missingFields(c: Collected): (keyof Collected)[] {
-  const all: (keyof Collected)[] = ["studentName", "schoolName", "centreNumber", "candidateNumber", "grade", "subject", "category", "title"];
+  // category is excluded — always auto-assigned, never extracted from user text
+  const all: (keyof Collected)[] = ["studentName", "schoolName", "centreNumber", "candidateNumber", "grade", "subject", "title"];
   return all.filter((k) => c[k] === undefined);
 }
 
@@ -264,9 +280,9 @@ function getAwaiting(c: Collected): Awaiting {
   if (!c.candidateNumber) return "candidate";
   if (!c.grade) return "grade";
   if (!c.subject) return "subject";
-  if (c.category === undefined) return "category";
+  // category is auto-assigned — skip directly to topic
   if (c.title === undefined) return "title";
-  return "category";  // unreachable — isComplete would have caught it
+  return "title";  // unreachable — isComplete would have caught it
 }
 
 async function promptNextSlot(
@@ -298,9 +314,6 @@ async function promptNextSlot(
       break;
     case "subject":
       await msg.reply(PROJECT_ASK_SUBJECT);
-      break;
-    case "category":
-      await msg.reply(PROJECT_ASK_CATEGORY);
       break;
     case "title":
       await msg.reply(PROJECT_ASK_TITLE);

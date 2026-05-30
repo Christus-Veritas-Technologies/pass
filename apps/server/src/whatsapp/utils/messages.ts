@@ -273,9 +273,9 @@ export const PROJECT_ASK_SUBJECT = `Which subject is this project for? (e.g. *Bi
 
 Just type the subject name.`;
 
-export const PROJECT_ASK_TITLE = `Would you like to give your project a specific title? ✏️
+export const PROJECT_ASK_TITLE = `Do you already have a topic for your project? ✏️
 
-Type your title now, or reply *next* to let Pass choose one for you.`;
+Type your topic below (e.g. _"The role of traditional medicine in rural healthcare"_), or reply *next* and Pass will choose one for you.`;
 
 export const PROJECT_ASK_CATEGORY = `Choose a project category:
 

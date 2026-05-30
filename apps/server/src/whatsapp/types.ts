@@ -38,7 +38,7 @@ export type ConversationMode =
     }
   | {
       kind: "project_brief";
-      awaiting: "name" | "school" | "centre" | "candidate" | "grade" | "subject" | "category" | "title";
+      awaiting: "name" | "school" | "centre" | "candidate" | "grade" | "subject" | "title";
       collected: {
         studentName?: string;
         schoolName?: string;
