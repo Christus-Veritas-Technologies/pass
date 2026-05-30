@@ -118,13 +118,16 @@ STUDENT DETAILS:
 - Grade / Form: ${slots.grade}
 - Year: ${year}
 
-STEP 1 — Choose a specific, authentic topic within the "${slots.category}" category for ${slots.subject} at ${slots.grade} level.
-The topic MUST be grounded in Zimbabwean heritage and align with the HBC 5.0 curriculum.
+${slots.title
+  ? `STEP 1 — The student has chosen this project title: "${slots.title}"
+Use this title exactly as the H1 heading. Build all sections around this specific topic.`
+  : `STEP 1 — Choose a specific, authentic topic within the "${slots.category}" category for ${slots.subject} at ${slots.grade} level.
+The topic MUST be grounded in Zimbabwean heritage and align with the HBC 5.0 curriculum.`}
 
 STEP 2 — Write the full project using the EXACT structure below.
 Start with the H1 title, then the Candidate Information table, then all sections.
 
-# [Your specific, creative project title here]
+# ${slots.title || "[Your specific, creative project title here]"}
 
 ## Candidate Information
 
@@ -282,9 +285,9 @@ export async function generateProject(
 
     console.log(`[projectGenerate] Final word count: ${wordCount} (target ${targetWords})`);
 
-    // Extract AI-chosen title from first # heading
+    // Use the user-supplied title if given, otherwise extract from the first # heading
     const titleMatch = content.match(/^#\s+(.+)$/m);
-    const topic = titleMatch?.[1]?.trim() ?? `${slots.subject} HBC Project`;
+    const topic = slots.title || titleMatch?.[1]?.trim() || `${slots.subject} HBC Project`;
 
     await prisma.project.update({
       where: { id: project.id },

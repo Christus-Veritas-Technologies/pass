@@ -268,6 +268,10 @@ export const PROJECT_ASK_SUBJECT = `Which subject is this project for? (e.g. *Bi
 
 Just type the subject name.`;
 
+export const PROJECT_ASK_TITLE = `Would you like to give your project a specific title? ✏️
+
+Type your title now, or reply *next* to let Pass choose one for you.`;
+
 export const PROJECT_ASK_CATEGORY = `Choose a project category:
 
 1️⃣  Culture & History — totems, liberation struggle, customs, languages

@@ -15,6 +15,7 @@ import {
   PROJECT_ASK_GRADE,
   PROJECT_ASK_SUBJECT,
   PROJECT_ASK_CATEGORY,
+  PROJECT_ASK_TITLE,
   PROJECT_ASK_CENTRE,
   PROJECT_ASK_CANDIDATE,
   PROJECT_NUMBER_BLANK_REMINDER,
@@ -28,10 +29,11 @@ export type ProjectSlots = {
   grade: string;
   subject: string;
   category: string;
+  title: string;   // "" means "let AI generate the title"
 };
 
 type Collected = Partial<ProjectSlots>;
-type Awaiting = "name" | "school" | "centre" | "candidate" | "grade" | "subject" | "category";
+type Awaiting = "name" | "school" | "centre" | "candidate" | "grade" | "subject" | "category" | "title";
 
 const SUBJECTS_BY_GRADE: Record<string, string[]> = {
   "Grade 7": ["Heritage Studies", "Mathematics", "English", "Science", "Shona/Ndebele"],
@@ -156,6 +158,20 @@ export async function handleProjectBriefReply(
     return { state: await promptNextSlot(msg, newState, merged) };
   }
 
+  // Title step: user types their own title or "next" to let the AI choose.
+  if (awaiting === "title") {
+    // "next", "skip", "auto", blank → AI will generate the title (empty string)
+    const AUTO = /^(next|skip|auto|generate|let\s+(ai|pass|you)\s+(choose|decide|generate)|no\s+title)\s*$/i;
+    const chosenTitle = AUTO.test(text.trim()) ? "" : text.trim();
+    const merged: Collected = { ...collected, title: chosenTitle };
+    const newState: ConversationState = {
+      ...state,
+      mode: { kind: "project_brief", awaiting: getAwaiting(merged), collected: merged },
+    };
+    if (isComplete(merged)) return { state: newState, ready: merged as ProjectSlots };
+    return { state: await promptNextSlot(msg, newState, merged) };
+  }
+
   // ── Number selection: deterministic, bypass NLP entirely ─────────────────
   // parseInt handles inputs like "2", "2Combined science" — the leading digit
   // is enough to identify the selection.
@@ -228,12 +244,16 @@ export async function handleProjectBriefReply(
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function isComplete(c: Collected): c is ProjectSlots {
-  return !!(c.studentName && c.schoolName && c.centreNumber && c.candidateNumber && c.grade && c.subject && c.category);
+  return !!(
+    c.studentName && c.schoolName && c.centreNumber && c.candidateNumber &&
+    c.grade && c.subject && c.category &&
+    c.title !== undefined   // "" is valid (AI-generated title)
+  );
 }
 
 function missingFields(c: Collected): (keyof Collected)[] {
-  const all: (keyof Collected)[] = ["studentName", "schoolName", "centreNumber", "candidateNumber", "grade", "subject", "category"];
-  return all.filter((k) => !c[k]);
+  const all: (keyof Collected)[] = ["studentName", "schoolName", "centreNumber", "candidateNumber", "grade", "subject", "category", "title"];
+  return all.filter((k) => c[k] === undefined);
 }
 
 function getAwaiting(c: Collected): Awaiting {
@@ -244,7 +264,9 @@ function getAwaiting(c: Collected): Awaiting {
   if (!c.candidateNumber) return "candidate";
   if (!c.grade) return "grade";
   if (!c.subject) return "subject";
-  return "category";
+  if (c.category === undefined) return "category";
+  if (c.title === undefined) return "title";
+  return "category";  // unreachable — isComplete would have caught it
 }
 
 async function promptNextSlot(
@@ -279,6 +301,9 @@ async function promptNextSlot(
       break;
     case "category":
       await msg.reply(PROJECT_ASK_CATEGORY);
+      break;
+    case "title":
+      await msg.reply(PROJECT_ASK_TITLE);
       break;
   }
 

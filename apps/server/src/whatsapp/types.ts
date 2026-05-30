@@ -38,7 +38,7 @@ export type ConversationMode =
     }
   | {
       kind: "project_brief";
-      awaiting: "name" | "school" | "centre" | "candidate" | "grade" | "subject" | "category";
+      awaiting: "name" | "school" | "centre" | "candidate" | "grade" | "subject" | "category" | "title";
       collected: {
         studentName?: string;
         schoolName?: string;
@@ -47,6 +47,7 @@ export type ConversationMode =
         grade?: string;
         subject?: string;
         category?: string;
+        title?: string;        // user-supplied title; empty string = "let AI choose"
       };
     }
   | { kind: "project_generating"; projectId: string }
