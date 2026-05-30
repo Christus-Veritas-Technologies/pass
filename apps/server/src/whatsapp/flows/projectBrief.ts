@@ -108,7 +108,8 @@ export async function handleProjectBriefReply(
 
   // Name step: the whole message is the student name — no NLP needed
   if (awaiting === "name" && text.trim()) {
-    const merged: Collected = { ...collected, studentName: text.trim() };
+    const studentName = isLeaveBlank(text) ? "_" : text.trim();
+    const merged: Collected = { ...collected, studentName };
     const newState: ConversationState = {
       ...state,
       mode: { kind: "project_brief", awaiting: getAwaiting(merged), collected: merged },
@@ -119,7 +120,8 @@ export async function handleProjectBriefReply(
 
   // School step: the whole message is the school name — no NLP needed
   if (awaiting === "school" && text.trim()) {
-    const merged: Collected = { ...collected, schoolName: text.trim() };
+    const schoolName = isLeaveBlank(text) ? "_" : text.trim();
+    const merged: Collected = { ...collected, schoolName };
     const newState: ConversationState = {
       ...state,
       mode: { kind: "project_brief", awaiting: getAwaiting(merged), collected: merged },
