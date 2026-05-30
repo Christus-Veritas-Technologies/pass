@@ -95,23 +95,28 @@ export function usageCard(opts: {
   projectsLimit: number;
   aiUsed: number;
   aiLimit: number;
+  downloadsUsed: number;
+  downloadsLimit: number;
 }): string {
   const now = new Date();
   const monthName = now.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
   const reset = formatResetDate(nextResetDate());
   const planStr = opts.plan.charAt(0) + opts.plan.slice(1).toLowerCase();
 
-  const aiLimitStr = opts.aiLimit === Infinity ? "∞" : String(opts.aiLimit);
-  const papersBar   = progressBar(opts.papersUsed,   opts.papersLimit);
-  const projectsBar = progressBar(opts.projectsUsed, opts.projectsLimit);
-  const aiBar       = opts.aiLimit === Infinity ? "▓▓▓▓▓▓▓▓▓▓" : progressBar(opts.aiUsed, opts.aiLimit);
+  const aiLimitStr  = opts.aiLimit       === Infinity ? "∞" : String(opts.aiLimit);
+  const dlLimitStr  = opts.downloadsLimit === Infinity ? "∞" : String(opts.downloadsLimit);
+  const papersBar   = progressBar(opts.papersUsed,    opts.papersLimit);
+  const projectsBar = progressBar(opts.projectsUsed,  opts.projectsLimit);
+  const aiBar       = opts.aiLimit       === Infinity ? "▓▓▓▓▓▓▓▓▓▓" : progressBar(opts.aiUsed,       opts.aiLimit);
+  const dlBar       = opts.downloadsLimit === Infinity ? "▓▓▓▓▓▓▓▓▓▓" : progressBar(opts.downloadsUsed, opts.downloadsLimit);
 
   return `*This month (${monthName})*
 
 Plan: *${planStr}*
-Papers:    ${opts.papersUsed} / ${opts.papersLimit} used   ${papersBar}
-Projects:  ${opts.projectsUsed} / ${opts.projectsLimit} used   ${projectsBar}
-AI chats:  ${opts.aiUsed} / ${aiLimitStr}     ${aiBar}
+Papers:     ${opts.papersUsed} / ${opts.papersLimit} used   ${papersBar}
+Projects:   ${opts.projectsUsed} / ${opts.projectsLimit} used   ${projectsBar}
+Downloads:  ${opts.downloadsUsed} / ${dlLimitStr} used   ${dlBar}
+AI chats:   ${opts.aiUsed} / ${aiLimitStr}     ${aiBar}
 
 Resets on ${reset}.
 Need more? https://pass.co.zw/pricing`;

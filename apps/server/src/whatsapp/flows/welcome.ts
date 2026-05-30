@@ -26,12 +26,14 @@ export async function sendUsageCard(msg: Message, userId: string): Promise<void>
   await msg.reply(
     usageCard({
       plan,
-      papersUsed:    usage?.papersUsed     ?? 0,
-      papersLimit:   limits.papers,
-      projectsUsed:  usage?.projectsUsed   ?? 0,
-      projectsLimit: limits.projects,
-      aiUsed:        usage?.aiMessagesUsed ?? 0,
-      aiLimit:       limits.aiMessages,
+      papersUsed:     usage?.papersUsed     ?? 0,
+      papersLimit:    limits.papers,
+      projectsUsed:   usage?.projectsUsed   ?? 0,
+      projectsLimit:  limits.projects,
+      aiUsed:         usage?.aiMessagesUsed ?? 0,
+      aiLimit:        limits.aiMessages,
+      downloadsUsed:  usage?.downloadsUsed  ?? 0,
+      downloadsLimit: limits.downloads,
     }),
   );
 }
