@@ -74,7 +74,14 @@ export async function signup(c: Context) {
   const { email, password, name, referralCode } = parsed.data;
 
   const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) return c.json({ error: "Email already registered" }, 409);
+  if (existing) {
+    const isGoogleOnly = !existing.passwordHash && !!existing.googleId;
+    return c.json({
+      error: isGoogleOnly
+        ? "This email is already registered via Google Sign-In. Please sign in with Google instead."
+        : "This email address is already registered. Please sign in or use a different email address.",
+    }, 409);
+  }
 
   const passwordHash = await hashPassword(password);
   const user = await prisma.user.create({ data: { email, name, passwordHash } });
@@ -101,12 +108,21 @@ export async function login(c: Context) {
   const { email, password } = parsed.data;
 
   const user = await prisma.user.findUnique({ where: { email } });
-  if (!user || !user.passwordHash) {
-    return c.json({ error: "Invalid credentials" }, 401);
+  if (!user) {
+    return c.json({ error: "No account found with that email address. Please check the spelling or sign up." }, 401);
+  }
+  if (!user.passwordHash) {
+    return c.json({
+      error: "This account was created with Google Sign-In. Please tap 'Continue with Google' to log in.",
+    }, 401);
   }
 
   const valid = await verifyPassword(password, user.passwordHash);
-  if (!valid) return c.json({ error: "Invalid credentials" }, 401);
+  if (!valid) {
+    return c.json({
+      error: "Incorrect password. Please try again, or use 'Forgot password' to reset it.",
+    }, 401);
+  }
 
   const { accessToken, refreshToken } = await createSession(user.id);
 

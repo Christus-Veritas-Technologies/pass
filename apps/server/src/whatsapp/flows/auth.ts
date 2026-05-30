@@ -17,6 +17,16 @@ import type { ConversationState } from "../types";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/** Partially masks an email for display: "ab***@domain.com" */
+function maskEmail(email: string): string {
+  const at = email.indexOf("@");
+  if (at < 0) return "***";
+  const local = email.slice(0, at);
+  const domain = email.slice(at + 1);
+  const visible = local.slice(0, Math.min(2, local.length));
+  return `${visible}${"*".repeat(Math.max(0, local.length - visible.length))}@${domain}`;
+}
+
 // ─── Sign-up ──────────────────────────────────────────────────────────────────
 
 export async function startSignup(
@@ -71,14 +81,34 @@ export async function handleSignupReply(
       await msg.reply("Password must be at least 8 characters. Please try again.");
       return state;
     }
-    const passwordHash = await hashPassword(t);
+
+    // Check whether this WhatsApp number is already tied to an existing account.
+    // This prevents two accounts from sharing the same phone/WA number.
     const phone = whatsappIdToE164(whatsappId);
+    const conflict = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { whatsappId },
+          ...(phone ? [{ phone }] : []),
+        ],
+      },
+      select: { email: true },
+    });
+    if (conflict) {
+      await msg.reply(
+        `This WhatsApp number is already linked to an account (*${maskEmail(conflict.email)}*).\n\n` +
+        `Reply *signin* to log into that account, or contact support if you think this is a mistake.`,
+      );
+      return { ...state, mode: { kind: "idle" } };
+    }
+
+    const passwordHash = await hashPassword(t);
     const user = await prisma.user.create({
       data: {
-        email: s.email!,
-        name: s.name!,
+        email:           s.email!,
+        name:            s.name!,
         passwordHash,
-        phone,
+        phone,          // already derived above
         whatsappId,
         whatsappLinkedAt: new Date(),
       },
@@ -174,7 +204,27 @@ export async function handleSigninReply(
       await msg.reply("Incorrect password. Please try again, or reply *cancel* to go back.");
       return state;
     }
+
+    // Check if this WhatsApp number is already linked to a DIFFERENT account.
     const phone = whatsappIdToE164(whatsappId);
+    const conflict = await prisma.user.findFirst({
+      where: {
+        AND: [
+          { id: { not: user.id } },
+          { OR: [{ whatsappId }, ...(phone ? [{ phone }] : [])] },
+        ],
+      },
+      select: { email: true },
+    });
+    if (conflict) {
+      await msg.reply(
+        `This WhatsApp number is already linked to a different account (*${maskEmail(conflict.email)}*).\n\n` +
+        `To log into *that* account, reply *cancel* and then *signin* with its email.\n` +
+        `To move this WhatsApp number to the current account, please visit *pass.co.zw → Settings* to unlink it first.`,
+      );
+      return { ...state, mode: { kind: "idle" } };
+    }
+
     await prisma.user.update({
       where: { id: user.id },
       data: { phone, whatsappId, whatsappLinkedAt: new Date() },
