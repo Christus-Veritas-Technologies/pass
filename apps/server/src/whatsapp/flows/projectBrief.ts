@@ -133,23 +133,38 @@ export async function handleProjectBriefReply(
     return { state: await promptNextSlot(msg, newState, merged) };
   }
 
-  // Resolve numbered inputs before passing to NLP extractor
+  // ── Number selection: deterministic, bypass NLP entirely ─────────────────
+  // parseInt handles inputs like "2", "2Combined science" — the leading digit
+  // is enough to identify the selection.
   const num = parseInt(text.trim(), 10);
-  let resolvedText = text;
 
   if (!isNaN(num)) {
+    let directSlot: Partial<Collected> | null = null;
+
     if (awaiting === "grade" && GRADE_BY_NUMBER[num]) {
-      resolvedText = GRADE_BY_NUMBER[num]!;
+      directSlot = { grade: GRADE_BY_NUMBER[num] };
     } else if (awaiting === "subject" && collected.grade) {
       const subs = SUBJECTS_BY_GRADE[collected.grade] ?? [];
-      if (subs[num - 1]) resolvedText = subs[num - 1]!;
+      if (subs[num - 1]) directSlot = { subject: subs[num - 1] };
     } else if (awaiting === "category" && CATEGORY_BY_NUMBER[num]) {
-      resolvedText = CATEGORY_BY_NUMBER[num]!;
+      directSlot = { category: CATEGORY_BY_NUMBER[num] };
+    }
+
+    if (directSlot) {
+      // Valid number — apply immediately, skip regex/NLP entirely
+      const merged: Collected = { ...collected, ...directSlot };
+      const newState: ConversationState = {
+        ...state,
+        mode: { kind: "project_brief", awaiting: getAwaiting(merged), collected: merged },
+      };
+      if (isComplete(merged)) return { state: newState, ready: merged as ProjectSlots };
+      return { state: await promptNextSlot(msg, newState, merged) };
     }
   }
 
+  // ── Free-text: NLP / regex extraction ─────────────────────────────────────
   // Extract whatever fields the user provided in this message
-  const extracted = await extractHbcFields(resolvedText, needed as (keyof HbcFields)[], useNlp);
+  const extracted = await extractHbcFields(text, needed as (keyof HbcFields)[], useNlp);
 
   // Validate grade if extracted
   if (extracted.grade) {

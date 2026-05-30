@@ -65,9 +65,13 @@ function regexExtract(text: string): HbcFields {
     else if (/form\s*6/i.test(t)) fields.grade = "Form 6";
   }
 
-  // Subject
-  for (const s of ALL_SUBJECTS) {
-    if (t.toLowerCase().includes(s.toLowerCase())) { fields.subject = s; break; }
+  // Subject — sort by length descending so "Combined Science" matches before "Science",
+  // "English Literature" before "English", etc. Without this, the shorter substring
+  // wins and is then rejected by the per-grade validator, causing an infinite loop.
+  const tl2 = t.toLowerCase();
+  const sortedSubjects = [...ALL_SUBJECTS].sort((a, b) => b.length - a.length);
+  for (const s of sortedSubjects) {
+    if (tl2.includes(s.toLowerCase())) { fields.subject = s; break; }
   }
   // Shorthand
   if (!fields.subject) {
