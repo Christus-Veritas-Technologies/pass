@@ -33,7 +33,7 @@ function buildPaperList(
       ? `📚 Papers ${from}–${to} of *${total}*:\n\n`
       : `📚 *${total}* paper${total !== 1 ? "s" : ""} found:\n\n`;
 
-  let msg = `${header}${lines.join("\n")}\n\nSend the *number* to start studying.`;
+  let msg = `${header}${lines.join("\n")}\n\nReply the *number* to study, or *download N* to get the PDF (e.g. _download 2_).`;
   if (hasMore) msg += `\nReply *more* to see the next ${Math.min(PAGE_SIZE, total - to)} papers.`;
   return msg;
 }

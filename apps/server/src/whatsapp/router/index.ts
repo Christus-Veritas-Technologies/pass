@@ -19,6 +19,7 @@ import { startPaper, poseNextQuestion, gradeStudentAnswer, explainQuestion } fro
 import { startProjectBrief, handleProjectBriefReply } from "../flows/projectBrief";
 import { generateProject } from "../flows/projectGenerate";
 import { sendProjectPdf } from "../media/sendProject";
+import { sendPaperPdf } from "../media/sendPaper";
 import { handleAiChat } from "../flows/aiChat";
 import { startUpgrade, handleUpgradeReply } from "../flows/upgrade";
 import { routeWithNL } from "../flows/nlRouter";
@@ -315,6 +316,35 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
   }
 
   if (state.mode.kind === "browsing_papers") {
+    // download_paper: "download 2", "send 3" — send the PDF file directly
+    if (hard.kind === "download_paper" && hard.n !== undefined) {
+      const paperId = getPaperFromCache(whatsappId, hard.n);
+      if (!paperId) {
+        await msg.reply(`I couldn't find paper #${hard.n}. Reply *papers* to see the list again.`);
+        await saveState(whatsappId, state);
+        return;
+      }
+      const resource = await prisma.resource.findUnique({ where: { id: paperId } });
+      if (!resource) {
+        await msg.reply("That paper isn't available. Try another.");
+        await saveState(whatsappId, state);
+        return;
+      }
+      await msg.reply(`⏳ Sending *${resource.title}* as a PDF…`);
+      const result = await sendPaperPdf(client, whatsappId, resource, userId);
+      if (result === "quota_exceeded") {
+        const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } });
+        const planStr = (user?.plan ?? "FREE").charAt(0) + (user?.plan ?? "FREE").slice(1).toLowerCase();
+        await msg.reply(
+          `📥 You've used all your paper downloads on the *${planStr}* plan this month.\n\nReply *UPGRADE* or visit https://pass.co.zw/pricing to unlock more.\n\nYou can still study papers question-by-question — just reply with the paper number!`,
+        );
+      } else if (result === "no_file") {
+        await msg.reply(`📄 The PDF for this paper isn't available for download, but you can study it question-by-question.\n\nReply *${hard.n}* to start studying it.`);
+      }
+      await saveState(whatsappId, state);
+      return;
+    }
+
     if (hard.kind === "number_select" && hard.n !== undefined) {
       const paperId = getPaperFromCache(whatsappId, hard.n);
       if (!paperId) {

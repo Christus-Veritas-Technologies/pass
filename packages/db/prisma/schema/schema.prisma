@@ -227,6 +227,7 @@ model MonthlyUsage {
   papersUsed     Int    @default(0)
   projectsUsed   Int    @default(0)
   aiMessagesUsed Int    @default(0)
+  downloadsUsed  Int    @default(0)
 
   user User @relation(fields: [userId], references: [id])
 

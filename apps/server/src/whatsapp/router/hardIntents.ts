@@ -30,6 +30,8 @@ const SEND_PDF  = /^(pdf|send\s*pdf|download(\s+(pdf|project))?|send\s*(my\s*)?(
 const HISTORY   = /^(history|past\s*sessions?|my\s*sessions?|results?)\s*$/i;
 // Logout / unlink account
 const LOGOUT    = /^(logout|log\s*out|unlink|disconnect(\s+account)?|sign\s*out)\s*$/i;
+// Paper download: "download 2", "send 3", "get paper 1", "send me paper 4"
+const DOWNLOAD_PAPER = /^(?:download|send(?:\s+me)?|get(?:\s+paper)?)\s+(?:paper\s+)?(\d+)$/i;
 
 export interface HardIntentResult {
   kind:
@@ -49,6 +51,7 @@ export interface HardIntentResult {
     | "explain"
     | "number_select"
     | "send_pdf"
+    | "download_paper"
     | "history"
     | "signup"
     | "signin"
@@ -64,6 +67,8 @@ export function matchHardIntent(text: string, mode: ConversationMode): HardInten
 
   if (LOGOUT.test(t))                              return { kind: "logout" };
   if (SEND_PDF.test(t))                            return { kind: "send_pdf" };
+  const dm = DOWNLOAD_PAPER.exec(t);
+  if (dm) return { kind: "download_paper", n: Number(dm[1]) };
   if (HISTORY.test(t))                             return { kind: "history" };
   // Greetings reset the conversation unless actively mid-study
   if (GREETINGS.test(t) && mode.kind !== "paper_study")
