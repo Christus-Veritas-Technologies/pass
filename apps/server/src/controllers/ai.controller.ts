@@ -2,7 +2,8 @@ import { streamSSE } from "hono/streaming";
 import type { Context } from "hono";
 import { z } from "zod";
 import prisma from "@pass/db";
-import { passAgent } from "../mastra";
+import { explainAgent } from "../mastra/agents/explain.agent";
+import { projectAgent } from "../mastra/agents/project.agent";
 import { effectiveGuide, gradeAnswer, getSessionQuestion } from "../lib/grading";
 import { PLAN_LIMITS, currentMonthKey } from "../lib/planLimits";
 
@@ -99,10 +100,8 @@ export async function explainAnswer(c: Context) {
   let accumulated = "";
 
   return streamSSE(c, async (s) => {
-    const agentStream = await passAgent.stream([
-      {
-        role: "user" as const,
-        content: `A ZIMSEC student got this question wrong and has clicked "Explain this". Give them a helpful, detailed explanation.
+    const agentStream = await explainAgent.stream(
+      `A ZIMSEC student got this question wrong and has clicked "Explain this". Give them a helpful, detailed explanation.
 
 Question: ${attempt.questionText}
 
@@ -115,8 +114,7 @@ Please explain:
 4. A memory tip or shortcut if applicable
 
 Keep the language clear and encouraging for a secondary school student. You can use simple Markdown (bold, bullet lists).`,
-      },
-    ]);
+    );
 
     for await (const chunk of agentStream.textStream) {
       accumulated += chunk;
@@ -183,10 +181,8 @@ export async function generateProject(c: Context) {
   let accumulated = "";
 
   return streamSSE(c, async (s) => {
-    const agentStream = await passAgent.stream([
-      {
-        role: "user" as const,
-        content: `Generate a complete ZIMSEC project report in Markdown format.
+    const agentStream = await projectAgent.stream(
+      `Generate a complete ZIMSEC project report in Markdown format.
 
 Subject: ${subject}
 Grade: ${grade}
@@ -203,8 +199,7 @@ Structure the report with these sections (use ## headings):
 8. References (at least 3 ZIMSEC-appropriate references)
 
 Write at the appropriate academic level for ZIMSEC ${grade} in Zimbabwe. Use Zimbabwean context, examples, and currency (ZWL) where relevant.`,
-      },
-    ]);
+    );
 
     for await (const chunk of agentStream.textStream) {
       accumulated += chunk;

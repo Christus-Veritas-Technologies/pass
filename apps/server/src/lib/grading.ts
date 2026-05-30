@@ -6,22 +6,12 @@
  * pre-extracted, making it a cheap constrained task.
  */
 
-import { generateText } from "ai";
-import { z } from "zod";
 import prisma from "@pass/db";
 import type { PaperSession, PaperQuestion, Resource } from "@pass/db";
-import { anthropic, CLAUDE_GRADING_MODEL } from "./anthropic";
+import { gradingAgent, evaluationSchema, type Evaluation } from "../mastra/agents/grading.agent";
 
-export const evaluationSchema = z.object({
-  isCorrect: z.boolean(),
-  score: z.number(),
-  maxScore: z.number(),
-  feedback: z.string(),
-  pointsEarned: z.array(z.string()),
-  pointsMissed: z.array(z.string()),
-});
-
-export type Evaluation = z.infer<typeof evaluationSchema>;
+export { evaluationSchema };
+export type { Evaluation };
 
 type GradableQuestion = {
   text: string;
@@ -57,25 +47,13 @@ export async function getSessionQuestion(
   return question ? { session, question } : null;
 }
 
-/** Strip ```json fences a model sometimes wraps JSON in. */
-function unfence(text: string): string {
-  return text
-    .trim()
-    .replace(/^```(?:json)?\s*/i, "")
-    .replace(/```$/, "")
-    .trim();
-}
-
-/** Grade a student's answer with Haiku against the stored rubric. */
+/** Grade a student's answer (Haiku) against the stored rubric, via the Mastra gradingAgent. */
 export async function gradeAnswer(
   question: GradableQuestion,
   userAnswer: string,
 ): Promise<Evaluation> {
   const guide = effectiveGuide(question);
-  const { text } = await generateText({
-    model: anthropic(CLAUDE_GRADING_MODEL),
-    maxTokens: 700,
-    prompt: `You are marking a ZIMSEC (Zimbabwe) exam answer against the official marking rubric.
+  const prompt = `Mark this ZIMSEC exam answer against the official marking rubric.
 ${question.hasDiagram ? "Note: this question refers to a diagram in the paper — mark the student's textual reasoning leniently.\n" : ""}
 Question (${question.marks} marks):
 ${question.text}
@@ -86,15 +64,10 @@ ${guide}
 Student's answer:
 ${userAnswer || "(no answer provided)"}
 
-Award marks only for points the student clearly made. Be fair, accurate and encouraging.
+maxScore must equal ${question.marks}.`;
 
-Return ONLY a JSON object — no markdown, no prose — with exactly these keys:
-  "isCorrect": boolean (true if the answer earns most of the marks),
-  "score": number (marks awarded),
-  "maxScore": number (must equal ${question.marks}),
-  "feedback": string (2-4 encouraging sentences in plain text — no markdown, no bold, no bullet symbols),
-  "pointsEarned": string[] (rubric points the student made, each a short plain-text phrase),
-  "pointsMissed": string[] (rubric points the student missed, each a short plain-text phrase).`,
+  const result = await gradingAgent.generate(prompt, {
+    structuredOutput: { schema: evaluationSchema },
   });
-  return evaluationSchema.parse(JSON.parse(unfence(text)));
+  return evaluationSchema.parse(result.object);
 }

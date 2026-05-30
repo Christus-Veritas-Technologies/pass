@@ -1,9 +1,9 @@
-import { streamText } from "ai";
 import { streamSSE } from "hono/streaming";
 import type { Context } from "hono";
 
 import prisma from "@pass/db";
-import { anthropic, CLAUDE_GRADING_MODEL, CLAUDE_TUTOR_MODEL } from "../lib/anthropic";
+import { feedbackAgent } from "../mastra/agents/feedback.agent";
+import { explainAgent } from "../mastra/agents/explain.agent";
 import { effectiveGuide } from "../lib/grading";
 import { PLAN_LIMITS, currentMonthKey } from "../lib/planLimits";
 
@@ -154,10 +154,10 @@ export async function submitAnswer(c: Context) {
     : "";
 
   let prompt: string;
-  let model: string;
+  // GUIDE → cheap Haiku feedback agent; FREE → Sonnet explanation agent.
+  const agent = sessionMode === "GUIDE" ? feedbackAgent : explainAgent;
   if (sessionMode === "GUIDE") {
     // Grading feedback — cheap, runs on Haiku, informed by the real rubric.
-    model = CLAUDE_GRADING_MODEL;
     prompt = `You are a warm, encouraging ZIMSEC tutor marking a Zimbabwean student's answer.
 
 Question: ${questionText}${diagramHint}
@@ -169,7 +169,6 @@ Give encouraging feedback in 2–4 sentences. Mark against the rubric: if the an
 Write in plain text only. Use a blank line to separate paragraphs. If you need to list points, start each item on its own line with "* " (asterisk followed by a space). Do not use any markdown — no # headings, no **bold**, no *italic*, no - bullets.`;
   } else {
     // Full worked solution — teaching, runs on Sonnet for quality.
-    model = CLAUDE_TUTOR_MODEL;
     prompt = `You are a knowledgeable ZIMSEC tutor helping a Zimbabwean student understand a past-paper question.
 
 Question:
@@ -197,11 +196,7 @@ Write in plain text only. Use blank lines to separate sections or paragraphs. If
 
   return streamSSE(c, async (stream) => {
     try {
-      const result = streamText({
-        model: anthropic(model),
-        prompt,
-        maxTokens: sessionMode === "GUIDE" ? 400 : 700,
-      });
+      const result = await agent.stream(prompt);
 
       let fullExplanation = "";
       for await (const chunk of result.textStream) {

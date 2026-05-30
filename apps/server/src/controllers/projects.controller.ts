@@ -1,10 +1,9 @@
-import { streamText } from "ai";
 import { streamSSE } from "hono/streaming";
 import { readFile } from "node:fs/promises";
 import type { Context } from "hono";
 
 import prisma from "@pass/db";
-import { anthropic, CLAUDE_MODEL } from "../lib/anthropic";
+import { projectAgent } from "../mastra/agents/project.agent";
 import { verifyAccessToken } from "../lib/jwt";
 import { buildProjectHtml } from "../lib/projectHtml";
 import { renderProjectPdfAndUpload } from "../whatsapp/media/renderProjectPdf";
@@ -204,11 +203,7 @@ Write formally and academically throughout. Use British English. Every section m
 
       await stream.writeSSE({ data: projectId, event: "project_id" });
 
-      const result = streamText({
-        model: anthropic(CLAUDE_MODEL),
-        prompt,
-        maxTokens: 4000,
-      });
+      const result = await projectAgent.stream(prompt);
 
       for await (const chunk of result.textStream) {
         accumulatedContent += chunk;
