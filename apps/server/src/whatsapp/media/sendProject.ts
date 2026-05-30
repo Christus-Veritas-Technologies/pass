@@ -25,7 +25,7 @@ export async function sendProjectPdf(
   const safeSubject = project.subject.replace(/[^a-zA-Z0-9]/g, "_");
   const filename = project.candidateNumber
     ? `HBC_Project_${project.candidateNumber}_${safeSubject}.pdf`
-    : `Pass_Project_${project.id.slice(-8)}.pdf`;
+    : `HBC_Project_${project.id.slice(-8)}.pdf`;
 
   if (pdfUrl) {
     try {
