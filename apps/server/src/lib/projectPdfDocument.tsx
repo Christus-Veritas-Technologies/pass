@@ -395,7 +395,7 @@ function parseMarkdown(content: string): Block[] {
 
 function parseTable(tableLines: string[]): (Block & { type: "table" }) | null {
   const splitCells = (line: string): string[] =>
-    line.split("|").map(c => c.trim()).filter((c, idx, arr) =>
+    line.split("|").map((c) => c.trim()).filter((_c, idx, arr) =>
       idx > 0 && idx < arr.length - 1 || arr.length <= 2
     );
   const rows = tableLines.map(splitCells);
@@ -478,21 +478,6 @@ function TableBlock({ headers, rows, S }: { headers: string[]; rows: string[][];
   );
 }
 
-function InfoBox({ label, pairs, S }: { label: string; pairs: { label: string; value: string }[]; S: Styles }) {
-  return (
-    <View style={S.infoBox}>
-      <View style={S.infoBoxHeader}>
-        <Text style={S.infoBoxHeaderText}>{label}</Text>
-      </View>
-      {pairs.map((p, i) => (
-        <View key={i} style={[S.infoBoxRow, i % 2 !== 0 ? S.infoBoxRowAlt : {}]}>
-          <Text style={S.infoBoxLabel}>{p.label}</Text>
-          <Text style={S.infoBoxValue}>{p.value}</Text>
-        </View>
-      ))}
-    </View>
-  );
-}
 
 function BlockView({ block, S }: { block: Block; S: Styles }) {
   if (block.type === "spacer") return <View style={S.spacer} />;

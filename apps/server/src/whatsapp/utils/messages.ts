@@ -20,6 +20,39 @@ To get started:
   • Reply *signin* — log in to an existing account
   • Reply *link* — link using a code from the web or app`;
 
+/**
+ * Context-aware "you need an account" nudges for unlinked users.
+ * Shown instead of the generic welcome when the user's message already
+ * reveals what feature they want to use.
+ */
+export function unlinkedFeatureNudge(
+  feature: "papers" | "project" | "ai_chat" | "upgrade",
+): string {
+  switch (feature) {
+    case "papers":
+      return `📚 You need a free *Pass* account to study past papers.
+
+Reply *signup* to create one — it only takes 2 minutes and it's free.
+Or reply *signin* if you already have an account.`;
+
+    case "project":
+      return `📝 You need a free *Pass* account to generate ZIMSEC HBC projects.
+
+Reply *signup* to create one, or *signin* to log into your existing account.`;
+
+    case "ai_chat":
+      return `🤖 You need a free *Pass* account to get AI explanations.
+
+Reply *signup* to create one in 2 minutes — no credit card needed.
+Or reply *signin* if you already have an account.`;
+
+    case "upgrade":
+      return `💳 You need a *Pass* account before you can upgrade.
+
+Reply *signup* to create a free account first, or *signin* to log in.`;
+  }
+}
+
 export const LINK_INSTRUCTIONS = `Great. Open Pass on the web or in the app, go to
 *Settings → Connect WhatsApp* and you'll see a 6-digit code.
 Send that code here.`;
@@ -88,33 +121,40 @@ Need more? https://pass.co.zw/pricing`;
 
 export function papersQuotaMessage(plan: string, limit: number): string {
   const reset = formatResetDate(nextResetDate());
-  return `You've used all *${limit} papers* on the ${plan} plan this month (resets on ${reset}).
+  const planStr = plan.charAt(0) + plan.slice(1).toLowerCase();
+  return `📚 You've used all *${limit} papers* on the *${planStr}* plan this month — resets on ${reset}.
 
-Upgrade to:
-  • *Study* — 12 papers + 7 projects / month
-  • *Pass*  — 20 papers + 12 projects / month
+To unlock more papers right now:
+  • *Study* plan — 12 papers + 7 projects / month
+  • *Pass* plan  — 20 papers + 12 projects / month
 
-Reply *UPGRADE* or visit https://pass.co.zw/pricing to choose a plan.
+Reply *UPGRADE* or visit https://pass.co.zw/pricing.
 
-You can still chat with me for free 👋`;
+💬 You can still ask me study questions while you wait for the reset!`;
 }
 
 export function projectsQuotaMessage(plan: string, limit: number): string {
   const reset = formatResetDate(nextResetDate());
-  return `You've used all *${limit} projects* on the ${plan} plan this month (resets on ${reset}).
+  const planStr = plan.charAt(0) + plan.slice(1).toLowerCase();
+  return `📝 You've used all *${limit} projects* on the *${planStr}* plan this month — resets on ${reset}.
 
-Upgrade to:
-  • *Study* — 7 projects / month
-  • *Pass*  — 12 projects / month
+To generate more projects right now:
+  • *Study* plan — 7 projects / month
+  • *Pass* plan  — 12 projects / month
 
-Reply *UPGRADE* or visit https://pass.co.zw/pricing to choose a plan.`;
+Reply *UPGRADE* or visit https://pass.co.zw/pricing.
+
+📚 You can still study papers or ask me questions!`;
 }
 
 export function aiQuotaMessage(plan: string, limit: number): string {
   const reset = formatResetDate(nextResetDate());
-  return `You've used all *${limit} AI replies* on the ${plan} plan this month (resets on ${reset}).
+  const planStr = plan.charAt(0) + plan.slice(1).toLowerCase();
+  return `🤖 You've used all *${limit} AI replies* on the *${planStr}* plan this month — resets on ${reset}.
 
-Reply *UPGRADE* or visit https://pass.co.zw/pricing to keep chatting.`;
+Reply *UPGRADE* or visit https://pass.co.zw/pricing to keep chatting.
+
+📚 You can still study papers and browse content in the meantime!`;
 }
 
 // ─── Usage footer (soft warning at ≥ 50 %) ───────────────────────────────────

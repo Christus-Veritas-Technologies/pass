@@ -70,3 +70,59 @@ export async function getAiMessageUsage(userId: string): Promise<AiQuotaResult> 
     limit,
   };
 }
+
+// ─── Per-feature read-only quota checks ───────────────────────────────────────
+// Used by the router to short-circuit feature flows before they collect slots.
+
+export interface FeatureQuotaResult {
+  allowed: boolean;
+  used: number;
+  limit: number;
+  plan: string;
+}
+
+export async function checkPapersQuota(userId: string): Promise<FeatureQuotaResult> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { plan: true, bonusPapers: true },
+  });
+  if (!user) return { allowed: false, used: 0, limit: 0, plan: "FREE" };
+
+  const limits = PLAN_LIMITS[user.plan as import("./planLimits").PlanKey];
+  const month = currentMonthKey();
+  const usage = await prisma.monthlyUsage.findUnique({
+    where: { userId_month: { userId, month } },
+  });
+
+  const used = usage?.papersUsed ?? 0;
+  const hasBonusCredits = (user.bonusPapers ?? 0) > 0;
+  return {
+    allowed: used < limits.papers || hasBonusCredits,
+    used,
+    limit: limits.papers,
+    plan: user.plan,
+  };
+}
+
+export async function checkProjectsQuota(userId: string): Promise<FeatureQuotaResult> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { plan: true, bonusProjects: true },
+  });
+  if (!user) return { allowed: false, used: 0, limit: 0, plan: "FREE" };
+
+  const limits = PLAN_LIMITS[user.plan as import("./planLimits").PlanKey];
+  const month = currentMonthKey();
+  const usage = await prisma.monthlyUsage.findUnique({
+    where: { userId_month: { userId, month } },
+  });
+
+  const used = usage?.projectsUsed ?? 0;
+  const hasBonusCredits = (user.bonusProjects ?? 0) > 0;
+  return {
+    allowed: used < limits.projects || hasBonusCredits,
+    used,
+    limit: limits.projects,
+    plan: user.plan,
+  };
+}

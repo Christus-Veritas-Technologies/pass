@@ -159,7 +159,7 @@ SPECIAL CHARACTER RULES (MANDATORY — the PDF renderer requires these):
 - NEVER use Unicode math symbols (≥ ≤ ≠ ≈ √ ∞ ∑) — use ASCII: >=, <=, !=, ~=, sqrt, infinity, sum`;
 }
 
-function buildExpansionPrompt(existing: string, slots: ProjectSlots, targetWords: number): string {
+function buildExpansionPrompt(existing: string, _slots: ProjectSlots, targetWords: number): string {
   const current = countWords(existing);
   const needed = targetWords - current;
   return `The following ZIMSEC HBC project is not yet long enough. It currently has approximately ${current} words but needs at least ${targetWords} words.

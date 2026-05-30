@@ -22,11 +22,53 @@ import { sendProjectPdf } from "../media/sendProject";
 import { handleAiChat } from "../flows/aiChat";
 import { startUpgrade, handleUpgradeReply } from "../flows/upgrade";
 import { routeWithNL } from "../flows/nlRouter";
-import { getAiMessageUsage } from "../../lib/aiQuota";
-import { CANCEL_OK, LOGOUT_OK, WELCOME_UNLINKED, MEDIA_ONLY, RATE_LIMIT, AI_QUOTA_EXHAUSTED } from "../utils/messages";
+import { getAiMessageUsage, checkProjectsQuota } from "../../lib/aiQuota";
+import {
+  CANCEL_OK,
+  LOGOUT_OK,
+  WELCOME_UNLINKED,
+  MEDIA_ONLY,
+  RATE_LIMIT,
+  unlinkedFeatureNudge,
+  projectsQuotaMessage,
+  aiQuotaMessage,
+} from "../utils/messages";
 
 const RATE_WINDOW_MS   = 60_000;
 const RATE_MAX_PER_MIN = 30;
+
+// ── Unlinked feature hint detector ───────────────────────────────────────────
+// Pure regex — no AI call — so it works even before a user has signed up.
+// Returns the feature the user appears to want, or null for ambiguous messages.
+
+type UnlinkedFeatureHint = "papers" | "project" | "ai_chat" | "upgrade";
+
+function detectUnlinkedFeatureHint(text: string): UnlinkedFeatureHint | null {
+  const t = text.toLowerCase();
+
+  // Upgrade / payment intent (check before papers — "pay for papers" → upgrade)
+  if (/\b(upgrade|pay|subscri|premium|ecocash|onemoney|pricing|buy\s+(plan|pass|study))\b/.test(t))
+    return "upgrade";
+
+  // Project intent
+  if (/\b(project|hbc|heritage[\s-]based|assignment|school\s+report)\b/.test(t))
+    return "project";
+
+  // Paper / study intent — subjects, grades, or explicit paper keywords
+  if (
+    /\b(paper|study|exam|past|practis|practice|attempt|o[\s-]?level|a[\s-]?level|form\s*[1-6]|grade\s*[1-9]|zimsec|maths?|mathematics|physics|chemistry|biology|geography|history|commerce|economics|accounting|agriculture|english\s+language|literature|shona|ndebele|sociology|computer\s+science|combined\s+science|heritage\s+studies|food\s+(and\s+)?nutrition|religious|questions?)\b/.test(t)
+  )
+    return "papers";
+
+  // General question / AI chat intent
+  if (
+    /\b(explain|how|what|why|when|where|define|meaning|understand|difference|describe|tell\s+me|teach|help\s+me)\b/.test(t) ||
+    /\?/.test(t)
+  )
+    return "ai_chat";
+
+  return null;
+}
 
 export async function handleMessage(client: Client, msg: Message): Promise<void> {
   // Only process direct 1-on-1 chat messages.
@@ -131,17 +173,22 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
       return;
     }
 
-    await sendWelcomeUnlinked(msg);
+    // Context-aware nudge: detect what feature they want and tell them to sign up
+    // for it specifically, rather than showing the generic welcome every time.
+    const featureHint = detectUnlinkedFeatureHint(text);
+    if (featureHint) {
+      await msg.reply(unlinkedFeatureNudge(featureHint));
+    } else {
+      await sendWelcomeUnlinked(msg);
+    }
     await saveState(whatsappId, state);
     return;
   }
 
-  // ── Linked path: check quota early ───────────────────────────────────────
-  // Determines whether to use full NLP or rigid (regex-only) mode.
-  // Slot collection (project_brief) is always allowed — only AI calls are gated.
-
+  // ── Linked path: read AI quota (used only at NL dispatch, not as a global wall) ──
+  // Each feature enforces its own quota at call-time. This read is only used to
+  // gate answer_question / ai_chat calls further down — never as a blanket block.
   const quota = await getAiMessageUsage(userId);
-  const rigidMode = !quota.allowed;
 
   if (hard.kind === "greeting") {
     state = { ...state, mode: { kind: "idle" } };
@@ -297,9 +344,8 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
 
   // project_brief: slot collection is free (no AI quota); NLP extraction uses Haiku
   // but is not counted toward the user's AI message quota.
-  // In rigid mode we skip Haiku and use regex-only extraction.
   if (state.mode.kind === "project_brief") {
-    const { state: newState, ready } = await handleProjectBriefReply(msg, text, state, !rigidMode);
+    const { state: newState, ready } = await handleProjectBriefReply(msg, text, state, true);
     if (ready) {
       const finalState = await generateProject(client, msg, ready, userId, newState);
       await saveState(whatsappId, finalState);
@@ -351,19 +397,19 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
     }
   }
 
-  // ── Quota wall: no further AI calls in rigid mode ─────────────────────────
-
-  if (rigidMode) {
-    await msg.reply(AI_QUOTA_EXHAUSTED);
-    await saveState(whatsappId, state);
-    return;
-  }
-
   // ── Natural-language AI routing (idle / browsing fallthrough) ─────────────
+  // Each branch enforces its own quota. There is no global gate here — a user
+  // exhausted on AI messages can still browse papers; a user out of project
+  // credits can still ask questions. The individual feature quota messages tell
+  // them exactly which resource is exhausted and how to unblock it.
 
   const action = await routeWithNL(text);
 
   if (action.kind === "study_paper") {
+    // Papers-quota pre-check: prevents sending the user through the browse flow
+    // only to hit a wall when they try to start a session.
+    // Note: browsing is always free — the quota only blocks starting a session.
+    // We show the list anyway; the wall is enforced when they select a paper.
     const { newState, paperIds } = await showPapers(msg, action, 0, state);
     setPaperListCache(whatsappId, paperIds);
     await saveState(whatsappId, newState);
@@ -371,6 +417,14 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
   }
 
   if (action.kind === "generate_project") {
+    // Project-quota pre-check: short-circuits before slot collection begins so
+    // the user isn't walked through the entire brief only to hit a wall at the end.
+    const pqc = await checkProjectsQuota(userId);
+    if (!pqc.allowed) {
+      await msg.reply(projectsQuotaMessage(pqc.plan, pqc.limit));
+      await saveState(whatsappId, state);
+      return;
+    }
     state = await startProjectBrief(msg, state, action);
     await saveState(whatsappId, state);
     return;
@@ -388,7 +442,14 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
     return;
   }
 
-  // answer_question and unclear both go through handleAiChat which enforces quota
+  // answer_question — gate only this path on AI message quota
+  if (!quota.allowed) {
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } });
+    await msg.reply(aiQuotaMessage(user?.plan ?? "FREE", quota.limit));
+    await saveState(whatsappId, state);
+    return;
+  }
+
   const question = action.kind === "answer_question" ? action.question : text;
   state = await handleAiChat(msg, question, userId, state);
   await saveState(whatsappId, state);
