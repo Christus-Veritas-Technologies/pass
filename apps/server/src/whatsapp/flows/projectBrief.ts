@@ -16,6 +16,7 @@ import {
   PROJECT_ASK_CATEGORY,
   PROJECT_ASK_CENTRE,
   PROJECT_ASK_CANDIDATE,
+  PROJECT_NUMBER_BLANK_REMINDER,
 } from "../utils/messages";
 
 export type ProjectSlots = {
@@ -68,6 +69,17 @@ const CATEGORY_BY_NUMBER: Record<number, string> = {
   3: "Arts & Lifestyle",
 };
 
+/**
+ * Matches any natural-language phrasing meaning "I don't have this number yet".
+ * Covers: "leave blank", "skip", "I don't have it", "not yet", "n/a", etc.
+ */
+const LEAVE_BLANK = /\b(leave\s*(it\s*)?(blank|empty)|skip(\s*(it|this|the\s+number))?|blank|don'?t\s+(have|know)|not\s+(yet|received|assigned|registered|given)|haven'?t\s+(received|got|been\s+given|been\s+assigned|registered)|no\s+(centre|candidate|number|idea)|n\/?a|none|nil)\b|^[-_]+$|^(none|skip|blank)$/i;
+
+/** Returns true if the user means to leave the number field empty. */
+function isLeaveBlank(text: string): boolean {
+  return LEAVE_BLANK.test(text.trim());
+}
+
 export async function handleProjectBriefReply(
   msg: Message,
   text: string,
@@ -98,6 +110,26 @@ export async function handleProjectBriefReply(
       mode: { kind: "project_brief", awaiting: getAwaiting(merged), collected: merged },
     };
     if (isComplete(merged)) return { state: newState, ready: merged as ProjectSlots };
+    return { state: await promptNextSlot(msg, newState, merged) };
+  }
+
+  // Centre / candidate leave-blank: student hasn't registered for exams yet.
+  // Set the missing number(s) to "_" as a placeholder and remind them to update later.
+  if ((awaiting === "centre" || awaiting === "candidate") && isLeaveBlank(text)) {
+    const merged: Collected = { ...collected };
+    // When both are missing (centre step) blank both in one go
+    if (!merged.centreNumber)  merged.centreNumber  = "_";
+    if (!merged.candidateNumber) merged.candidateNumber = "_";
+
+    const newState: ConversationState = {
+      ...state,
+      mode: { kind: "project_brief", awaiting: getAwaiting(merged), collected: merged },
+    };
+    if (isComplete(merged)) {
+      await msg.reply(PROJECT_NUMBER_BLANK_REMINDER);
+      return { state: newState, ready: merged as ProjectSlots };
+    }
+    await msg.reply(PROJECT_NUMBER_BLANK_REMINDER);
     return { state: await promptNextSlot(msg, newState, merged) };
   }
 

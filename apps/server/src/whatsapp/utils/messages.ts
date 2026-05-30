@@ -242,11 +242,19 @@ export const PROJECT_ASK_NAME = `Let's create your ZIMSEC Heritage-Based Curricu
 export const PROJECT_ASK_SCHOOL = `What is the name of your *school*?`;
 
 export const PROJECT_ASK_CENTRE_CANDIDATE = `Got it! Please send your exam centre number and candidate number.
-e.g. _Centre: 1234, Candidate: 5678_`;
+e.g. _Centre: 1234, Candidate: 5678_
 
-export const PROJECT_ASK_CENTRE = `What is your *exam centre number*? (e.g. _1234_)`;
+Not registered yet? Reply *leave blank* — we'll use a placeholder and you can fill in the real numbers later.`;
 
-export const PROJECT_ASK_CANDIDATE = `And your *candidate number*? (e.g. _5678_)`;
+export const PROJECT_ASK_CENTRE = `What is your *exam centre number*? (e.g. _1234_)
+
+Not registered yet? Reply *leave blank*.`;
+
+export const PROJECT_ASK_CANDIDATE = `And your *candidate number*? (e.g. _5678_)
+
+Not registered yet? Reply *leave blank*.`;
+
+export const PROJECT_NUMBER_BLANK_REMINDER = `_(Placeholder saved. Before you submit your project to school, update your centre and candidate numbers at pass.co.zw/projects — or ask your teacher once you receive them.)_`;
 
 export const PROJECT_ASK_GRADE = `Which grade are you in?
 
