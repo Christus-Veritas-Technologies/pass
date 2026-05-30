@@ -13,6 +13,7 @@ import {
   PROJECT_ASK_SCHOOL,
   PROJECT_ASK_CENTRE_CANDIDATE,
   PROJECT_ASK_GRADE,
+  PROJECT_ASK_SUBJECT,
   PROJECT_ASK_CATEGORY,
   PROJECT_ASK_CENTRE,
   PROJECT_ASK_CANDIDATE,
@@ -113,6 +114,28 @@ export async function handleProjectBriefReply(
     return { state: await promptNextSlot(msg, newState, merged) };
   }
 
+  // Subject step: treat whole message as the subject name, validate against grade.
+  // No NLP/number resolution needed — the message IS the subject.
+  if (awaiting === "subject" && text.trim()) {
+    const normalized = normalizeSubject(text.trim(), collected.grade);
+    if (!normalized) {
+      const gradeStr = collected.grade ?? "your grade";
+      const examples = (SUBJECTS_BY_GRADE[collected.grade ?? ""] ?? []).slice(0, 5).join(", ");
+      await msg.reply(
+        `I don't recognise "${text.trim()}" as a ZIMSEC subject for ${gradeStr}.\n\n` +
+        `Examples: ${examples}${examples ? "…" : ""}\n\nPlease try again.`,
+      );
+      return { state };
+    }
+    const merged: Collected = { ...collected, subject: normalized };
+    const newState: ConversationState = {
+      ...state,
+      mode: { kind: "project_brief", awaiting: getAwaiting(merged), collected: merged },
+    };
+    if (isComplete(merged)) return { state: newState, ready: merged as ProjectSlots };
+    return { state: await promptNextSlot(msg, newState, merged) };
+  }
+
   // Centre / candidate leave-blank: student hasn't registered for exams yet.
   // Set the missing number(s) to "_" as a placeholder and remind them to update later.
   if ((awaiting === "centre" || awaiting === "candidate") && isLeaveBlank(text)) {
@@ -143,9 +166,6 @@ export async function handleProjectBriefReply(
 
     if (awaiting === "grade" && GRADE_BY_NUMBER[num]) {
       directSlot = { grade: GRADE_BY_NUMBER[num] };
-    } else if (awaiting === "subject" && collected.grade) {
-      const subs = SUBJECTS_BY_GRADE[collected.grade] ?? [];
-      if (subs[num - 1]) directSlot = { subject: subs[num - 1] };
     } else if (awaiting === "category" && CATEGORY_BY_NUMBER[num]) {
       directSlot = { category: CATEGORY_BY_NUMBER[num] };
     }
@@ -255,7 +275,7 @@ async function promptNextSlot(
       await msg.reply(PROJECT_ASK_GRADE);
       break;
     case "subject":
-      await msg.reply(projectAskSubject(collected.grade!));
+      await msg.reply(PROJECT_ASK_SUBJECT);
       break;
     case "category":
       await msg.reply(PROJECT_ASK_CATEGORY);
@@ -279,8 +299,38 @@ function normalizeGrade(raw: string): string | undefined {
   return undefined;
 }
 
-function projectAskSubject(grade: string): string {
-  const subs = SUBJECTS_BY_GRADE[grade] ?? [];
-  const list = subs.map((s, i) => `${i + 1}️⃣  ${s}`).join("\n");
-  return `Which subject is this project for?\n\n${list}\n\nReply a number or type the subject name.`;
+/**
+ * Normalise a raw subject string against the allowed subjects for a grade.
+ * Returns the canonical name or undefined if no match is found.
+ */
+function normalizeSubject(raw: string, grade: string | undefined): string | undefined {
+  const allowed = grade ? (SUBJECTS_BY_GRADE[grade] ?? []) : Object.values(SUBJECTS_BY_GRADE).flat();
+  const t = raw.trim().toLowerCase();
+
+  // 1. Exact match
+  const exact = allowed.find((s) => s.toLowerCase() === t);
+  if (exact) return exact;
+
+  // 2. Substring — longer names first to avoid "Science" winning over "Combined Science"
+  const sorted = [...allowed].sort((a, b) => b.length - a.length);
+  const sub = sorted.find((s) => t.includes(s.toLowerCase()) || s.toLowerCase().includes(t));
+  if (sub) return sub;
+
+  // 3. Common abbreviations
+  const abbrev: Record<string, string> = {
+    maths: "Mathematics", math: "Mathematics",
+    phys: "Physics", chem: "Chemistry", bio: "Biology",
+    geo: "Geography", hist: "History", agric: "Agriculture",
+    eng: "English", lit: "English Literature", "english lit": "English Literature",
+    "combined sci": "Combined Science", "comb sci": "Combined Science",
+    sociol: "Sociology", "heritage": "Heritage Studies",
+    shona: "Shona", ndebele: "Shona/Ndebele",
+    sci: "Science", "rel": "Religious and Moral Education",
+    "food": "Food and Nutrition", "comp": "Computer Science",
+  };
+  for (const [key, val] of Object.entries(abbrev)) {
+    if (t.includes(key) && allowed.find((s) => s === val)) return val;
+  }
+
+  return undefined;
 }

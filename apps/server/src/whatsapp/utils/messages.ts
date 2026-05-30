@@ -264,6 +264,10 @@ export const PROJECT_ASK_GRADE = `Which grade are you in?
 
 Reply a number or type the grade.`;
 
+export const PROJECT_ASK_SUBJECT = `Which subject is this project for? (e.g. *Biology*, *Combined Science*, *History*)
+
+Just type the subject name.`;
+
 export const PROJECT_ASK_CATEGORY = `Choose a project category:
 
 1️⃣  Culture & History — totems, liberation struggle, customs, languages
