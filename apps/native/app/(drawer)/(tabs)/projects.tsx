@@ -76,6 +76,7 @@ export default function ProjectsScreen() {
   const [grade, setGrade] = useState<string>(GRADES[1]);
   const [subject, setSubject] = useState<string>(SUBJECTS_BY_GRADE["Form 4"][0]);
   const [category, setCategory] = useState<string>("");
+  const [isGroupProject, setIsGroupProject] = useState(false);
 
   // Step 2 generation state
   const [generating, setGenerating] = useState(false);
@@ -122,6 +123,7 @@ export default function ProjectsScreen() {
     setGrade(GRADES[1]);
     setSubject(SUBJECTS_BY_GRADE["Form 4"][0]);
     setCategory("");
+    setIsGroupProject(false);
     setStreamedContent("");
     setGenError("");
     setGenDone(false);
@@ -145,7 +147,7 @@ export default function ProjectsScreen() {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ studentName, schoolName, centreNumber, candidateNumber, grade, subject, category }),
+        body: JSON.stringify({ studentName, schoolName, centreNumber, candidateNumber, grade, subject, category, isGroupProject }),
         signal: abort.signal,
       });
 
@@ -190,7 +192,7 @@ export default function ProjectsScreen() {
     }
   }
 
-  const canContinue = !!(studentName.trim() && schoolName.trim() && centreNumber.trim() && candidateNumber.trim() && grade && subject && category);
+  const canContinue = !!(grade && subject);
 
   async function downloadPdf(project: Project) {
     if (downloading) return;
@@ -412,7 +414,7 @@ export default function ProjectsScreen() {
               {/* ── Step 1: Candidate Information ─────────────────────────────── */}
               {step === 1 && (
                 <>
-                  <Text style={{ fontSize: 12, fontWeight: "600", color: colors.textTertiary, marginBottom: 6, marginTop: 4 }}>YOUR NAME</Text>
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: colors.textTertiary, marginBottom: 6, marginTop: 4 }}>YOUR NAME <Text style={{ fontWeight: "400", color: colors.textTertiary }}>(optional)</Text></Text>
                   <TextInput
                     placeholder="e.g. Tendai Moyo"
                     placeholderTextColor={colors.textPlaceholder}
@@ -421,7 +423,7 @@ export default function ProjectsScreen() {
                     style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: colors.text, marginBottom: 16, backgroundColor: colors.cardSubtle }}
                   />
 
-                  <Text style={{ fontSize: 12, fontWeight: "600", color: colors.textTertiary, marginBottom: 6 }}>SCHOOL NAME</Text>
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: colors.textTertiary, marginBottom: 6 }}>SCHOOL NAME <Text style={{ fontWeight: "400", color: colors.textTertiary }}>(optional)</Text></Text>
                   <TextInput
                     placeholder="e.g. Harare High School"
                     placeholderTextColor={colors.textPlaceholder}
@@ -432,7 +434,7 @@ export default function ProjectsScreen() {
 
                   <View style={{ flexDirection: "row", gap: 12, marginBottom: 16 }}>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 12, fontWeight: "600", color: colors.textTertiary, marginBottom: 6 }}>CENTRE NUMBER</Text>
+                      <Text style={{ fontSize: 12, fontWeight: "600", color: colors.textTertiary, marginBottom: 6 }}>CENTRE NO. <Text style={{ fontWeight: "400" }}>(optional)</Text></Text>
                       <TextInput
                         placeholder="e.g. 1234"
                         placeholderTextColor={colors.textPlaceholder}
@@ -443,7 +445,7 @@ export default function ProjectsScreen() {
                       />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 12, fontWeight: "600", color: colors.textTertiary, marginBottom: 6 }}>CANDIDATE NUMBER</Text>
+                      <Text style={{ fontSize: 12, fontWeight: "600", color: colors.textTertiary, marginBottom: 6 }}>CANDIDATE NO. <Text style={{ fontWeight: "400" }}>(optional)</Text></Text>
                       <TextInput
                         placeholder="e.g. 5678"
                         placeholderTextColor={colors.textPlaceholder}
@@ -518,6 +520,23 @@ export default function ProjectsScreen() {
                       </View>
                     </Pressable>
                   ))}
+
+                  {/* Group project toggle */}
+                  <Pressable
+                    onPress={() => setIsGroupProject((v) => !v)}
+                    style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 16, marginTop: 4 }}
+                  >
+                    <View style={{
+                      width: 20, height: 20, borderRadius: 4,
+                      borderWidth: 1.5,
+                      borderColor: isGroupProject ? colors.brand : colors.border,
+                      backgroundColor: isGroupProject ? colors.brand : "transparent",
+                      alignItems: "center", justifyContent: "center",
+                    }}>
+                      {isGroupProject && <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "700" }}>✓</Text>}
+                    </View>
+                    <Text style={{ fontSize: 14, color: colors.textSecondary }}>This is a group project</Text>
+                  </Pressable>
 
                   <Pressable
                     onPress={() => {
