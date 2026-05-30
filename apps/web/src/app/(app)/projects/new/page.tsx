@@ -73,8 +73,6 @@ function renderMarkdown(content: string) {
 }
 
 interface FormErrors {
-  studentName?: string;
-  schoolName?: string;
   centreNumber?: string;
   candidateNumber?: string;
   subject?: string;
@@ -91,6 +89,7 @@ export default function NewProjectPage() {
   const [candidateNumber, setCandidateNumber] = useState("");
   const [grade, setGrade] = useState<string>(GRADES[1]);
   const [subject, setSubject] = useState("");
+  const [isGroupProject, setIsGroupProject] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
 
   // Step 2 generation state
@@ -103,16 +102,10 @@ export default function NewProjectPage() {
 
   function validate(): FormErrors {
     const errs: FormErrors = {};
-    if (!studentName.trim()) errs.studentName = "Name is required.";
-    if (!schoolName.trim()) errs.schoolName = "School name is required.";
-    if (!centreNumber.trim()) {
-      errs.centreNumber = "Centre number is required.";
-    } else if (!isNumeric(centreNumber)) {
+    if (centreNumber.trim() && !isNumeric(centreNumber)) {
       errs.centreNumber = "Must be digits only (e.g. 1234).";
     }
-    if (!candidateNumber.trim()) {
-      errs.candidateNumber = "Candidate number is required.";
-    } else if (!isNumeric(candidateNumber)) {
+    if (candidateNumber.trim() && !isNumeric(candidateNumber)) {
       errs.candidateNumber = "Must be digits only (e.g. 5678).";
     }
     if (!subject.trim()) {
@@ -129,7 +122,7 @@ export default function NewProjectPage() {
     if (Object.keys(errs).length === 0) setStep(2);
   }
 
-  const canContinue = studentName.trim() && schoolName.trim() && centreNumber.trim() && candidateNumber.trim() && subject.trim();
+  const canContinue = subject.trim();
 
   async function startGeneration() {
     setGenerating(true);
@@ -149,7 +142,7 @@ export default function NewProjectPage() {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ studentName, schoolName, centreNumber, candidateNumber, grade, subject }),
+        body: JSON.stringify({ studentName, schoolName, centreNumber, candidateNumber, grade, subject, isGroupProject }),
         signal: abort.signal,
       });
 
@@ -253,34 +246,32 @@ export default function NewProjectPage() {
         <div className="space-y-5">
           {/* Name */}
           <div className="space-y-1">
-            <label className="text-sm font-medium text-foreground/90">Full Name</label>
+            <label className="text-sm font-medium text-foreground/90">Full Name <span className="text-muted-foreground font-normal">(optional)</span></label>
             <input
               type="text"
               placeholder="e.g. Tendai Moyo"
               value={studentName}
-              onChange={(e) => { setStudentName(e.target.value); setErrors((p) => ({ ...p, studentName: undefined })); }}
-              className={`w-full rounded-xl border bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground/50 hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent ${errors.studentName ? "border-destructive" : "border-border"}`}
+              onChange={(e) => setStudentName(e.target.value)}
+              className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground/50 hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent"
             />
-            {errors.studentName && <p className="text-xs text-destructive mt-0.5">{errors.studentName}</p>}
           </div>
 
           {/* School Name */}
           <div className="space-y-1">
-            <label className="text-sm font-medium text-foreground/90">School Name</label>
+            <label className="text-sm font-medium text-foreground/90">School Name <span className="text-muted-foreground font-normal">(optional)</span></label>
             <input
               type="text"
               placeholder="e.g. Harare High School"
               value={schoolName}
-              onChange={(e) => { setSchoolName(e.target.value); setErrors((p) => ({ ...p, schoolName: undefined })); }}
-              className={`w-full rounded-xl border bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground/50 hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent ${errors.schoolName ? "border-destructive" : "border-border"}`}
+              onChange={(e) => setSchoolName(e.target.value)}
+              className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground/50 hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent"
             />
-            {errors.schoolName && <p className="text-xs text-destructive mt-0.5">{errors.schoolName}</p>}
           </div>
 
           {/* Centre + Candidate numbers */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-sm font-medium text-foreground/90">Centre Number</label>
+              <label className="text-sm font-medium text-foreground/90">Centre Number <span className="text-muted-foreground font-normal">(optional)</span></label>
               <input
                 type="text"
                 inputMode="numeric"
@@ -292,7 +283,7 @@ export default function NewProjectPage() {
               {errors.centreNumber && <p className="text-xs text-destructive mt-0.5">{errors.centreNumber}</p>}
             </div>
             <div className="space-y-1">
-              <label className="text-sm font-medium text-foreground/90">Candidate Number</label>
+              <label className="text-sm font-medium text-foreground/90">Candidate Number <span className="text-muted-foreground font-normal">(optional)</span></label>
               <input
                 type="text"
                 inputMode="numeric"
@@ -344,6 +335,17 @@ export default function NewProjectPage() {
               </p>
             )}
           </div>
+
+          {/* Group project toggle */}
+          <label className="flex items-center gap-2.5 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={isGroupProject}
+              onChange={(e) => setIsGroupProject(e.target.checked)}
+              className="h-4 w-4 rounded border-border accent-primary"
+            />
+            <span className="text-sm text-foreground/80">This is a group project</span>
+          </label>
 
           <Button
             className="w-full mt-2"
