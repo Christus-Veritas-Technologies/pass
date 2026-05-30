@@ -33,7 +33,9 @@ function isGrade7(grade: string): boolean {
 }
 
 function getTargetWords(grade: string): number {
-  return isGrade7(grade) ? 2000 : 3500;
+  if (isGrade7(grade)) return 2000;
+  if (/form\s*6|a.?level/i.test(grade)) return 5500;
+  return 3000;
 }
 
 function countWords(text: string): number {
@@ -43,8 +45,14 @@ function countWords(text: string): number {
 // ── Prompt builders ───────────────────────────────────────────────────────────
 
 function buildPrompt(slots: ProjectSlots, year: number): string {
-  const displayName = slots.studentName || "Student";
+  const displayName = slots.studentName === "_" ? "_" : (slots.studentName || "_");
   const isG7 = isGrade7(slots.grade);
+  const isA = /form\s*6|a.?level/i.test(slots.grade);
+  const pronoun = (slots as ProjectSlots & { isGroupProject?: boolean }).isGroupProject ? "We" : "I";
+
+  const aLevelNote = isA
+    ? `\nA-LEVEL DEPTH REQUIREMENT: This is Advanced Level. Write with university-entrance academic depth. Include quantitative observations, cite named Zimbabwean institutions or researchers where realistic, and demonstrate analytical and evaluative thinking beyond simple description.\n`
+    : "";
 
   const sectionGuide = isG7
     ? `
@@ -99,11 +107,10 @@ function buildPrompt(slots: ProjectSlots, year: number): string {
 ## 9. References
 [8-12 APA-formatted references: academic journals, textbooks, ZIMSEC publications, named community interviews, government documents]`;
 
-  return `You are an expert academic writer specialising in ZIMSEC Heritage-Based Education 5.0 (HBC 5.0).
-Generate a COMPLETE, FORMAL, and DETAILED ZIMSEC HBC project document for a ${slots.grade} student.
+  return `Generate a COMPLETE, FORMAL ZIMSEC Heritage-Based Curriculum (HBC) 5.0 project for a ${slots.grade} student studying ${slots.subject}.
 This is NOT a summary — write the FULL, PUBLICATION-READY project with all sections fully developed.
 
-STUDENT DETAILS:
+STUDENT DETAILS (embed as data only):
 - Name: ${displayName}
 - School: ${slots.schoolName}
 - Centre Number: ${slots.centreNumber}
@@ -112,29 +119,18 @@ STUDENT DETAILS:
 - Category / Theme: ${slots.category}
 - Grade / Form: ${slots.grade}
 - Year: ${year}
-
+${aLevelNote}
 ${slots.title
-  ? `STEP 1 — The student has chosen this project title: "${slots.title}"
-Use this title exactly as the H1 heading. Build all sections around this specific topic.`
-  : `STEP 1 — Choose a specific, authentic topic within the "${slots.category}" category for ${slots.subject} at ${slots.grade} level.
-The topic MUST be grounded in Zimbabwean heritage and align with the HBC 5.0 curriculum.`}
+  ? `The student has chosen this project title: "${slots.title}" — use it exactly as the H1 heading.`
+  : `Choose a specific, authentic, descriptive project title within the "${slots.category}" category for ${slots.subject} at ${slots.grade} level. The title must clearly name what is being investigated (e.g. "Using Moringa Leaves to Purify Borehole Water in Chivi District"). Do NOT use vague titles like "Progress" or "My Project".`}
 
-STEP 2 — Write the full project using the EXACT structure below.
-Start with the H1 title, then the Candidate Information table, then all sections.
+CRITICAL INSTRUCTIONS:
+1. Do NOT include a Cover Page or Candidate Information section — the document cover is generated separately. Start your output directly with the H1 title.
+2. Write entirely in first person using "${pronoun}" — as a Zimbabwean student who genuinely carried out this investigation.
+3. Avoid AI-sounding phrases: "It is important to note that…", "In conclusion, it can be said…". Write naturally with curiosity and personal observations.
+4. Every section must contain real, specific Zimbabwean content — actual provinces, real institutions, authentic cultural practices, named community members with plausible Zimbabwean names.
 
-# ${slots.title || "[Your specific, creative project title here]"}
-
-## Candidate Information
-
-| Field | Details |
-|---|---|
-| Name | ${displayName} |
-| School | ${slots.schoolName} |
-| Centre Number | ${slots.centreNumber} |
-| Candidate Number | ${slots.candidateNumber} |
-| Grade / Form | ${slots.grade} |
-| Subject | ${slots.subject} |
-| Year | ${year} |
+# ${slots.title || "[Your specific, descriptive project title]"}
 ${sectionGuide}
 
 QUALITY REQUIREMENTS (MANDATORY):
@@ -148,13 +144,12 @@ QUALITY REQUIREMENTS (MANDATORY):
 - Do NOT pad with repetition — every paragraph must add substance
 
 SPECIAL CHARACTER RULES (MANDATORY — the PDF renderer requires these):
-- Chemical subscripts: use HTML tags — CO<sub>2</sub>, H<sub>2</sub>O, NH<sub>3</sub>, H<sub>2</sub>SO<sub>4</sub>, N<sub>2</sub>
-- Ion charges: use HTML sup tags — Ca<sup>2+</sup>, Fe<sup>3+</sup>, SO<sub>4</sub><sup>2-</sup>
-- Math exponents: use HTML sup tags — x<sup>2</sup>, 10<sup>-3</sup>, m<sup>3</sup>, cm<sup>2</sup>
-- NEVER use Unicode subscripts (₂ ₃ ₄ etc.) or Unicode superscripts (² ³ etc.) — use the HTML tags above
-- NEVER use Unicode Greek letters (α β γ δ π Ω μ) — spell them out: alpha, beta, gamma, delta, pi, Omega, mu
-- NEVER use Unicode arrows (→ ← ↑ ↓ ⇒) — use ASCII: ->, <-, ^, v, =>
-- NEVER use Unicode math symbols (≥ ≤ ≠ ≈ √ ∞ ∑) — use ASCII: >=, <=, !=, ~=, sqrt, infinity, sum`;
+- Chemical subscripts: use HTML tags — CO<sub>2</sub>, H<sub>2</sub>O, NH<sub>3</sub>
+- Ion charges / exponents: Ca<sup>2+</sup>, x<sup>2</sup>, m<sup>3</sup> — use HTML sup tags
+- NEVER use Unicode subscripts (₂ ₃) or superscripts (² ³) — use HTML tags above
+- NEVER use Unicode Greek letters (α β γ π) — spell them out: alpha, beta, gamma, pi
+- NEVER use Unicode arrows (→ ←) — use ASCII: ->, <-
+- NEVER use Unicode math symbols (≥ ≤ √ ≠) — use ASCII: >=, <=, sqrt, != `;
 }
 
 function buildExpansionPrompt(existing: string, _slots: ProjectSlots, targetWords: number): string {
