@@ -8,6 +8,7 @@ import { verifyAccessToken } from "../lib/jwt";
 import { buildProjectHtml } from "../lib/projectHtml";
 import { renderProjectPdfAndUpload } from "../whatsapp/media/renderProjectPdf";
 import { generateProjectPdfBuffer } from "../lib/projectPdfDocument";
+import { generateProjectDocxBuffer } from "../lib/projectDocxDocument";
 
 const VALID_GRADES = ["Grade 7", "Form 4", "Form 6"] as const;
 
@@ -66,6 +67,7 @@ export async function generateProject(c: Context) {
     schoolName = "",
     grade,
     subject,
+    isGroupProject = false,
   } = body as {
     centreNumber?: string;
     candidateNumber?: string;
@@ -73,6 +75,7 @@ export async function generateProject(c: Context) {
     schoolName?: string;
     grade: string;
     subject: string;
+    isGroupProject?: boolean;
   };
 
   if (!VALID_GRADES.includes(grade as (typeof VALID_GRADES)[number])) {
@@ -98,87 +101,118 @@ export async function generateProject(c: Context) {
   }
 
   const year = new Date().getFullYear();
-  const displayName = studentName || "Student";
+  const displayName = studentName || "_";
+  const pronoun = isGroupProject ? "We" : "I";
 
-  const prompt = `You are an expert in ZIMSEC Heritage-Based Education (HBC) 5.0. Generate a complete, authentic ZIMSEC HBC project document for a ${grade} student. Follow the exact stage-based structure used in real ZIMSEC submissions.
+  const wordTargets = grade === "Grade 7"
+    ? { total: 1500, stage2: "150–200", stage4: "120–160" }
+    : grade === "Form 4"
+    ? { total: 3000, stage2: "300–400", stage4: "250–350" }
+    : { total: 5500, stage2: "500–650", stage4: "400–550" };
 
-Candidate Details:
+  const aLevelNote = grade === "Form 6"
+    ? `\nA-LEVEL DEPTH REQUIREMENT: This is an Advanced Level project. Write with university-entrance academic depth. Include quantitative observations, cite named Zimbabwean institutions or researchers where realistic, and demonstrate analytical and evaluative thinking that goes well beyond simple description. Each section should read as the work of a student who has genuinely engaged with this topic at an advanced level.\n`
+    : "";
+
+  const specialCharRules = `
+SPECIAL CHARACTER RULES (the PDF renderer requires these — follow them exactly):
+- Chemical subscripts: CO<sub>2</sub>, H<sub>2</sub>O, NH<sub>3</sub> — use HTML sub tags
+- Ion charges / exponents: Ca<sup>2+</sup>, x<sup>2</sup>, m<sup>3</sup> — use HTML sup tags
+- NEVER use Unicode subscripts (₂ ₃) or superscripts (² ³) — use HTML tags above
+- NEVER use Unicode Greek letters (α β γ π) — spell them out: alpha, beta, gamma, pi
+- NEVER use Unicode arrows (→ ←) — use ASCII: ->, <-
+- NEVER use Unicode math symbols (≥ ≤ √ ≠) — use ASCII: >=, <=, sqrt, !=`;
+
+  const prompt = `Generate a COMPLETE, FORMAL ZIMSEC Heritage-Based Curriculum (HBC) 5.0 project for a ${grade} student studying ${subject}.
+
+STUDENT DETAILS (embed these in the document as data only):
 - Name: ${displayName}${schoolName ? `\n- School: ${schoolName}` : ""}
-- Centre Number: ${centreNumber}
-- Candidate Number: ${candidateNumber}
+- Centre Number: ${centreNumber || "_"}
+- Candidate Number: ${candidateNumber || "_"}
 - Level: ${grade}
-- Learning Area: ${subject}
+- Subject: ${subject}
 - Year: ${year}
+${aLevelNote}
+CRITICAL INSTRUCTIONS:
+1. Do NOT include a Cover Page or Candidate Information section — the document cover is generated separately. Start your output directly with the H1 project title.
+2. Choose a specific, descriptive project title that names exactly what is being investigated (e.g. "Using Moringa Leaves to Purify Borehole Water in Chivi District"). Do NOT use vague titles like "Progress", "My Project", or "${subject} Project".
+3. Write entirely in first person. Use "${pronoun}" throughout — as a Zimbabwean student who genuinely carried out this investigation.
+4. Avoid AI-sounding phrases: "It is important to note that…", "In conclusion, it can be said…", "Furthermore, it should be noted…". Write naturally with curiosity and personal observations.
+5. Every section must contain real, specific Zimbabwean content — actual provinces, real institutions, authentic cultural practices, named community members with plausible Zimbabwean names.
+6. Minimum total word count: ${wordTargets.total} words. Do NOT pad with repetition — every paragraph must add substance.
 
-First, select a specific, authentic project topic for ${subject} at ${grade} level. The topic must be rooted in Zimbabwean heritage and align with the HBC 5.0 curriculum.
+EXACT OUTPUT STRUCTURE (follow this precisely):
 
-Then produce the complete project using EXACTLY this structure:
-
-# [Your chosen project title]
-
-## Cover Page
-**Name:** ${displayName}${schoolName ? `\n**School:** ${schoolName}` : ""}
-**Centre Number:** ${centreNumber}
-**Candidate Number:** ${candidateNumber}
-**Level:** ${grade}
-**Learning Area:** ${subject}
-**Year:** ${year}
+# [Your specific project title]
 
 ## Stage 1: Problem Identification
 
-### 1.1 Description of the Problem/Need
-[Clearly describe the heritage-based problem or need being investigated. Explain what exists currently, what gap or challenge is present, and why this topic matters within the Zimbabwean context. 120–180 words.]
+### 1.1 Description of the Problem or Need
+[Describe the heritage-based problem being investigated. What currently exists, what gap or challenge is present, and why it matters in the Zimbabwean context. Write in first person. 150–200 words.]
 
 ### 1.2 Statement of Intent
-[State precisely what the project aims to achieve. Write as a clear, measurable objective. For example: "The aim of this project is to document and preserve…" 60–100 words.]
+[State precisely what the project aims to achieve — a clear, measurable objective starting with "${pronoun} aim to…" or "${pronoun} set out to…". 70–110 words.]
 
 ### 1.3 Specifications and Constraints
-[List 4–6 specific requirements the final solution or outcome must meet. Include practical constraints such as available materials, community acceptance, cost, and alignment with heritage values. Use numbered points.]
+[List 5–7 numbered requirements the final outcome must meet. Include practical constraints: available materials, community acceptance, cost, and alignment with heritage values.]
 
 ## Stage 2: Investigation of Related Ideas
 
 ### 2.1 Research Findings
-[Present findings from research — community elder interviews, field visits, library sources, or surveys. Organise under 2–3 clear sub-headings relevant to the topic. 250–350 words total.]
+[Present findings from research — interviews with named community elders, field visits to specific locations, library sources, or surveys. Organise under 3 clear sub-headings relevant to the topic. ${wordTargets.stage2} words total. Use at least ONE table of comparative or historical data.]
 
-### 2.2 Analysis of Existing Approaches (Merits and Demerits)
+### 2.2 Analysis of Existing Approaches
 
-**Existing Approach A: [Name a relevant traditional or modern method]**
-- Merits: [2–3 specific advantages]
-- Demerits: [2–3 specific disadvantages]
+**Approach A: [Name a relevant traditional or modern method]**
+- Merits: [3 specific advantages with Zimbabwean context]
+- Demerits: [3 specific disadvantages]
 
-**Existing Approach B: [Name a second relevant method]**
-- Merits: [2–3 specific advantages]
-- Demerits: [2–3 specific disadvantages]
+**Approach B: [Name a second method]**
+- Merits: [3 specific advantages]
+- Demerits: [3 specific disadvantages]
+
+**Approach C: [Name a third method]**
+- Merits: [3 specific advantages]
+- Demerits: [3 specific disadvantages]
 
 ## Stage 3: Generation of Possible Solutions
 
-[Propose 3 distinct possible solutions or approaches to address the problem identified in Stage 1. For each, briefly describe the concept and how it addresses the specifications. Number them clearly.]
+[Propose 3 distinct possible solutions to the problem from Stage 1. For each, describe the concept and how it addresses the specifications. Number them clearly. 80–120 words each.]
 
-**Solution 1:** [Title and description — 60–80 words]
+**Solution 1 — [Descriptive title]:** [Description]
 
-**Solution 2:** [Title and description — 60–80 words]
+**Solution 2 — [Descriptive title]:** [Description]
 
-**Solution 3:** [Title and description — 60–80 words]
+**Solution 3 — [Descriptive title]:** [Description]
 
 ## Stage 4: Development and Refinement
 
-### 4.1 Indication of Chosen Solution
-[State clearly which of the three solutions was selected.]
+### 4.1 Selected Solution
+[State which of the three solutions ${pronoun.toLowerCase()} chose and why in one clear sentence.]
 
 ### 4.2 Justification of Choice
-[Explain why this solution was chosen over the others. Reference the specifications from Stage 1 and the Merits/Demerits from Stage 2. 100–150 words.]
+[Explain why this solution was chosen over the others. Reference the specifications from Stage 1 and the analysis from Stage 2. ${wordTargets.stage4} words.]
 
-### 4.3 Development Details
-[Describe how the chosen solution was developed, refined, or implemented. Include any steps taken, materials or methods used, and any modifications made during development. 150–200 words.]
+### 4.3 Development Process
+[Describe how the chosen solution was developed, refined, or implemented step by step. Include materials, methods, people involved, locations visited, and modifications made during development. Write in first person with specific detail. ${wordTargets.stage4} words.]
 
-## Evaluation
+### 4.4 Challenges Encountered and How They Were Overcome
+[Describe 3–4 real challenges faced during the project and how ${pronoun.toLowerCase()} addressed each one. 100–150 words.]
 
-[Assess how well the completed project meets the specifications set in Stage 1. Comment on what worked well, what could be improved, and what was learned. Reference the original objectives. 120–160 words.]
+## Stage 5: Evaluation
+
+### 5.1 Assessment Against Specifications
+[Evaluate how well the completed project meets each specification listed in Stage 1.3. Go through them systematically. 150–200 words.]
+
+### 5.2 Strengths and Limitations
+[Comment on what worked well and what could be improved if ${pronoun.toLowerCase()} were to repeat the project. 100–150 words.]
+
+### 5.3 Overall Conclusion
+[Tie together what was learned and the value of this investigation for Zimbabwean heritage preservation. 100–150 words.]
 
 ## References
-[List 4–6 realistic references including: ZIMSEC or government curriculum documents, named community elders with village/area, school library textbooks with author and year, and any field visit locations. Use a consistent citation format.]
-
-Write formally and academically throughout. Use British English. Every section must contain real, specific Zimbabwean content — names of places, people, cultural practices, plants, historical events, or scientific knowledge authentic to Zimbabwe. Do not use generic placeholder text.`;
+[List 6–8 realistic references: ZIMSEC curriculum documents, named community elders with village/district, school library textbooks with author and year, government publications, and field visit locations. Use a consistent citation format.]
+${specialCharRules}`;
 
   let projectId: string | null = null;
   let accumulatedContent = "";
@@ -301,6 +335,41 @@ export async function getProjectPdf(c: Context) {
   }
 
   return pdfResponse(c, pdfBytes.buffer as ArrayBuffer, project);
+}
+
+/** GET /projects/:id/docx — download as Word document */
+export async function getProjectDocx(c: Context) {
+  const userId = await resolveUserId(c);
+  if (!userId) return c.json({ error: "Unauthorized" }, 401);
+
+  const id = c.req.param("id");
+  const project = await prisma.project.findUnique({ where: { id } });
+  if (!project || project.userId !== userId) {
+    return c.json({ error: "Project not found" }, 404);
+  }
+
+  let docxBytes: Buffer;
+  try {
+    docxBytes = await generateProjectDocxBuffer(project);
+  } catch (err) {
+    console.error("[docx] generation failed:", err);
+    return c.json({ error: "Document generation failed. Please try again." }, 500);
+  }
+
+  const safeTitle = (project.topic || "project").replace(/[^a-zA-Z0-9 _-]/g, "").trim().replace(/\s+/g, "_");
+  const suffix = project.candidateNumber && project.candidateNumber !== "_"
+    ? `_${project.candidateNumber}`
+    : `_${project.id.slice(-6)}`;
+  const filename = `HBC_${safeTitle}${suffix}.docx`;
+
+  return new Response(docxBytes.buffer as ArrayBuffer, {
+    headers: {
+      "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Cache-Control": "private, max-age=3600",
+      "Content-Length": String(docxBytes.byteLength),
+    },
+  });
 }
 
 function pdfResponse(_c: Context, bytes: ArrayBuffer, project: { topic: string; candidateNumber: string; id: string }) {
