@@ -12,8 +12,9 @@ const LINK      = /^link(\s+my\s+account)?\s*$/i;
 const USAGE     = /^(usage|plan|limits?|quota)\s*$/i;
 // "upgrade", "upgrade plan", "upgrade my plan", "upgrade subscription"
 const UPGRADE   = /^upgrade(\s+(plan|my\s+plan|my\s+subscription|subscription|now))?\s*$/i;
-// "project", "my project", "hbc project", "zimsec project", "generate project", "I need a project", etc.
-const PROJECT   = /^(((generate|create|write|make|start|i\s+need|i\s+want)(\s+(a|an|my|the))?|(?:a|an|my|the))\s+)?(?:(?:hbc|heritage|zimsec|o\.?level|a\.?level|grade\s*\d+|form\s*\d+)\s+)?project\s*$/i;
+// "project", "projects", "my project", "hbc project", "generate project",
+// "I need a project", "write my project on agriculture", etc.
+const PROJECT   = /^(((generate|create|write|make|start|do|i\s+need|i\s+want)(\s+(a|an|my|the))?|(?:a|an|my|the))\s+)?(?:(?:hbc|heritage|zimsec|o\.?level|a\.?level|grade\s*\d+|form\s*\d+)\s+)?projects?(\s+(on|about|for)\s+.+)?\s*$/i;
 // Match "papers", "show papers", "which papers do you have", "what papers", "available papers", etc.
 const PAPERS    = /^(papers?\s*$|(show|list|view|what|which|available|browse)\s+papers?(\s+(do\s+you\s+have|are\s+(available|there)|\?))*\s*\??)/i;
 const MORE      = /^more\s*$/i;

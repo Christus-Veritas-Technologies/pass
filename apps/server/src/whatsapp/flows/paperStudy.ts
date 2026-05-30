@@ -13,11 +13,10 @@ import prisma from "@pass/db";
 import type { Client, Message } from "whatsapp-web.js";
 import type { Resource } from "@pass/db";
 import type { ConversationState } from "../types";
-import { generateText } from "ai";
 import { gradeAnswer, effectiveGuide } from "../../lib/grading";
+import { explainAgent } from "../../mastra/agents/explain.agent";
 import { checkAndIncrementAiMessage } from "../../lib/aiQuota";
 import { PLAN_LIMITS, currentMonthKey, type PlanKey } from "../../lib/planLimits";
-import { anthropic, CLAUDE_TUTOR_MODEL } from "../../lib/anthropic";
 import { sendPaperPdf } from "../media/sendPaper";
 import { recalculateScore } from "./scoring";
 import {
@@ -378,32 +377,19 @@ export async function explainQuestion(
   const guide = effectiveGuide(question);
 
   try {
-    const result = await generateText({
-      model: anthropic(CLAUDE_TUTOR_MODEL),
-      system:
-        `You are a ZIMSEC exam tutor explaining past-paper questions to students via WhatsApp.\n` +
-        `Write in plain text only. Use blank lines to separate paragraphs. ` +
-        `If you need a list, start each item with "* " (asterisk space). ` +
-        `Do not use any markdown — no **bold**, no *italic*, no # headings, no - bullets. ` +
-        `End your explanation with "Reply *next* when ready."`,
-      messages: [
-        {
-          role: "user",
-          content:
-            `Explain Question ${qn} to me.\n\n` +
-            `Question: ${question.text}\n\n` +
-            (attempt?.userAnswer ? `My answer was: ${attempt.userAnswer}\n\n` : "") +
-            `Marking rubric:\n${guide}\n\n` +
-            `Cover in 150–200 words:\n` +
-            `1. What the correct answer requires\n` +
-            `2. The key concept\n` +
-            `3. One exam tip`,
-        },
-      ],
-      maxTokens: 500,
-    });
+    const result = await explainAgent.generate(
+      `Explain Question ${qn} to me.\n\n` +
+        `Question: ${question.text}\n\n` +
+        (attempt?.userAnswer ? `My answer was: ${attempt.userAnswer}\n\n` : "") +
+        `Marking rubric:\n${guide}\n\n` +
+        `Cover in 150–200 words:\n` +
+        `1. What the correct answer requires\n` +
+        `2. The key concept\n` +
+        `3. One exam tip\n\n` +
+        `Write in plain text only (no markdown). End with "Reply *next* when ready."`,
+    );
 
-    const text = result.text?.trim() ?? "";
+    const text = (result.text ?? "").trim();
     await chat.clearState();
 
     if (attempt) {

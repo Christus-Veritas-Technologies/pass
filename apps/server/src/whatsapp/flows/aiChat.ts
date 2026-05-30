@@ -1,29 +1,22 @@
 /**
  * Free-form AI chat flow.
- * Routes any study question to the passAgent and returns a WhatsApp-friendly reply.
+ *
+ * Routes any study question to the Mastra passAgent — which carries the hardened
+ * Pass identity, conversation memory (per student), study tools, and safety
+ * guardrails (prompt-injection + moderation). Off-topic requests are declined by
+ * the agent's identity prompt; unsafe input/output is blocked by its processors.
  */
 
 import prisma from "@pass/db";
 import type { Message } from "whatsapp-web.js";
 import type { ConversationState } from "../types";
-import { generateText } from "ai";
-import { anthropic } from "../../lib/anthropic";
+import { RequestContext } from "@mastra/core/di";
+import { passAgent, USER_ID_CTX_KEY } from "../../mastra";
 import { checkAndIncrementAiMessage } from "../../lib/aiQuota";
 import { aiQuotaMessage, aiUsageFooter, AI_ERROR } from "../utils/messages";
 
-const SYSTEM_PROMPT = `You are the Pass study assistant, an AI tutor for Zimbabwean O-Level and A-Level students.
-You specialise in ZIMSEC (Zimbabwe School Examinations Council) exam preparation.
-
-When answering study questions:
-- Answer in 120–200 words
-- Use WhatsApp markdown (*bold*, _italic_) for emphasis — NEVER use # or ## headings
-- Use plain section labels like "*Key Points:*" instead of headings
-- Be helpful, clear, and encouraging
-- Reference Zimbabwean context where relevant (ZWL currency, local examples)
-- End with a brief exam tip if relevant
-- Never mock or belittle a student
-
-If the student asks something unrelated to studying, gently redirect them to studying.`;
+const OFF_LIMITS_REPLY =
+  "I can only help with ZIMSEC studying 📚 — ask me a study question, request a past paper, or say *project* to generate an HBC project.";
 
 export async function handleAiChat(
   msg: Message,
@@ -43,16 +36,24 @@ export async function handleAiChat(
   }
 
   try {
-    const result = await generateText({
-      model: anthropic("claude-haiku-4-5"),
-      system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content: question }],
-      maxTokens: 400,
+    const result = await passAgent.generate(question, {
+      // Per-student conversation memory (multi-turn context).
+      memory: { resource: userId, thread: msg.from },
+      // Trusted user id for account/usage tools — never model-supplied.
+      requestContext: new RequestContext([[USER_ID_CTX_KEY, userId]]),
+      maxSteps: 4,
     });
 
-    const text = result.text?.trim() ?? "";
     await chat.clearState();
 
+    // A guardrail (injection/moderation) blocked the request.
+    if (result.tripwire) {
+      console.warn("[whatsapp] aiChat guardrail tripwire:", result.tripwire);
+      await msg.reply(OFF_LIMITS_REPLY);
+      return { ...state, mode: { kind: "ai_chat" } };
+    }
+
+    const text = (result.text ?? "").trim();
     if (!text) {
       await msg.reply(AI_ERROR);
       return { ...state, mode: { kind: "ai_chat" } };

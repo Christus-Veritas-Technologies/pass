@@ -3,14 +3,13 @@
  *
  * Uses a two-pass approach:
  * 1. Regex — zero cost, zero latency, handles obvious patterns
- * 2. Claude Haiku — only called when regex misses needed fields AND NLP is allowed
+ * 2. Mastra extractionAgent (Haiku) — only when regex misses needed fields AND
+ *    NLP is allowed.
  *
  * NLP is disabled in rigid mode (quota exhausted) to avoid AI calls.
  */
 
-import { generateText, tool } from "ai";
-import { z } from "zod";
-import { anthropic } from "../../lib/anthropic";
+import { extractionAgent, extractionSchema } from "../../mastra/agents/extraction.agent";
 
 export interface HbcFields {
   studentName?: string;
@@ -123,39 +122,19 @@ export async function extractHbcFields(
   if (stillNeeded.length === 0) return regex;
 
   try {
-    const result = await generateText({
-      model: anthropic("claude-haiku-4-5"),
-      maxTokens: 200,
-      system: `Extract ZIMSEC HBC project candidate information from student messages.
-Return only information explicitly stated. Do not guess.
-Valid grades: ${VALID_GRADES.join(", ")}
-Valid categories: ${VALID_CATEGORIES.join(", ")}`,
-      messages: [{ role: "user", content: text }],
-      tools: {
-        extract_fields: tool({
-          description: "Extract HBC project candidate fields from the message",
-          parameters: z.object({
-            studentName: z.string().optional().describe("Student full name"),
-            schoolName: z.string().optional().describe("School or institution name"),
-            centreNumber: z.string().optional().describe("Exam centre number (digits only)"),
-            candidateNumber: z.string().optional().describe("Candidate number (digits only)"),
-            grade: z.enum(VALID_GRADES).optional(),
-            subject: z.string().optional().describe("Subject name"),
-            category: z.enum(VALID_CATEGORIES).optional(),
-          }),
-        }),
-      },
-      toolChoice: "required",
+    const result = await extractionAgent.generate(text, {
+      structuredOutput: { schema: extractionSchema },
     });
 
-    const call = result.toolCalls[0];
-    if (!call) return regex;
+    const extracted = result.object;
+    if (!extracted) return regex;
 
-    // Merge: regex takes precedence (more deterministic), NLP fills gaps
-    return {
-      ...call.args,
-      ...regex,
-    } as HbcFields;
+    // Drop nulls, then merge: regex takes precedence (more deterministic), NLP fills gaps.
+    const nlp: HbcFields = {};
+    for (const [k, v] of Object.entries(extracted)) {
+      if (v != null && v !== "") (nlp as Record<string, string>)[k] = String(v);
+    }
+    return { ...nlp, ...regex };
   } catch {
     return regex;
   }

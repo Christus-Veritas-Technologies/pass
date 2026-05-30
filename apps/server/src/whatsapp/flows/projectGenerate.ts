@@ -9,12 +9,11 @@
  * - If the first pass is too short, a second "expand" call is made.
  */
 
-import { generateText } from "ai";
 import prisma from "@pass/db";
 import type { Client, Message } from "whatsapp-web.js";
 import type { ConversationState } from "../types";
 import type { ProjectSlots } from "./projectBrief";
-import { anthropic, CLAUDE_MODEL } from "../../lib/anthropic";
+import { projectAgent } from "../../mastra/agents/project.agent";
 import { checkAndIncrementAiMessage } from "../../lib/aiQuota";
 import { PLAN_LIMITS, currentMonthKey, type PlanKey } from "../../lib/planLimits";
 import { renderProjectPdfAndUpload } from "../media/renderProjectPdf";
@@ -35,10 +34,6 @@ function isGrade7(grade: string): boolean {
 
 function getTargetWords(grade: string): number {
   return isGrade7(grade) ? 2000 : 3500;
-}
-
-function getMaxTokens(grade: string): number {
-  return isGrade7(grade) ? 5000 : 8000;
 }
 
 function countWords(text: string): number {
@@ -233,7 +228,6 @@ export async function generateProject(
 
   const year = new Date().getFullYear();
   const targetWords = getTargetWords(slots.grade);
-  const maxTokens = getMaxTokens(slots.grade);
 
   // Create placeholder project row
   const project = await prisma.project.create({
@@ -254,13 +248,9 @@ export async function generateProject(
   try {
     // ── Pass 1: Generate full project ───────────────────────────────────────
     await chat.sendStateTyping();
-    const result = await generateText({
-      model: anthropic(CLAUDE_MODEL),
-      prompt: buildPrompt(slots, year),
-      maxTokens,
-    });
+    const result = await projectAgent.generate(buildPrompt(slots, year));
 
-    let content = result.text.trim();
+    let content = (result.text ?? "").trim();
     let wordCount = countWords(content);
 
     // ── Pass 2: Quality check — expand if too short ─────────────────────────
@@ -268,12 +258,8 @@ export async function generateProject(
       await chat.sendStateTyping();
       console.log(`[projectGenerate] Pass 1: ${wordCount} words (target ${targetWords}) — running expansion pass`);
       try {
-        const expansion = await generateText({
-          model: anthropic(CLAUDE_MODEL),
-          prompt: buildExpansionPrompt(content, slots, targetWords),
-          maxTokens: Math.round(maxTokens * 0.8),
-        });
-        const expanded = expansion.text.trim();
+        const expansion = await projectAgent.generate(buildExpansionPrompt(content, slots, targetWords));
+        const expanded = (expansion.text ?? "").trim();
         if (countWords(expanded) > wordCount) {
           content = expanded;
           wordCount = countWords(content);
