@@ -174,6 +174,15 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
       return;
     }
 
+    // Greetings from new users: immediately begin signup.
+    // If they already have an account the email step in handleSignupReply will
+    // detect it and prompt them to sign in instead.
+    if (hard.kind === "greeting") {
+      state = await startSignup(msg, state);
+      await saveState(whatsappId, state);
+      return;
+    }
+
     // Context-aware nudge: detect what feature they want and tell them to sign up
     // for it specifically, rather than showing the generic welcome every time.
     const featureHint = detectUnlinkedFeatureHint(text);
