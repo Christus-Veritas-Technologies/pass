@@ -3,9 +3,10 @@
  * @react-pdf/renderer document for ZIMSEC HBC projects.
  *
  * Features:
- * - 8 distinct visual themes — each project gets its own colour palette
+ * - 5 distinct visual layout profiles — each project gets its own look
  * - 3 heading style variants (banner, sideline, underline)
  * - 3 H2 sub-heading variants (accent-line, primary-topline, accent-fill)
+ * - 4 footer style variants (twoCol, centered, threeCol, italic)
  * - Markdown table parser (| col | col | format)
  * - Running page headers with page numbers
  * - Bold/italic/subscript/superscript inline span support
@@ -35,75 +36,56 @@ const GREY_RULE = "#cccccc";
 type H1Style = "banner" | "sideline" | "underline";
 type H2Style = "accent-line" | "primary-topline" | "accent-fill";
 type BodyFont = "Times-Roman" | "Helvetica";
+type FooterStyle = "twoCol" | "centered" | "threeCol" | "italic";
 
 interface Theme {
-  primary:      string;   // dark — banner backgrounds, borders
-  primaryMid:   string;   // mid  — h3 text, secondary accents
-  primaryLight: string;   // pale — tint backgrounds, alt rows
-  accent:       string;   // accent — dividers, bullet dots, underlines
-  accentLight:  string;   // very pale accent — info-box alt rows
-  h1Style:      H1Style;
-  h2Style:      H2Style;
-  bodyFont:     BodyFont;
-  bodyFontBold: string;
+  primary:        string;
+  primaryMid:     string;
+  primaryLight:   string;
+  accent:         string;
+  accentLight:    string;
+  h1Style:        H1Style;
+  h2Style:        H2Style;
+  bodyFont:       BodyFont;
+  bodyFontBold:   string;
   bodyFontItalic: string;
+  footerStyle:    FooterStyle;
 }
 
 const THEMES: Theme[] = [
-  // 1 · Emerald & Gold  (classic)
+  // 1 · Emerald Academic
   {
     primary: "#1a5c2e", primaryMid: "#2d7a45", primaryLight: "#e8f5ed",
     accent: "#c8a84b", accentLight: "#fdf6e3",
-    h1Style: "banner",    h2Style: "accent-line",
+    h1Style: "banner", h2Style: "accent-line", footerStyle: "twoCol",
     bodyFont: "Times-Roman", bodyFontBold: "Times-Bold", bodyFontItalic: "Times-Italic",
   },
-  // 2 · Navy & Steel
+  // 2 · Navy Professional
   {
     primary: "#1c2f5e", primaryMid: "#2d4a8a", primaryLight: "#e8edf8",
     accent: "#5a82b8", accentLight: "#eaf0f7",
-    h1Style: "sideline",  h2Style: "primary-topline",
+    h1Style: "sideline", h2Style: "primary-topline", footerStyle: "centered",
     bodyFont: "Times-Roman", bodyFontBold: "Times-Bold", bodyFontItalic: "Times-Italic",
   },
-  // 3 · Crimson & Amber
+  // 3 · Crimson Heritage
   {
     primary: "#7a1a1a", primaryMid: "#a03030", primaryLight: "#f8ecec",
     accent: "#c8922a", accentLight: "#fdf4e0",
-    h1Style: "banner",    h2Style: "accent-line",
+    h1Style: "banner", h2Style: "accent-line", footerStyle: "threeCol",
     bodyFont: "Times-Roman", bodyFontBold: "Times-Bold", bodyFontItalic: "Times-Italic",
   },
-  // 4 · Violet & Gold
+  // 4 · Violet Scientific
   {
     primary: "#4a1a78", primaryMid: "#6a30a0", primaryLight: "#f2ecfb",
     accent: "#c89030", accentLight: "#fdf5e0",
-    h1Style: "underline", h2Style: "accent-fill",
+    h1Style: "underline", h2Style: "accent-fill", footerStyle: "threeCol",
     bodyFont: "Times-Roman", bodyFontBold: "Times-Bold", bodyFontItalic: "Times-Italic",
   },
-  // 5 · Teal & Terracotta
+  // 5 · Teal Minimal
   {
     primary: "#1a5c5a", primaryMid: "#2a8078", primaryLight: "#e8f5f4",
     accent: "#c86030", accentLight: "#fdf0ea",
-    h1Style: "sideline",  h2Style: "accent-line",
-    bodyFont: "Times-Roman", bodyFontBold: "Times-Bold", bodyFontItalic: "Times-Italic",
-  },
-  // 6 · Slate & Coral
-  {
-    primary: "#2c3e52", primaryMid: "#3d5570", primaryLight: "#eaecef",
-    accent: "#c04a30", accentLight: "#fdecea",
-    h1Style: "banner",    h2Style: "primary-topline",
-    bodyFont: "Helvetica", bodyFontBold: "Helvetica-Bold", bodyFontItalic: "Helvetica-Oblique",
-  },
-  // 7 · Maroon & Copper
-  {
-    primary: "#5e1a30", primaryMid: "#7a2848", primaryLight: "#f8ecf0",
-    accent: "#b87840", accentLight: "#fdf3e8",
-    h1Style: "underline", h2Style: "primary-topline",
-    bodyFont: "Times-Roman", bodyFontBold: "Times-Bold", bodyFontItalic: "Times-Italic",
-  },
-  // 8 · Forest & Saffron
-  {
-    primary: "#2a4a18", primaryMid: "#3d6828", primaryLight: "#eef5e8",
-    accent: "#c89030", accentLight: "#fdf8e0",
-    h1Style: "sideline",  h2Style: "accent-fill",
+    h1Style: "sideline", h2Style: "accent-line", footerStyle: "italic",
     bodyFont: "Times-Roman", bodyFontBold: "Times-Bold", bodyFontItalic: "Times-Italic",
   },
 ];
@@ -159,16 +141,24 @@ function buildStyles(t: Theme) {
     coverValue:          { fontFamily: "Helvetica", fontSize: 10, color: BLACK, flex: 1, paddingVertical: 7, paddingHorizontal: 14 },
     coverSpacer:         { flex: 1 },
     coverFooter:         { backgroundColor: t.primary, paddingVertical: 14, paddingHorizontal: 50, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-    coverFooterText:     { fontFamily: "Helvetica", fontSize: 9, color: t.accent },
-    coverFooterBold:     { fontFamily: "Helvetica-Bold", fontSize: 9, color: WHITE },
+    coverFooterLeft:     { fontFamily: "Helvetica", fontSize: 9, color: t.accent },
+    coverFooterRight:    { fontFamily: "Helvetica-Bold", fontSize: 9, color: WHITE },
+    coverFooterCenter:   { fontFamily: "Helvetica", fontSize: 9, color: t.accent, textAlign: "center", flex: 1 },
 
     // ── Body page ────────────────────────────────────────────────────────────
-    bodyPage: { fontFamily: t.bodyFont, fontSize: 11, lineHeight: 1.7, color: BLACK, paddingTop: 60, paddingBottom: 60, paddingLeft: 60, paddingRight: 60 },
+    bodyPage: { fontFamily: t.bodyFont, fontSize: 11, lineHeight: 1.7, color: BLACK, paddingTop: 60, paddingBottom: 72, paddingLeft: 60, paddingRight: 60 },
 
     // ── Running header ───────────────────────────────────────────────────────
     runningHeader:      { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingBottom: 5, marginBottom: 12, borderBottomWidth: 1, borderBottomColor: t.accent },
     runningHeaderLeft:  { fontFamily: "Helvetica", fontSize: 8, color: t.primary },
     runningHeaderRight: { fontFamily: "Helvetica", fontSize: 8, color: GREY_TEXT },
+
+    // ── Running footer (body pages) ──────────────────────────────────────────
+    runningFooter:       { position: "absolute", bottom: 24, left: 60, right: 60, flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderTopWidth: 1, borderTopColor: GREY_RULE, paddingTop: 5 },
+    runningFooterLeft:   { fontFamily: "Helvetica", fontSize: 8, color: GREY_TEXT, flex: 1 },
+    runningFooterCenter: { fontFamily: "Helvetica", fontSize: 8, color: GREY_TEXT, textAlign: "center", flex: 1 },
+    runningFooterRight:  { fontFamily: "Helvetica", fontSize: 8, color: GREY_TEXT, flex: 1, textAlign: "right" },
+    runningFooterItalic: { fontFamily: "Helvetica-Oblique", fontSize: 8, color: GREY_TEXT, textAlign: "center", flex: 1 },
 
     // ── Headings ─────────────────────────────────────────────────────────────
     h1Wrapper,
@@ -318,6 +308,23 @@ function preprocessContent(raw: string): string {
     .replace(/⅙/g, "1/6").replace(/⅚/g, "5/6").replace(/⅛/g, "1/8")
     .replace(/⅜/g, "3/8").replace(/⅝/g, "5/8").replace(/⅞/g, "7/8");
 
+  // Remaining uppercase Greek not yet handled
+  s = s
+    .replace(/Δ/g, "Delta").replace(/Ε/g, "Epsilon").replace(/Ζ/g, "Zeta")
+    .replace(/Η/g, "Eta").replace(/Ι/g, "Iota").replace(/Κ/g, "Kappa")
+    .replace(/Μ/g, "Mu").replace(/Ν/g, "Nu").replace(/Ο/g, "Omicron")
+    .replace(/Ρ/g, "Rho").replace(/Τ/g, "Tau").replace(/Υ/g, "Upsilon")
+    .replace(/Χ/g, "Chi");
+
+  // Raw Unicode outside WinAnsi that LLMs occasionally generate directly
+  // Using \u escapes so the source file stays ASCII-safe
+  s = s
+    .replace(/[​‌‍﻿]/g, "")
+    .replace(/−/g, "-")
+    .replace(/‑/g, "-")
+    .replace(/′/g, "'")
+    .replace(/″/g, "''");
+
   return s;
 }
 
@@ -447,12 +454,16 @@ const SUB_STYLE: any = { fontSize: 7, rise: -2 };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const SUP_STYLE: any = { fontSize: 7, rise:  4 };
 
-function Spans({ spans }: { spans: Span[] }) {
+function Spans({ spans, boldFont = "Helvetica-Bold", italicFont = "Helvetica-Oblique" }: {
+  spans: Span[];
+  boldFont?: string;
+  italicFont?: string;
+}) {
   return (
     <>
       {spans.map((s, i) => {
-        if (s.bold)   return <Text key={i} style={{ fontFamily: "Helvetica-Bold" }}>{s.text}</Text>;
-        if (s.italic) return <Text key={i} style={{ fontFamily: "Helvetica-Oblique" }}>{s.text}</Text>;
+        if (s.bold)   return <Text key={i} style={{ fontFamily: boldFont }}>{s.text}</Text>;
+        if (s.italic) return <Text key={i} style={{ fontFamily: italicFont }}>{s.text}</Text>;
         if (s.sub)    return <Text key={i} style={SUB_STYLE}>{s.text}</Text>;
         if (s.sup)    return <Text key={i} style={SUP_STYLE}>{s.text}</Text>;
         return <Text key={i}>{s.text}</Text>;
@@ -467,11 +478,19 @@ function TableBlock({ headers, rows, S }: { headers: string[]; rows: string[][];
   return (
     <View style={S.tableWrapper}>
       <View style={S.tableHeaderRow}>
-        {headers.map((h, i) => <Text key={i} style={S.tableHeaderCell}>{h}</Text>)}
+        {headers.map((h, i) => (
+          <Text key={i} style={S.tableHeaderCell}>
+            <Spans spans={parseSpans(h)} boldFont="Helvetica-Bold" italicFont="Helvetica-Oblique" />
+          </Text>
+        ))}
       </View>
       {rows.map((row, ri) => (
         <View key={ri} style={[S.tableRow, ri % 2 !== 0 ? S.tableRowAlt : {}]}>
-          {row.map((cell, ci) => <Text key={ci} style={S.tableCell}>{cell}</Text>)}
+          {row.map((cell, ci) => (
+            <Text key={ci} style={S.tableCell}>
+              <Spans spans={parseSpans(cell)} boldFont="Helvetica-Bold" italicFont="Helvetica-Oblique" />
+            </Text>
+          ))}
         </View>
       ))}
     </View>
@@ -479,41 +498,79 @@ function TableBlock({ headers, rows, S }: { headers: string[]; rows: string[][];
 }
 
 
-function BlockView({ block, S }: { block: Block; S: Styles }) {
+function BlockView({ block, S, t }: { block: Block; S: Styles; t: Theme }) {
   if (block.type === "spacer") return <View style={S.spacer} />;
   if (block.type === "h1") return (
-    <View style={S.h1Wrapper}><Text style={S.h1Text}>{block.text}</Text></View>
+    <View style={S.h1Wrapper}>
+      <Text style={S.h1Text}><Spans spans={parseSpans(block.text)} /></Text>
+    </View>
   );
   if (block.type === "h2") return (
-    <View style={S.h2Wrapper}><Text style={S.h2Text}>{block.text}</Text></View>
+    <View style={S.h2Wrapper}>
+      <Text style={S.h2Text}><Spans spans={parseSpans(block.text)} /></Text>
+    </View>
   );
-  if (block.type === "h3") return <Text style={S.h3Text}>{block.text}</Text>;
+  if (block.type === "h3") return (
+    <Text style={S.h3Text}><Spans spans={parseSpans(block.text)} /></Text>
+  );
   if (block.type === "li") return (
     <View style={S.bulletRow}>
       <Text style={S.bulletDot}>•</Text>
-      <Text style={S.bulletText}><Spans spans={block.spans} /></Text>
+      <Text style={S.bulletText}>
+        <Spans spans={block.spans} boldFont={t.bodyFontBold} italicFont={t.bodyFontItalic} />
+      </Text>
     </View>
   );
   if (block.type === "table") return <TableBlock headers={block.headers} rows={block.rows} S={S} />;
   return (
     <Text style={S.paragraph}>
-      <Spans spans={(block as { type: "p"; spans: Span[] }).spans} />
+      <Spans spans={(block as { type: "p"; spans: Span[] }).spans} boldFont={t.bodyFontBold} italicFont={t.bodyFontItalic} />
     </Text>
   );
 }
 
 // ── Cover Page ────────────────────────────────────────────────────────────────
 
-function CoverPage({ project, S }: { project: Project; S: Styles }) {
-  const year = new Date(project.createdAt).getFullYear();
+function CoverFooter({ project, S, t, year }: { project: Project; S: Styles; t: Theme; year: string }) {
+  const name = project.studentName && project.studentName !== "_" ? project.studentName : "";
+  const school = project.schoolName && project.schoolName !== "_" ? project.schoolName : "";
+  const rightText = [school, year].filter(Boolean).join(" · ");
+
+  if (t.footerStyle === "centered") {
+    const parts = [name, school, year].filter(Boolean).join("  ·  ");
+    return (
+      <View style={S.coverFooter}>
+        <Text style={S.coverFooterCenter}>{parts}</Text>
+      </View>
+    );
+  }
+  if (t.footerStyle === "italic") {
+    const parts = name && school ? `${name} — ${school}` : (name || school || year);
+    return (
+      <View style={S.coverFooter}>
+        <Text style={[S.coverFooterCenter, { fontFamily: "Helvetica-Oblique" }]}>{parts}</Text>
+      </View>
+    );
+  }
+  // twoCol and threeCol both use left/right layout
+  return (
+    <View style={S.coverFooter}>
+      <Text style={S.coverFooterLeft}>{name}</Text>
+      <Text style={S.coverFooterRight}>{rightText}</Text>
+    </View>
+  );
+}
+
+function CoverPage({ project, S, t }: { project: Project; S: Styles; t: Theme }) {
+  const year = String(new Date(project.createdAt).getFullYear());
   const infoRows = [
-    { label: "Student Name",     value: project.studentName || "Student" },
-    ...(project.schoolName ? [{ label: "School", value: project.schoolName }] : []),
-    { label: "Centre Number",    value: project.centreNumber || "—" },
-    { label: "Candidate Number", value: project.candidateNumber || "—" },
+    { label: "Student Name",     value: project.studentName && project.studentName !== "_" ? project.studentName : "—" },
+    { label: "School",           value: project.schoolName  && project.schoolName  !== "_" ? project.schoolName  : "—" },
+    { label: "Centre Number",    value: project.centreNumber  && project.centreNumber  !== "_" ? project.centreNumber  : "—" },
+    { label: "Candidate Number", value: project.candidateNumber && project.candidateNumber !== "_" ? project.candidateNumber : "—" },
     { label: "Grade / Form",     value: project.grade },
     { label: "Subject",          value: project.subject },
-    { label: "Academic Year",    value: String(year) },
+    { label: "Academic Year",    value: year },
   ];
 
   return (
@@ -540,17 +597,65 @@ function CoverPage({ project, S }: { project: Project; S: Styles }) {
 
       <View style={S.coverSpacer} />
 
-      <View style={S.coverFooter}>
-        <Text style={S.coverFooterText}>Generated via Pass Study Platform</Text>
-        <Text style={S.coverFooterBold}>pass.ac.zw</Text>
-      </View>
+      <CoverFooter project={project} S={S} t={t} year={year} />
     </Page>
   );
 }
 
 // ── Body Pages ────────────────────────────────────────────────────────────────
 
-function BodyPages({ project, blocks, S }: { project: Project; blocks: Block[]; S: Styles }) {
+function BodyFooter({ project, S, t }: { project: Project; S: Styles; t: Theme }) {
+  const name   = project.studentName && project.studentName !== "_" ? project.studentName : "";
+  const school = project.schoolName  && project.schoolName  !== "_" ? project.schoolName  : "";
+
+  if (t.footerStyle === "centered") {
+    const mid = [name, school].filter(Boolean).join("  ·  ");
+    return (
+      <View style={S.runningFooter} fixed>
+        <Text style={S.runningFooterLeft} />
+        <Text style={S.runningFooterCenter}>{mid}</Text>
+        <Text
+          style={S.runningFooterRight}
+          render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
+        />
+      </View>
+    );
+  }
+  if (t.footerStyle === "italic") {
+    const mid = name && school ? `${name} — ${school}` : (name || school || "");
+    return (
+      <View style={S.runningFooter} fixed>
+        <Text style={S.runningFooterItalic}>{mid}</Text>
+      </View>
+    );
+  }
+  if (t.footerStyle === "threeCol") {
+    return (
+      <View style={S.runningFooter} fixed>
+        <Text style={S.runningFooterLeft}>{name}</Text>
+        <Text style={S.runningFooterCenter}>{school}</Text>
+        <Text
+          style={S.runningFooterRight}
+          render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
+        />
+      </View>
+    );
+  }
+  // twoCol (default)
+  return (
+    <View style={S.runningFooter} fixed>
+      <Text style={S.runningFooterLeft}>{name}</Text>
+      <Text
+        style={S.runningFooterRight}
+        render={({ pageNumber, totalPages }) =>
+          `${school ? school + "  ·  " : ""}Page ${pageNumber} of ${totalPages}`
+        }
+      />
+    </View>
+  );
+}
+
+function BodyPages({ project, blocks, S, t }: { project: Project; blocks: Block[]; S: Styles; t: Theme }) {
   const raw       = project.topic || project.subject;
   const shortTitle = raw.length > 55 ? raw.slice(0, 55) + "…" : raw;
 
@@ -566,23 +671,25 @@ function BodyPages({ project, blocks, S }: { project: Project; blocks: Block[]; 
         />
       </View>
 
-      {blocks.map((block, i) => <BlockView key={i} block={block} S={S} />)}
+      {blocks.map((block, i) => <BlockView key={i} block={block} S={S} t={t} />)}
+
+      <BodyFooter project={project} S={S} t={t} />
     </Page>
   );
 }
 
 // ── Document ──────────────────────────────────────────────────────────────────
 
-function ProjectDocument({ project, blocks, S }: { project: Project; blocks: Block[]; S: Styles }) {
+function ProjectDocument({ project, blocks, S, t }: { project: Project; blocks: Block[]; S: Styles; t: Theme }) {
   return (
     <Document
       title={project.topic ?? project.subject}
-      author={project.studentName ?? "Student"}
+      author={project.studentName && project.studentName !== "_" ? project.studentName : "Student"}
       subject={`ZIMSEC HBC Project — ${project.subject}`}
       keywords="ZIMSEC, HBC, Zimbabwe, heritage"
     >
-      <CoverPage project={project} S={S} />
-      <BodyPages project={project} blocks={blocks} S={S} />
+      <CoverPage project={project} S={S} t={t} />
+      <BodyPages project={project} blocks={blocks} S={S} t={t} />
     </Document>
   );
 }
@@ -594,15 +701,13 @@ function ProjectDocument({ project, blocks, S }: { project: Project; blocks: Blo
  * Each project gets a deterministic visual theme derived from its ID.
  */
 export async function generateProjectPdfBuffer(project: Project): Promise<Buffer> {
-  // Pick theme from project ID (deterministic — same project = same theme)
   const theme = pickTheme(project.id);
   const S     = buildStyles(theme);
 
-  // Normalise special characters BEFORE parsing markdown
   const processedContent = preprocessContent(project.content ?? "");
   let blocks = parseMarkdown(processedContent);
 
-  // Upgrade "Candidate Information" paragraph block → styled InfoBox
+  // Upgrade "Candidate Information" paragraph block → styled table
   const candidateExtract = extractCandidateInfo(blocks);
   if (candidateExtract) {
     const { infoBlock, rest } = candidateExtract;
@@ -620,7 +725,7 @@ export async function generateProjectPdfBuffer(project: Project): Promise<Buffer
   }
 
   const buffer = await renderToBuffer(
-    <ProjectDocument project={project} blocks={blocks} S={S} />
+    <ProjectDocument project={project} blocks={blocks} S={S} t={theme} />
   );
   return Buffer.from(buffer);
 }
