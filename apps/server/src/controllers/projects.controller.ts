@@ -129,11 +129,33 @@ export async function generateProject(c: Context) {
   const displayName = studentName || "_";
   const pronoun = isGroupProject ? "We" : "I";
 
+  // Word targets sized so per-section totals comfortably exceed the minimum (10+ pages)
   const wordTargets = grade === "Grade 7"
-    ? { total: 1500, stage2: "150–200", stage4: "120–160" }
+    ? {
+        total: 3000,
+        s11: "280–380", s12: "100–140", s13: "120–170",
+        stage2: "500–660", s22: "380–500", s3each: "150–210",
+        stage4: "380–510", s44: "160–240",
+        s51: "230–310", s52: "170–240", s53: "170–240",
+        refs: 7,
+      }
     : grade === "Form 4"
-    ? { total: 3000, stage2: "300–400", stage4: "250–350" }
-    : { total: 5500, stage2: "500–650", stage4: "400–550" };
+    ? {
+        total: 4500,
+        s11: "400–530", s12: "130–180", s13: "150–200",
+        stage2: "760–970", s22: "520–690", s3each: "210–290",
+        stage4: "540–700", s44: "210–290",
+        s51: "300–400", s52: "210–290", s53: "210–290",
+        refs: 8,
+      }
+    : {
+        total: 7000,
+        s11: "620–800", s12: "200–270", s13: "220–300",
+        stage2: "1100–1430", s22: "830–1070", s3each: "300–420",
+        stage4: "830–1070", s44: "290–390",
+        s51: "460–600", s52: "340–460", s53: "340–460",
+        refs: 10,
+      };
 
   const aLevelNote = grade === "Form 6"
     ? `\nA-LEVEL DEPTH REQUIREMENT: This is an Advanced Level project. Write with university-entrance academic depth. Include quantitative observations, cite named Zimbabwean institutions or researchers where realistic, and demonstrate analytical and evaluative thinking that goes well beyond simple description. Each section should read as the work of a student who has genuinely engaged with this topic at an advanced level.\n`
@@ -168,79 +190,70 @@ CRITICAL INSTRUCTIONS:
 3. Write entirely in first person. Use "${pronoun}" throughout — as a Zimbabwean student who genuinely carried out this investigation.
 4. Avoid AI-sounding phrases: "It is important to note that…", "In conclusion, it can be said…", "Furthermore, it should be noted…". Write naturally with curiosity and personal observations.
 5. Every section must contain real, specific Zimbabwean content — actual provinces, real institutions, authentic cultural practices, named community members with plausible Zimbabwean names.
-6. Minimum total word count: ${wordTargets.total} words. Do NOT pad with repetition — every paragraph must add substance.
+6. MANDATORY MINIMUM: ${wordTargets.total} words total. Every section MUST reach its stated word count. Do NOT stop early.
 
-EXACT OUTPUT STRUCTURE (follow this precisely):
+EXACT OUTPUT STRUCTURE (follow this precisely — hit every word-count target):
 
 # [Your specific project title]
 
 ## Stage 1: Problem Identification
 
 ### 1.1 Description of the Problem or Need
-[Describe the heritage-based problem being investigated. What currently exists, what gap or challenge is present, and why it matters in the Zimbabwean context. Write in first person. 150–200 words.]
+[Describe the heritage-based problem being investigated — what currently exists, what gap or challenge is present, and why it matters in the Zimbabwean context. Write in first person with specific local detail. ${wordTargets.s11} words.]
 
 ### 1.2 Statement of Intent
-[State precisely what the project aims to achieve — a clear, measurable objective starting with "${pronoun} aim to…" or "${pronoun} set out to…". 70–110 words.]
+[State precisely what the project aims to achieve. Begin with "${pronoun} aim to…" or "${pronoun} set out to…" and include measurable outcomes. ${wordTargets.s12} words.]
 
 ### 1.3 Specifications and Constraints
-[List 5–7 numbered requirements the final outcome must meet. Include practical constraints: available materials, community acceptance, cost, and alignment with heritage values.]
+[List ${wordTargets.refs > 8 ? "7–9" : "5–7"} numbered specifications the final outcome must meet. Write each as a full sentence covering practical constraints: materials available, community acceptance, cost limits, and alignment with heritage values. ${wordTargets.s13} words total.]
 
 ## Stage 2: Investigation of Related Ideas
 
 ### 2.1 Research Findings
-[Present findings from research — interviews with named community elders, field visits to specific locations, library sources, or surveys. Organise under 3 clear sub-headings relevant to the topic. ${wordTargets.stage2} words total. Use at least ONE table of comparative or historical data.]
+[Present findings from research — interviews with named community elders (give full names and roles), field visits to specific locations, library sources, and surveys. Organise under THREE clear sub-headings relevant to the topic. Each sub-section must be a full paragraph of substantive content. ${wordTargets.stage2} words total. Use at least TWO tables of comparative or historical data, each with a header row.]
 
 ### 2.2 Analysis of Existing Approaches
-
-**Approach A: [Name a relevant traditional or modern method]**
-- Merits: [3 specific advantages with Zimbabwean context]
-- Demerits: [3 specific disadvantages]
-
-**Approach B: [Name a second method]**
-- Merits: [3 specific advantages]
-- Demerits: [3 specific disadvantages]
-
-**Approach C: [Name a third method]**
-- Merits: [3 specific advantages]
-- Demerits: [3 specific disadvantages]
+[Analyse THREE approaches (traditional, modern, and a hybrid or alternative) relevant to this project topic. For EACH approach write a full developed paragraph of merits (at least 3 specific advantages with Zimbabwean context) and a full paragraph of demerits (at least 3 specific disadvantages). Write in full sentences — do NOT use bullet lists. ${wordTargets.s22} words total.]
 
 ## Stage 3: Generation of Possible Solutions
 
-[Propose 3 distinct possible solutions to the problem from Stage 1. For each, describe the concept and how it addresses the specifications. Number them clearly. 80–120 words each.]
+[Propose THREE distinct possible solutions to the problem from Stage 1. For each, write a full developed paragraph describing the concept, how it addresses the specifications from Stage 1.3, why it is feasible in the Zimbabwean context, and what resources it requires. ${wordTargets.s3each} words each.]
 
-**Solution 1 — [Descriptive title]:** [Description]
+**Solution 1 — [Descriptive title]:** [Full paragraph]
 
-**Solution 2 — [Descriptive title]:** [Description]
+**Solution 2 — [Descriptive title]:** [Full paragraph]
 
-**Solution 3 — [Descriptive title]:** [Description]
+**Solution 3 — [Descriptive title]:** [Full paragraph]
 
 ## Stage 4: Development and Refinement
 
 ### 4.1 Selected Solution
-[State which of the three solutions ${pronoun.toLowerCase()} chose and why in one clear sentence.]
+[State which solution ${pronoun.toLowerCase()} chose and the primary reason in 1–2 sentences.]
 
 ### 4.2 Justification of Choice
-[Explain why this solution was chosen over the others. Reference the specifications from Stage 1 and the analysis from Stage 2. ${wordTargets.stage4} words.]
+[Explain in full paragraphs why this solution was chosen over the others. Reference each specification from Stage 1.3 and compare against the approaches in Stage 2.2. ${wordTargets.stage4} words.]
 
 ### 4.3 Development Process
-[Describe how the chosen solution was developed, refined, or implemented step by step. Include materials, methods, people involved, locations visited, and modifications made during development. Write in first person with specific detail. ${wordTargets.stage4} words.]
+[Describe step-by-step how the solution was developed, refined, and implemented. Include: specific materials and quantities, named people consulted, locations visited with district and province, timeline, and modifications made along the way. Write in first person with vivid specific detail. ${wordTargets.stage4} words.]
 
 ### 4.4 Challenges Encountered and How They Were Overcome
-[Describe 3–4 real challenges faced during the project and how ${pronoun.toLowerCase()} addressed each one. 100–150 words.]
+[Describe 3–4 real, specific challenges encountered. For each: name the challenge, explain why it arose, and describe the concrete steps taken to overcome it. ${wordTargets.s44} words.]
 
 ## Stage 5: Evaluation
 
 ### 5.1 Assessment Against Specifications
-[Evaluate how well the completed project meets each specification listed in Stage 1.3. Go through them systematically. 150–200 words.]
+[Evaluate how well the completed project meets EACH specification listed in Stage 1.3 — go through them one by one in full sentences. Be honest about partial successes. ${wordTargets.s51} words.]
 
 ### 5.2 Strengths and Limitations
-[Comment on what worked well and what could be improved if ${pronoun.toLowerCase()} were to repeat the project. 100–150 words.]
+[Two full paragraphs — first on strengths: what worked well and why. Second on limitations: what could be improved and what ${pronoun.toLowerCase()} would do differently. ${wordTargets.s52} words.]
 
 ### 5.3 Overall Conclusion
-[Tie together what was learned and the value of this investigation for Zimbabwean heritage preservation. 100–150 words.]
+[Tie together what was learned, the value for Zimbabwean heritage preservation, and recommendations for future work. ${wordTargets.s53} words.]
+
+FINAL CHECK — before writing References: verify your total word count has reached ${wordTargets.total} words. If not, expand Stage 2.1 (Research Findings) and Stage 4.3 (Development Process) before continuing.
 
 ## References
-[List 6–8 realistic references: ZIMSEC curriculum documents, named community elders with village/district, school library textbooks with author and year, government publications, and field visit locations. Use a consistent citation format.]
+[List ${wordTargets.refs}–${wordTargets.refs + 3} realistic references in a consistent citation format: ZIMSEC curriculum documents (with year), named community elders (full name, village, district), school textbooks (author, title, publisher, year), government publications, and field visit locations.]
 ${specialCharRules}`;
 
   let projectId: string | null = null;

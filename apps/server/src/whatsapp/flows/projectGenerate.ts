@@ -33,9 +33,9 @@ function isGrade7(grade: string): boolean {
 }
 
 function getTargetWords(grade: string): number {
-  if (isGrade7(grade)) return 2000;
-  if (/form\s*6|a.?level/i.test(grade)) return 5500;
-  return 3000;
+  if (isGrade7(grade)) return 3000;
+  if (/form\s*6|a.?level/i.test(grade)) return 7000;
+  return 4500;
 }
 
 function countWords(text: string): number {
@@ -57,55 +57,89 @@ function buildPrompt(slots: ProjectSlots, year: number): string {
   const sectionGuide = isG7
     ? `
 ## 1. Introduction
-[Background and context — 250-350 words. Explain what the heritage topic is, its significance in Zimbabwe, and the aim of this project.]
+[Background and context — 380-490 words. Explain what the heritage topic is, its significance in Zimbabwe, and the aim of this project. Name specific communities, provinces, and cultural practices.]
 
 ## 2. Literature Review / Background Information
-[Review existing knowledge about the topic. Reference textbooks, community knowledge, historical context — 300-400 words. Include a table of key historical dates or milestones.]
+[Review existing knowledge — 510-660 words. Reference textbooks, community knowledge, historical context. Include a table of key historical dates or milestones with a header row.]
 
 ## 3. Methodology
-[How you collected your data: interviews with community elders, field visits, library research — 200-250 words. Be realistic for a Zimbabwean Grade 7 student.]
+[How you collected your data: interviews with named community elders, field visits to specific locations, library research — 320-430 words. Be realistic for a Zimbabwean Grade 7 student. Include a table of data sources used.]
 
 ## 4. Findings and Data Presentation
-[Present your findings clearly. This is the main body — 600-800 words. Use at least TWO tables to present comparative data. Use sub-headings for each finding area.]
+[Present your findings in depth — 920-1230 words. This is the main body. Use at least TWO tables with header rows to present comparative data. Use sub-headings (###) for each distinct finding area.]
 
 ## 5. Discussion and Analysis
-[Analyse what your findings mean. Relate back to the heritage curriculum — 250-350 words.]
+[Analyse what your findings mean. Relate back to the heritage curriculum — 390-510 words.]
 
 ## 6. Recommendations
-[3-5 practical recommendations for preserving the heritage practice — 150-200 words.]
+[4-6 practical, specific recommendations — 270-380 words. Each recommendation should be a full paragraph, not a single sentence.]
 
 ## 7. Conclusion
-[Tie everything together — 150-200 words.]
+[Tie everything together — 220-300 words.]
 
 ## 8. References
-[5-7 realistic references: textbooks, interviews with named community members, ZIMSEC documents, government publications]`
-    : `
+[6-8 realistic references: textbooks with author and year, interviews with named community members (full name and village), ZIMSEC documents, government publications]
+
+FINAL CHECK — before writing References: verify your total word count is at least 3000 words. If not, expand sections 4 (Findings) and 2 (Literature Review).`
+    : isA
+    ? `
 ## 1. Introduction
-[Background, rationale, objectives and significance — 350-500 words. Ground it firmly in Zimbabwean heritage context and the Heritage-Based Curriculum 5.0 framework.]
+[Background, rationale, objectives and significance — 750-960 words. Ground it firmly in Zimbabwean heritage context and the HBC 5.0 framework. Include a precise research question or hypothesis.]
 
 ## 2. Literature Review
-[Critical review of existing research, academic sources, and community knowledge — 400-600 words. Must include at least one data table summarising key concepts or comparisons.]
+[Critical review of existing research, academic sources, and community knowledge — 960-1230 words. Must include at least TWO data tables summarising key concepts, comparisons, or historical trends.]
 
 ## 3. Theoretical Framework
-[Identify theories or frameworks underpinning the study. Link to HBC 5.0 principles — 200-300 words.]
+[Identify and critically discuss theories or frameworks underpinning the study. Link to HBC 5.0 principles and relevant academic literature — 460-610 words.]
 
 ## 4. Methodology
-[Research design, data collection tools, sampling, ethical considerations — 300-400 words. Include a table summarising data sources used.]
+[Research design, data collection tools, sampling strategy, ethical considerations — 620-820 words. Include a table summarising data sources and a table of research instruments used.]
 
 ## 5. Data Presentation and Analysis
-[Richly detailed findings — 800-1200 words. This is the core of the project. Use at least THREE tables (e.g., comparative data, survey results, resource inventories). Use sub-sections with ## headings for each major finding area.]
+[Richly detailed findings — 1850-2450 words. This is the core of the project. Use at least FOUR tables (comparative data, survey results, resource inventories, experimental results). Use sub-sections with ### headings for each major finding area. Include quantitative observations where relevant.]
 
 ## 6. Discussion
-[Critical discussion of what the findings mean for Zimbabwe — 350-500 words. Compare with secondary sources from the literature review.]
+[Critical discussion of what the findings mean for Zimbabwe — 820-1060 words. Compare with secondary sources from the literature review. Demonstrate analytical depth.]
 
 ## 7. Recommendations and Conclusion
-[Specific, evidence-based recommendations (at least 5). Concluding remarks tying back to Heritage-Based Education goals — 300-400 words.]
+[Evidence-based recommendations (at least 6, each as a full paragraph). Concluding remarks tying back to Heritage-Based Education goals — 770-980 words.]
 
 ## 8. Appendices (optional)
 [Additional supporting data, interview questionnaires, observation checklists if relevant]
 
 ## 9. References
-[8-12 APA-formatted references: academic journals, textbooks, ZIMSEC publications, named community interviews, government documents]`;
+[10-14 APA-formatted references: academic journals, textbooks, ZIMSEC publications, named community interviews, government documents]
+
+FINAL CHECK — before writing References: verify your total word count is at least 7000 words. If not, expand sections 5 (Data Presentation) and 2 (Literature Review).`
+    : `
+## 1. Introduction
+[Background, rationale, objectives and significance — 510-690 words. Ground it firmly in Zimbabwean heritage context and the Heritage-Based Curriculum 5.0 framework.]
+
+## 2. Literature Review
+[Critical review of existing research, academic sources, and community knowledge — 660-890 words. Must include at least TWO data tables summarising key concepts or comparisons with header rows.]
+
+## 3. Theoretical Framework
+[Identify theories or frameworks underpinning the study. Link to HBC 5.0 principles — 320-450 words.]
+
+## 4. Methodology
+[Research design, data collection tools, sampling, ethical considerations — 460-610 words. Include a table summarising data sources used.]
+
+## 5. Data Presentation and Analysis
+[Richly detailed findings — 1230-1640 words. This is the core of the project. Use at least THREE tables (comparative data, survey results, resource inventories). Use sub-sections with ### headings for each major finding area.]
+
+## 6. Discussion
+[Critical discussion of what the findings mean for Zimbabwe — 570-760 words. Compare with secondary sources from the literature review.]
+
+## 7. Recommendations and Conclusion
+[Specific, evidence-based recommendations (at least 5, each as a full paragraph). Concluding remarks tying back to Heritage-Based Education goals — 510-690 words.]
+
+## 8. Appendices (optional)
+[Additional supporting data, interview questionnaires, observation checklists if relevant]
+
+## 9. References
+[8-12 APA-formatted references: academic journals, textbooks, ZIMSEC publications, named community interviews, government documents]
+
+FINAL CHECK — before writing References: verify your total word count is at least 4500 words. If not, expand sections 5 (Data Presentation) and 2 (Literature Review).`;
 
   const outlineSection = slots.outline?.trim()
     ? `\n\nSTUDENT-PROVIDED OUTLINE — FOLLOW THIS STRICTLY. Your output MUST cover every point below in the same order. Do not add sections not mentioned in the outline. Do not omit any point.\n---\n${slots.outline.trim()}\n---\n`
@@ -138,7 +172,7 @@ CRITICAL INSTRUCTIONS:
 ${sectionGuide}
 
 QUALITY REQUIREMENTS (MANDATORY):
-- Minimum total word count: ${getTargetWords(slots.grade)} words
+- ABSOLUTE MINIMUM: ${getTargetWords(slots.grade)} words. Do NOT stop before this count. If you finish all sections and are below the minimum, expand Data Presentation and Literature Review before writing References.
 - Write in formal, academic British English
 - Every table MUST have a header row separated by |---|---| from the data rows
 - Use **bold** for key terms and _italic_ for emphasis or sources
