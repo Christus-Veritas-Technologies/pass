@@ -11,6 +11,7 @@ import { generateProjectPdfBuffer } from "../lib/projectPdfDocument";
 import { generateProjectDocxBuffer } from "../lib/projectDocxDocument";
 import { sendNotification } from "../lib/notifications";
 import { isValidSubject, canonicalSubject } from "../lib/subjects";
+import { PLAN_LIMITS, currentMonthKey, type PlanKey } from "../lib/planLimits";
 
 const VALID_GRADES = ["Grade 7", "Form 4", "Form 6"] as const;
 
@@ -70,6 +71,7 @@ export async function generateProject(c: Context) {
     grade,
     subject,
     isGroupProject = false,
+    outline = "",
   } = body as {
     centreNumber?: string;
     candidateNumber?: string;
@@ -78,6 +80,7 @@ export async function generateProject(c: Context) {
     grade: string;
     subject: string;
     isGroupProject?: boolean;
+    outline?: string;
   };
 
   if (!VALID_GRADES.includes(grade as (typeof VALID_GRADES)[number])) {
@@ -97,6 +100,30 @@ export async function generateProject(c: Context) {
   }
   // Use the canonical (properly-cased) name throughout
   const canonicalSub = canonicalSubject(subjectKey) ?? subjectKey;
+
+  // ── Quota enforcement ─────────────────────────────────────────────────────────
+  {
+    const quotaUser = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true, bonusProjects: true } });
+    if (quotaUser) {
+      const limits = PLAN_LIMITS[quotaUser.plan as PlanKey];
+      const month = currentMonthKey();
+      const usage = await prisma.monthlyUsage.findUnique({ where: { userId_month: { userId, month } } });
+      const projectsUsed = usage?.projectsUsed ?? 0;
+      if (projectsUsed >= limits.projects) {
+        if ((quotaUser.bonusProjects ?? 0) > 0) {
+          await prisma.user.update({ where: { id: userId }, data: { bonusProjects: { decrement: 1 } } });
+        } else {
+          return c.json({ error: "Monthly project limit reached for your plan", limitReached: true, plan: quotaUser.plan, limit: limits.projects }, 402);
+        }
+      } else {
+        await prisma.monthlyUsage.upsert({
+          where: { userId_month: { userId, month } },
+          create: { userId, month, papersUsed: 0, projectsUsed: 1 },
+          update: { projectsUsed: { increment: 1 } },
+        });
+      }
+    }
+  }
 
   const year = new Date().getFullYear();
   const displayName = studentName || "_";
@@ -121,7 +148,11 @@ SPECIAL CHARACTER RULES (the PDF renderer requires these — follow them exactly
 - NEVER use Unicode arrows (→ ←) — use ASCII: ->, <-
 - NEVER use Unicode math symbols (≥ ≤ √ ≠) — use ASCII: >=, <=, sqrt, !=`;
 
-  const prompt = `Generate a COMPLETE, FORMAL ZIMSEC Heritage-Based Curriculum (HBC) 5.0 project for a ${grade} student studying ${canonicalSub}.
+  const outlineSection = outline.trim()
+    ? `\n\nSTUDENT-PROVIDED OUTLINE — FOLLOW THIS STRICTLY. Your output MUST cover every point below in the same order. Do not add sections not mentioned in the outline. Do not omit any point.\n---\n${outline.trim()}\n---\n`
+    : "";
+
+  const prompt = `Generate a COMPLETE, FORMAL ZIMSEC Heritage-Based Curriculum (HBC) 5.0 project for a ${grade} student studying ${canonicalSub}.${outlineSection}
 
 STUDENT DETAILS (embed these in the document as data only):
 - Name: ${displayName}${schoolName ? `\n- School: ${schoolName}` : ""}
@@ -224,6 +255,7 @@ ${specialCharRules}`;
           subject: canonicalSub,
           topic: "",
           content: "",
+          outline: outline.trim() || null,
           centreNumber,
           candidateNumber,
           studentName,
