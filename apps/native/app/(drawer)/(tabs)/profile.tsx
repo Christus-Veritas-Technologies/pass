@@ -202,7 +202,29 @@ export default function ProfileScreen() {
     const token = await getToken();
     if (!token || !notifSettings) return;
     const updated = { ...notifSettings, ...patch };
-    setNotifSettings(updated);
+    setNotifSettings(updated); // optimistic update
+
+    // When enabling native push, register the device token first
+    if (patch.nativePushEnabled === true) {
+      try {
+        const { registerPushToken } = await import("@/lib/auth");
+        await registerPushToken();
+      } catch { /* non-fatal */ }
+    }
+
+    // When disabling native push, unregister the device token from the server
+    if (patch.nativePushEnabled === false && token) {
+      try {
+        const Notifications = await import("expo-notifications");
+        const tokenData = await Notifications.getExpoPushTokenAsync({ projectId: "31966f37-762e-44f9-9da4-2aa43d262227" });
+        fetch(`${API}/notifications/native-push/register`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ token: tokenData.data }),
+        }).catch(() => undefined);
+      } catch { /* non-fatal — push settings still saved */ }
+    }
+
     fetch(`${API}/notifications/settings`, {
       method: "PATCH",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -220,8 +242,8 @@ export default function ProfileScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.brand, alignItems: "center", justifyContent: "center" }} edges={["top"]}>
-        <ActivityIndicator size="large" color="#FFFFFF" />
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, alignItems: "center", justifyContent: "center" }} edges={["top"]}>
+        <ActivityIndicator size="large" color={colors.brand} />
       </SafeAreaView>
     );
   }
