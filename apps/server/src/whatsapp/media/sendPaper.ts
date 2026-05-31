@@ -82,8 +82,14 @@ export async function sendPaperPdf(
         caption,
       } as MessageSendOptions);
       return "sent";
-    } catch (err) {
-      console.error(`[whatsapp] sendPaperPdf fromUrl failed for ${resource.id}:`, err);
+    } catch (err: unknown) {
+      const status = (err as { statusCode?: number; status?: number }).statusCode
+        ?? (err as { statusCode?: number; status?: number }).status;
+      if (status === 404 || status === 403 || status === 410) {
+        console.warn(`[whatsapp] sendPaperPdf: URL unavailable (${status}) for resource ${resource.id} — trying local`);
+      } else {
+        console.error(`[whatsapp] sendPaperPdf fromUrl failed for ${resource.id}:`, err);
+      }
       // Fall through to local file path
     }
   }
@@ -99,8 +105,15 @@ export async function sendPaperPdf(
       caption,
     } as MessageSendOptions);
     return "sent";
-  } catch (err) {
-    console.error(`[whatsapp] sendPaperPdf local fallback failed for ${resource.id}:`, err);
+  } catch (err: unknown) {
+    // ENOENT means the file simply isn't on this server — expected in production
+    // when papers haven't been copied locally. Log a single line, not a stack trace.
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code === "ENOENT") {
+      console.warn(`[whatsapp] sendPaperPdf: file not found locally for resource ${resource.id} (${resource.title})`);
+    } else {
+      console.error(`[whatsapp] sendPaperPdf local fallback failed for ${resource.id}:`, err);
+    }
     return "no_file";
   }
 }
