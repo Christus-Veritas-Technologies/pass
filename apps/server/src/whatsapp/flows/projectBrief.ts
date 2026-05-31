@@ -16,6 +16,7 @@ import {
   PROJECT_ASK_GRADE,
   PROJECT_ASK_SUBJECT,
   PROJECT_ASK_TITLE,
+  PROJECT_ASK_OUTLINE,
   PROJECT_ASK_CENTRE,
   PROJECT_ASK_CANDIDATE,
   PROJECT_NUMBER_BLANK_REMINDER,
@@ -29,11 +30,12 @@ export type ProjectSlots = {
   grade: string;
   subject: string;
   category: string;
-  title: string;   // "" means "let AI generate the title"
+  title: string;    // "" means "let AI generate the title"
+  outline: string;  // "" means no outline provided
 };
 
 type Collected = Partial<ProjectSlots>;
-type Awaiting = "name" | "school" | "centre" | "candidate" | "grade" | "subject" | "title";
+type Awaiting = "name" | "school" | "centre" | "candidate" | "grade" | "subject" | "title" | "outline";
 
 // Category is auto-selected — never asked from the user.
 const VALID_CATEGORIES = ["Culture & History", "Indigenous Sciences", "Arts & Lifestyle"] as const;
@@ -189,6 +191,19 @@ export async function handleProjectBriefReply(
     return { state: await promptNextSlot(msg, newState, merged) };
   }
 
+  // Outline step: user pastes their outline/guide or skips
+  if (awaiting === "outline") {
+    const SKIP_OUTLINE = /^(skip|none|no\s+outline|no\s+guide|n\/?a|next|blank)\s*$/i;
+    const chosenOutline = SKIP_OUTLINE.test(text.trim()) ? "" : text.trim();
+    const merged = withAutoFields({ ...collected, outline: chosenOutline });
+    const newState: ConversationState = {
+      ...state,
+      mode: { kind: "project_brief", awaiting: getAwaiting(merged), collected: merged },
+    };
+    if (isComplete(merged)) return { state: newState, ready: merged as ProjectSlots };
+    return { state: await promptNextSlot(msg, newState, merged) };
+  }
+
   // ── Number selection: deterministic, bypass NLP entirely ─────────────────
   // parseInt handles inputs like "2", "2Combined science" — the leading digit
   // is enough to identify the selection.
@@ -267,13 +282,14 @@ function isComplete(c: Collected): c is ProjectSlots {
   return !!(
     c.studentName && c.schoolName && c.centreNumber && c.candidateNumber &&
     c.grade && c.subject && c.category &&
-    c.title !== undefined   // "" is valid (AI-generated topic)
+    c.title !== undefined &&  // "" is valid (AI-generated topic)
+    c.outline !== undefined   // "" is valid (no outline)
   );
 }
 
 function missingFields(c: Collected): (keyof Collected)[] {
-  // category is excluded — always auto-assigned, never extracted from user text
-  const all: (keyof Collected)[] = ["studentName", "schoolName", "centreNumber", "candidateNumber", "grade", "subject", "title"];
+  // category and outline are excluded from NLP extraction (category auto-assigned, outline prompted directly)
+  const all: (keyof Collected)[] = ["studentName", "schoolName", "centreNumber", "candidateNumber", "grade", "subject", "title", "outline"];
   return all.filter((k) => c[k] === undefined);
 }
 
@@ -287,7 +303,8 @@ function getAwaiting(c: Collected): Awaiting {
   if (!c.subject) return "subject";
   // category is auto-assigned — skip directly to topic
   if (c.title === undefined) return "title";
-  return "title";  // unreachable — isComplete would have caught it
+  if (c.outline === undefined) return "outline";
+  return "outline";  // unreachable — isComplete would have caught it
 }
 
 async function promptNextSlot(
@@ -322,6 +339,9 @@ async function promptNextSlot(
       break;
     case "title":
       await msg.reply(PROJECT_ASK_TITLE);
+      break;
+    case "outline":
+      await msg.reply(PROJECT_ASK_OUTLINE);
       break;
   }
 

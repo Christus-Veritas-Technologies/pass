@@ -277,6 +277,13 @@ export const PROJECT_ASK_TITLE = `Do you already have a topic for your project? 
 
 Type your topic below (e.g. _"The role of traditional medicine in rural healthcare"_), or reply *next* and Pass will choose one for you.`;
 
+export const PROJECT_ASK_OUTLINE = `📋 *Project Outline (optional)*
+
+Do you have a project outline, teacher guide, or any specific requirements for this project?
+
+If yes, *type or paste it here* and Pass will follow it strictly.
+Reply *skip* to let Pass structure the project freely.`;
+
 export const PROJECT_ASK_CATEGORY = `Choose a project category:
 
 1️⃣  Culture & History — totems, liberation struggle, customs, languages

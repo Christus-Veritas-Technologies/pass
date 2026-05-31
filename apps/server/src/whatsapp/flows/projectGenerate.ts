@@ -107,7 +107,11 @@ function buildPrompt(slots: ProjectSlots, year: number): string {
 ## 9. References
 [8-12 APA-formatted references: academic journals, textbooks, ZIMSEC publications, named community interviews, government documents]`;
 
-  return `Generate a COMPLETE, FORMAL ZIMSEC Heritage-Based Curriculum (HBC) 5.0 project for a ${slots.grade} student studying ${slots.subject}.
+  const outlineSection = slots.outline?.trim()
+    ? `\n\nSTUDENT-PROVIDED OUTLINE — FOLLOW THIS STRICTLY. Your output MUST cover every point below in the same order. Do not add sections not mentioned in the outline. Do not omit any point.\n---\n${slots.outline.trim()}\n---\n`
+    : "";
+
+  return `Generate a COMPLETE, FORMAL ZIMSEC Heritage-Based Curriculum (HBC) 5.0 project for a ${slots.grade} student studying ${slots.subject}.${outlineSection}
 This is NOT a summary — write the FULL, PUBLICATION-READY project with all sections fully developed.
 
 STUDENT DETAILS (embed as data only):
@@ -232,6 +236,7 @@ export async function generateProject(
       subject: slots.subject,
       topic: "",
       content: "",
+      outline: slots.outline?.trim() || null,
       centreNumber: slots.centreNumber,
       candidateNumber: slots.candidateNumber,
       studentName: slots.studentName,
