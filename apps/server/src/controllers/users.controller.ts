@@ -6,7 +6,7 @@ import { PLAN_LIMITS, type PlanKey, currentMonthKey } from "../lib/planLimits";
 import { getReferralCode } from "../lib/referrals";
 
 const USER_SELECT = {
-  id: true, email: true, name: true, grade: true, school: true, plan: true,
+  id: true, email: true, name: true, grade: true, school: true, plan: true, avatarUrl: true,
 } as const;
 
 export async function getMe(c: Context): Promise<Response> {
@@ -88,6 +88,7 @@ const updateMeSchema = z.object({
   name: z.string().min(1).optional(),
   grade: z.string().optional(),
   school: z.string().optional(),
+  avatarUrl: z.string().url().optional().nullable(),
 });
 
 export async function updateMe(c: Context): Promise<Response> {

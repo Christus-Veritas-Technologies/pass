@@ -60,8 +60,8 @@ async function createSession(userId: string) {
   return { accessToken, refreshToken, session };
 }
 
-function safeUser(user: { id: string; email: string; name: string; plan: string; grade: string | null }) {
-  return { id: user.id, email: user.email, name: user.name, plan: user.plan, grade: user.grade };
+function safeUser(user: { id: string; email: string; name: string; plan: string; grade: string | null; avatarUrl?: string | null }) {
+  return { id: user.id, email: user.email, name: user.name, plan: user.plan, grade: user.grade, avatarUrl: user.avatarUrl ?? null };
 }
 
 // ─── Email / password ────────────────────────────────────────────────────────
@@ -276,7 +276,7 @@ export async function googleNative(c: Context) {
   }
 }
 
-async function findOrCreateGoogleUser(googleUser: { id: string; email: string; name: string }) {
+async function findOrCreateGoogleUser(googleUser: { id: string; email: string; name: string; picture?: string }) {
   // 1. Match by googleId
   let user = await prisma.user.findUnique({ where: { googleId: googleUser.id } });
   if (user) return { user, isNew: false };
@@ -286,14 +286,15 @@ async function findOrCreateGoogleUser(googleUser: { id: string; email: string; n
   if (user) {
     user = await prisma.user.update({
       where: { id: user.id },
-      data: { googleId: googleUser.id },
+      // Set avatarUrl only if the user has no picture yet
+      data: { googleId: googleUser.id, ...(googleUser.picture && !user.avatarUrl ? { avatarUrl: googleUser.picture } : {}) },
     });
     return { user, isNew: false };
   }
 
   // 3. Create new account
   user = await prisma.user.create({
-    data: { email: googleUser.email, name: googleUser.name, googleId: googleUser.id },
+    data: { email: googleUser.email, name: googleUser.name, googleId: googleUser.id, avatarUrl: googleUser.picture },
   });
   generateReferralCode(user.id).catch(() => undefined);
   return { user, isNew: true };
