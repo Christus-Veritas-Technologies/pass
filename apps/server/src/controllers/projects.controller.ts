@@ -263,6 +263,7 @@ ${specialCharRules}`;
 
   return streamSSE(c, async (stream) => {
     try {
+      await stream.writeSSE({ data: "ok", event: "connected" }).catch(() => null);
       const project = await prisma.project.create({
         data: {
           userId,
