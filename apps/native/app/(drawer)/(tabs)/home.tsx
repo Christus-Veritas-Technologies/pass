@@ -1,4 +1,4 @@
-import { BookOpen, CheckCircle, Fire, Note, TrendUp } from "@vuduc0801/react-native-phosphor-icons";
+import { BookOpen, CheckCircle, File, Fire, Note, Sparkle, TrendUp } from "@vuduc0801/react-native-phosphor-icons";
 import * as SecureStore from "expo-secure-store";
 import { useRouter } from "expo-router";
 import { MotiView } from "moti";
@@ -142,6 +142,47 @@ export default function HomeScreen() {
               {userName ? `Hi, ${userName}` : "Dashboard"}
             </Text>
             <Text style={{ fontSize: 13, color: colors.textTertiary, marginTop: 2 }}>Keep the streak going.</Text>
+          </View>
+        </MotiView>
+
+        {/* Quick actions */}
+        <MotiView from={{ opacity: 0, translateY: 6, scale: 0.97 }} animate={{ opacity: 1, translateY: 0, scale: 1 }} transition={{ type: "timing", duration: 250, delay: 40, easing: Easing.bezier(0.23, 1, 0.32, 1) }}>
+          <View style={{ flexDirection: "row", gap: 10, marginBottom: 24 }}>
+            <AnimatedPressable
+              onPress={() => router.push("/(drawer)/(tabs)/projects" as never)}
+              style={{
+                flex: 1,
+                backgroundColor: colors.brand,
+                borderRadius: 14,
+                padding: 16,
+                gap: 8,
+              }}
+            >
+              <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center" }}>
+                <Sparkle size={17} color="#FFFFFF" />
+              </View>
+              <Text style={{ fontSize: 13, fontWeight: "700", color: "#FFFFFF", marginTop: 2 }}>New Project</Text>
+              <Text style={{ fontSize: 11, color: "rgba(255,255,255,0.75)", lineHeight: 15 }}>Generate an HBC project in seconds</Text>
+            </AnimatedPressable>
+
+            <AnimatedPressable
+              onPress={() => router.push("/(drawer)/(tabs)/resources" as never)}
+              style={{
+                flex: 1,
+                backgroundColor: colors.cardSubtle,
+                borderRadius: 14,
+                borderWidth: 1,
+                borderColor: colors.border,
+                padding: 16,
+                gap: 8,
+              }}
+            >
+              <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: colors.indigoBg, alignItems: "center", justifyContent: "center" }}>
+                <File size={17} color={colors.brand} />
+              </View>
+              <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text, marginTop: 2 }}>View Papers</Text>
+              <Text style={{ fontSize: 11, color: colors.textTertiary, lineHeight: 15 }}>Browse all ZIMSEC past papers</Text>
+            </AnimatedPressable>
           </View>
         </MotiView>
 
