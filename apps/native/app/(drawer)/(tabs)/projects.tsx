@@ -115,6 +115,7 @@ export default function ProjectsScreen() {
   const [candidateNumber, setCandidateNumber] = useState("");
   const [grade, setGrade] = useState<string>(GRADES[1]);
   const [subject, setSubject] = useState<string>("");
+  const [outline, setOutline] = useState<string>("");
   const [subjectError, setSubjectError] = useState<string>("");
 
   // Step 2 generation state
@@ -191,6 +192,7 @@ export default function ProjectsScreen() {
     setCandidateNumber("");
     setGrade(GRADES[1]);
     setSubject("");
+    setOutline("");
     setSubjectError("");
     setStreamedContent("");
     setGenError("");
@@ -226,7 +228,7 @@ export default function ProjectsScreen() {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ studentName, schoolName, centreNumber, candidateNumber, grade, subject }),
+        body: JSON.stringify({ studentName, schoolName, centreNumber, candidateNumber, grade, subject, outline: outline.trim() || undefined }),
         signal: abort.signal,
       });
 
@@ -623,6 +625,34 @@ export default function ProjectsScreen() {
                   {subjectError ? (
                     <Text style={{ fontSize: 12, color: colors.error, marginBottom: 16 }}>{subjectError}</Text>
                   ) : null}
+
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: colors.textTertiary, marginBottom: 4 }}>
+                    PROJECT OUTLINE <Text style={{ fontWeight: "400" }}>(optional)</Text>
+                  </Text>
+                  <TextInput
+                    placeholder={"Paste your project outline, teacher guide, or any specific requirements here…\n\nLeave blank for a fully AI-structured project."}
+                    placeholderTextColor={colors.textPlaceholder}
+                    value={outline}
+                    onChangeText={setOutline}
+                    multiline
+                    numberOfLines={5}
+                    textAlignVertical="top"
+                    style={{
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      borderRadius: 10,
+                      paddingHorizontal: 14,
+                      paddingVertical: 12,
+                      fontSize: 13,
+                      color: colors.text,
+                      minHeight: 100,
+                      marginBottom: 6,
+                      backgroundColor: colors.cardSubtle,
+                    }}
+                  />
+                  <Text style={{ fontSize: 11, color: colors.textTertiary, marginBottom: 20, lineHeight: 16 }}>
+                    When provided, the AI follows your outline strictly.
+                  </Text>
 
                   <Pressable
                     onPress={() => {

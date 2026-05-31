@@ -1,9 +1,12 @@
-import { ArrowLeft, CheckCircle, File, Image, Sparkle } from "@vuduc0801/react-native-phosphor-icons";
+import { ArrowLeft, CheckCircle, DownloadSimple, File, Image, Sparkle } from "@vuduc0801/react-native-phosphor-icons";
 import * as SecureStore from "expo-secure-store";
+import * as FileSystem from "expo-file-system/legacy";
+import * as Sharing from "expo-sharing";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   Text,
@@ -145,6 +148,7 @@ export default function PaperSessionScreen() {
 
   const [pdfVisible, setPdfVisible] = useState(false);
   const [pdfPage, setPdfPage] = useState(1);
+  const [downloading, setDownloading] = useState(false);
 
   const scrollRef = useRef<ScrollView>(null);
   const rafRef = useRef<number | undefined>(undefined);
@@ -259,6 +263,45 @@ export default function PaperSessionScreen() {
     }
   }
 
+  async function handleDownload() {
+    const token = await SecureStore.getItemAsync("pass_access_token");
+    if (!token) return;
+    setDownloading(true);
+    try {
+      const res = await fetch(`${API}/papers/${id}/download`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string; limitReached?: boolean };
+        if (err.limitReached) {
+          Alert.alert("Download limit reached", err.error ?? "You've reached your monthly download limit. Upgrade your plan for more downloads.");
+        } else {
+          Alert.alert("Download failed", err.error ?? "Could not download this paper.");
+        }
+        return;
+      }
+      const blob = await res.blob();
+      const disposition = res.headers.get("Content-Disposition") ?? "";
+      const filename = disposition.match(/filename="([^"]+)"/)?.[1] ?? `${paper?.title ?? "paper"}.pdf`;
+      const fileUri = `${FileSystem.cacheDirectory}${filename}`;
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64 = (reader.result as string).split(",")[1];
+        await FileSystem.writeAsStringAsync(fileUri, base64 ?? "", { encoding: FileSystem.EncodingType.Base64 });
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(fileUri, { mimeType: "application/pdf", UTI: "com.adobe.pdf" });
+        } else {
+          Alert.alert("Saved", `Paper saved to: ${fileUri}`);
+        }
+      };
+      reader.readAsDataURL(blob);
+    } catch {
+      Alert.alert("Error", "Failed to download paper. Please try again.");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   async function handleComplete() {
     if (!sessionId) return;
     const token = await SecureStore.getItemAsync("pass_access_token");
@@ -336,6 +379,28 @@ export default function PaperSessionScreen() {
             <Text style={{ fontSize: 12, fontWeight: "600", color: BRAND }}>Paper</Text>
           </Pressable>
         )}
+        <Pressable
+          onPress={handleDownload}
+          disabled={downloading}
+          hitSlop={8}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 5,
+            backgroundColor: downloading ? "#E5E7EB" : "#F0FDF4",
+            borderRadius: 9,
+            paddingHorizontal: 10,
+            paddingVertical: 6,
+          }}
+        >
+          {downloading
+            ? <ActivityIndicator size="small" color="#6B7280" />
+            : <DownloadSimple size={14} color="#16A34A" />
+          }
+          <Text style={{ fontSize: 12, fontWeight: "600", color: downloading ? "#6B7280" : "#16A34A" }}>
+            {downloading ? "…" : "Download"}
+          </Text>
+        </Pressable>
       </View>
 
       {/* Original-paper PDF viewer */}
