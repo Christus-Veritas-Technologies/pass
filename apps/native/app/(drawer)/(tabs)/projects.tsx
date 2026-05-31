@@ -1,5 +1,5 @@
 import { ArrowDown, Folder, SealCheck, Sparkle, X } from "@vuduc0801/react-native-phosphor-icons";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import * as SecureStore from "expo-secure-store";
 import * as Sharing from "expo-sharing";
 import { useLocalSearchParams, useRouter } from "expo-router";
