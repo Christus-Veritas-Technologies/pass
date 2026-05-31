@@ -193,6 +193,8 @@ SPECIAL CHARACTER RULES (MANDATORY — the PDF renderer requires these):
 function buildExpansionPrompt(existing: string, _slots: ProjectSlots, targetWords: number): string {
   const current = countWords(existing);
   const needed = targetWords - current;
+  // Cap fed-back content to keep the expansion prompt from becoming excessively large
+  const preview = existing.length > 12000 ? existing.slice(0, 12000) + "\n\n[content truncated for expansion pass]" : existing;
   return `The following ZIMSEC HBC project is not yet long enough. It currently has approximately ${current} words but needs at least ${targetWords} words.
 
 Please EXPAND the project below by adding ${needed}+ more words of substantive academic content. Do NOT summarise or repeat what is already there — add NEW content:
@@ -203,7 +205,7 @@ Please EXPAND the project below by adding ${needed}+ more words of substantive a
 
 Return the COMPLETE expanded project (not just the additions):
 
-${existing}`;
+${preview}`;
 }
 
 // ── Main generator ────────────────────────────────────────────────────────────
@@ -285,7 +287,7 @@ export async function generateProject(
     let wordCount = countWords(content);
 
     // ── Pass 2: Quality check — expand if too short ─────────────────────────
-    if (wordCount < targetWords * 0.85) {
+    if (wordCount < targetWords * 0.70) {
       await chat.sendStateTyping();
       console.log(`[projectGenerate] Pass 1: ${wordCount} words (target ${targetWords}) — running expansion pass`);
       try {
