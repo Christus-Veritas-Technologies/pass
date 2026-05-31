@@ -57,6 +57,30 @@ config.maxWorkers = 1;
 // Metro will auto-create this directory on first run.
 config.fileMapCacheDirectory = path.join(__dirname, ".metro-file-map-cache");
 
+// ── Production bundle optimisations ──────────────────────────────────────────
+// inlineRequires defers module evaluation until first use — measurably reduces
+// JS parse time and startup latency on real devices.
+config.transformer = {
+  ...config.transformer,
+  getTransformOptions: async () => ({
+    transform: {
+      experimentalImportSupport: false,
+      inlineRequires: true,
+    },
+  }),
+};
+
+// Exclude test/story files from the production bundle.
+config.resolver = {
+  ...config.resolver,
+  blockList: [
+    /\.test\.[jt]sx?$/,
+    /\.spec\.[jt]sx?$/,
+    /\/__tests__\//,
+    /\/\.storybook\//,
+  ],
+};
+
 const uniwindConfig = withUniwindConfig(wrapWithReanimatedMetroConfig(config), {
   cssEntryFile: "./global.css",
   dtsFile: "./uniwind-types.d.ts",
