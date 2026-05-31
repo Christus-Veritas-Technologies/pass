@@ -13,6 +13,7 @@ import { apiUpdateProfile } from "@/lib/auth";
 const BRAND = "oklch(0.484 0.263 277)";
 
 const GRADE_SECTIONS = [
+  { label: "Primary", grades: ["Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6", "Grade 7"] },
   { label: "O-Level", grades: ["Form 1", "Form 2", "Form 3", "Form 4"] },
   { label: "A-Level", grades: ["Form 5", "Form 6"] },
 ] as const;
