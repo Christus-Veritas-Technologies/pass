@@ -9,6 +9,7 @@ import { buildProjectHtml } from "../lib/projectHtml";
 import { renderProjectPdfAndUpload } from "../whatsapp/media/renderProjectPdf";
 import { generateProjectPdfBuffer } from "../lib/projectPdfDocument";
 import { generateProjectDocxBuffer } from "../lib/projectDocxDocument";
+import { sendNotification } from "../lib/notifications";
 
 const VALID_GRADES = ["Grade 7", "Form 4", "Form 6"] as const;
 
@@ -241,7 +242,8 @@ ${specialCharRules}`;
 
       for await (const chunk of result.textStream) {
         accumulatedContent += chunk;
-        await stream.writeSSE({ data: chunk, event: "chunk" });
+        // Ignore write failures — client may have navigated away; generation continues regardless
+        await stream.writeSSE({ data: chunk, event: "chunk" }).catch(() => null);
       }
 
       const titleMatch = accumulatedContent.match(/^#\s+(.+)$/m);
@@ -252,13 +254,16 @@ ${specialCharRules}`;
         data: { content: accumulatedContent, topic },
       });
 
-      await stream.writeSSE({ data: projectId, event: "done" });
+      // Notify the user on all connected channels (push + WhatsApp if linked)
+      sendNotification(userId, "project_generated", { projectId, topic }).catch(() => null);
+
+      await stream.writeSSE({ data: projectId, event: "done" }).catch(() => null);
     } catch (err) {
       console.error("generateProject stream error:", err);
       if (projectId && !accumulatedContent) {
         await prisma.project.delete({ where: { id: projectId } }).catch(() => null);
       }
-      await stream.writeSSE({ data: "AI response unavailable.", event: "error" });
+      await stream.writeSSE({ data: "AI response unavailable.", event: "error" }).catch(() => null);
     }
   });
 }

@@ -12,7 +12,8 @@ export type NotificationEvent =
   | "new_device_signin"
   | "payment_confirmed"
   | "subscription_expiring"
-  | "subscription_expired";
+  | "subscription_expired"
+  | "project_generated";
 
 interface NotificationPayload {
   title: string;
@@ -52,6 +53,12 @@ function buildPayload(event: NotificationEvent, data: Record<string, unknown>): 
         body: `Your ${data.plan} plan has expired. You've been moved to the free plan.`,
         url: "/pricing",
       };
+    case "project_generated":
+      return {
+        title: "Project ready!",
+        body: `Your HBC project "${data.topic ?? "project"}" has been generated. Open Pass to view and download it.`,
+        url: data.projectId ? `/projects/${data.projectId}` : "/projects",
+      };
   }
 }
 
@@ -60,6 +67,7 @@ function isEmailEvent(event: NotificationEvent, settings: { paymentAlerts: boole
   if (event === "subscription_expiring" || event === "subscription_expired") return settings.renewalAlerts;
   if (event === "new_device_signin") return settings.loginAlerts;
   if (event === "referral_reward") return settings.referralAlerts;
+  if (event === "project_generated") return false; // project notifications are push-only, not email
   return true;
 }
 
