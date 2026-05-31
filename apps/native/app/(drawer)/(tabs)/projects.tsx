@@ -1,14 +1,12 @@
-import { ArrowDown, Folder, SealCheck, Sparkle, X } from "@vuduc0801/react-native-phosphor-icons";
+import { ArrowDown, CheckCircle, Folder, SealCheck, Sparkle, X } from "@vuduc0801/react-native-phosphor-icons";
 import * as FileSystem from "expo-file-system/legacy";
 import * as SecureStore from "expo-secure-store";
-import * as Sharing from "expo-sharing";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { MotiView } from "moti";
 import { Easing } from "react-native-reanimated";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -106,6 +104,14 @@ export default function ProjectsScreen() {
   const [showModal, setShowModal] = useState(false);
   const [selected, setSelected] = useState<Project | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [downloadStatus, setDownloadStatus] = useState<{ ok: boolean; msg: string } | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  function showToast(ok: boolean, msg: string) {
+    clearTimeout(toastTimer.current);
+    setDownloadStatus({ ok, msg });
+    toastTimer.current = setTimeout(() => setDownloadStatus(null), 3500);
+  }
 
   // Step 1 form state
   const [step, setStep] = useState<1 | 2>(1);
@@ -278,51 +284,34 @@ export default function ProjectsScreen() {
   async function downloadPdf(project: Project) {
     if (downloading) return;
     setDownloading(true);
-
     try {
       const token = await getToken();
-      // Always use documentDirectory so the path is guaranteed to be absolute
-      const dir = FileSystem.documentDirectory ?? FileSystem.cacheDirectory;
-      if (!dir) throw new Error("No writable directory available");
+      const projectsDir = `${FileSystem.documentDirectory}Pass/Projects/`;
+      await FileSystem.makeDirectoryAsync(projectsDir, { intermediates: true });
 
-      const safeTitle = project.topic.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 40);
-      const localPath = `${dir}HBC_${safeTitle}.pdf`;
+      const safeTitle = project.topic.replace(/[^a-zA-Z0-9\-_. ]/g, "_").slice(0, 60);
+      const filename = `${safeTitle}.pdf`;
+      const localPath = `${projectsDir}${filename}`;
       const pdfUrl = `${API}/projects/${project.id}/pdf`;
       const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
-      const result = await FileSystem.downloadAsync(pdfUrl, localPath, { headers });
+      let result = await FileSystem.downloadAsync(pdfUrl, localPath, { headers });
 
       if (result.status !== 200) {
-        // PDF may still be generating — give the server a moment and retry once
+        // PDF may still be generating — wait and retry once
         await new Promise<void>((resolve) => setTimeout(resolve, 3000));
-        const retry = await FileSystem.downloadAsync(pdfUrl, localPath, { headers });
-        if (retry.status !== 200) throw new Error(`Server returned ${retry.status}`);
+        result = await FileSystem.downloadAsync(pdfUrl, localPath, { headers });
+        if (result.status !== 200) {
+          await FileSystem.deleteAsync(result.uri, { idempotent: true });
+          showToast(false, "PDF not ready yet — please try again in a moment.");
+          return;
+        }
       }
 
-      // Download succeeded — let the user decide when/whether to share
-      Alert.alert(
-        "PDF ready",
-        "Your project PDF has been saved to this device.",
-        [
-          {
-            text: "Share / Save to Files",
-            onPress: () =>
-              Sharing.shareAsync(result.uri, {
-                mimeType: "application/pdf",
-                dialogTitle: project.topic,
-              }),
-          },
-          { text: "Done", style: "cancel" },
-        ],
-      );
+      showToast(true, `Saved to Pass/Projects/${filename}`);
     } catch (err: unknown) {
-      const msg = (err as Error).message ?? "";
-      console.warn("[projects] downloadPdf failed:", msg);
-      Alert.alert(
-        "Download failed",
-        "Could not download the PDF right now. The file may still be generating — please try again in a moment.",
-        [{ text: "OK" }],
-      );
+      console.warn("[projects] downloadPdf failed:", (err as Error).message ?? "");
+      showToast(false, "Could not download the PDF. Please try again.");
     } finally {
       setDownloading(false);
     }
@@ -405,6 +394,21 @@ export default function ProjectsScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.cardSubtle }} edges={["top"]}>
+      {/* Download toast */}
+      {downloadStatus && (
+        <View style={{
+          position: "absolute", bottom: 36, left: 20, right: 20, zIndex: 200,
+          backgroundColor: downloadStatus.ok ? "#166534" : "#991B1B",
+          borderRadius: 12, paddingVertical: 12, paddingHorizontal: 14,
+          flexDirection: "row", alignItems: "center", gap: 10,
+          shadowColor: "#000", shadowOpacity: 0.18, shadowOffset: { width: 0, height: 4 }, shadowRadius: 12, elevation: 10,
+        }}>
+          {downloadStatus.ok
+            ? <CheckCircle size={16} color="#fff" />
+            : <X size={16} color="#fff" />}
+          <Text style={{ flex: 1, color: "#fff", fontSize: 13, fontWeight: "500" }}>{downloadStatus.msg}</Text>
+        </View>
+      )}
       {/* Header */}
       <View style={{ backgroundColor: colors.card, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16 }}>
         <Text style={{ fontSize: 22, fontWeight: "700", color: colors.text, letterSpacing: -0.5 }}>Projects</Text>

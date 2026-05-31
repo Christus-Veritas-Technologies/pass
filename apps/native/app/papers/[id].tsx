@@ -1,12 +1,10 @@
-import { ArrowLeft, CheckCircle, DownloadSimple, File, Image, Sparkle } from "@vuduc0801/react-native-phosphor-icons";
+import { ArrowLeft, CheckCircle, DownloadSimple, File, Image, Sparkle, X } from "@vuduc0801/react-native-phosphor-icons";
 import * as SecureStore from "expo-secure-store";
 import * as FileSystem from "expo-file-system/legacy";
-import * as Sharing from "expo-sharing";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   ScrollView,
   Text,
@@ -149,6 +147,14 @@ export default function PaperSessionScreen() {
   const [pdfVisible, setPdfVisible] = useState(false);
   const [pdfPage, setPdfPage] = useState(1);
   const [downloading, setDownloading] = useState(false);
+  const [downloadStatus, setDownloadStatus] = useState<{ ok: boolean; msg: string } | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  function showToast(ok: boolean, msg: string) {
+    clearTimeout(toastTimer.current);
+    setDownloadStatus({ ok, msg });
+    toastTimer.current = setTimeout(() => setDownloadStatus(null), 3500);
+  }
 
   const scrollRef = useRef<ScrollView>(null);
   const rafRef = useRef<number | undefined>(undefined);
@@ -268,35 +274,33 @@ export default function PaperSessionScreen() {
     if (!token) return;
     setDownloading(true);
     try {
-      const res = await fetch(`${API}/papers/${id}/download`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({})) as { error?: string; limitReached?: boolean };
-        if (err.limitReached) {
-          Alert.alert("Download limit reached", err.error ?? "You've reached your monthly download limit. Upgrade your plan for more downloads.");
-        } else {
-          Alert.alert("Download failed", err.error ?? "Could not download this paper.");
-        }
+      const papersDir = `${FileSystem.documentDirectory}Pass/Papers/`;
+      await FileSystem.makeDirectoryAsync(papersDir, { intermediates: true });
+
+      const safeTitle = (paper?.title ?? "paper").replace(/[^a-zA-Z0-9\-_. ]/g, "_").slice(0, 60);
+      const filename = `${safeTitle}.pdf`;
+      const fileUri = `${papersDir}${filename}`;
+
+      const result = await FileSystem.downloadAsync(
+        `${API}/papers/${id}/download`,
+        fileUri,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+
+      if (result.status !== 200) {
+        const errText = await FileSystem.readAsStringAsync(result.uri).catch(() => "{}");
+        await FileSystem.deleteAsync(result.uri, { idempotent: true });
+        let errObj: { error?: string; limitReached?: boolean } = {};
+        try { errObj = JSON.parse(errText); } catch { /* ignore */ }
+        showToast(false, errObj.limitReached
+          ? "Download limit reached — upgrade your plan for more downloads."
+          : errObj.error ?? "Download failed. Please try again.");
         return;
       }
-      const blob = await res.blob();
-      const disposition = res.headers.get("Content-Disposition") ?? "";
-      const filename = disposition.match(/filename="([^"]+)"/)?.[1] ?? `${paper?.title ?? "paper"}.pdf`;
-      const fileUri = `${FileSystem.cacheDirectory}${filename}`;
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64 = (reader.result as string).split(",")[1];
-        await FileSystem.writeAsStringAsync(fileUri, base64 ?? "", { encoding: FileSystem.EncodingType.Base64 });
-        if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(fileUri, { mimeType: "application/pdf", UTI: "com.adobe.pdf" });
-        } else {
-          Alert.alert("Saved", `Paper saved to: ${fileUri}`);
-        }
-      };
-      reader.readAsDataURL(blob);
+
+      showToast(true, `Saved to Pass/Papers/${filename}`);
     } catch {
-      Alert.alert("Error", "Failed to download paper. Please try again.");
+      showToast(false, "Failed to download. Please try again.");
     } finally {
       setDownloading(false);
     }
@@ -346,6 +350,21 @@ export default function PaperSessionScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#FFFFFF" }} edges={["top"]}>
+      {/* Download toast */}
+      {downloadStatus && (
+        <View style={{
+          position: "absolute", bottom: 36, left: 20, right: 20, zIndex: 200,
+          backgroundColor: downloadStatus.ok ? "#166534" : "#991B1B",
+          borderRadius: 12, paddingVertical: 12, paddingHorizontal: 14,
+          flexDirection: "row", alignItems: "center", gap: 10,
+          shadowColor: "#000", shadowOpacity: 0.18, shadowOffset: { width: 0, height: 4 }, shadowRadius: 12, elevation: 10,
+        }}>
+          {downloadStatus.ok
+            ? <CheckCircle size={16} color="#fff" />
+            : <X size={16} color="#fff" />}
+          <Text style={{ flex: 1, color: "#fff", fontSize: 13, fontWeight: "500" }}>{downloadStatus.msg}</Text>
+        </View>
+      )}
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12, gap: 12, borderBottomWidth: 1, borderBottomColor: "#F3F4F6" }}>
         <Pressable onPress={() => router.back()} hitSlop={8}>
