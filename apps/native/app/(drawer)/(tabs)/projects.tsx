@@ -2,9 +2,10 @@ import { ArrowDown, Folder, SealCheck, Sparkle, X } from "@vuduc0801/react-nativ
 import * as FileSystem from "expo-file-system";
 import * as SecureStore from "expo-secure-store";
 import * as Sharing from "expo-sharing";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { MotiView } from "moti";
 import { Easing } from "react-native-reanimated";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -20,6 +21,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
 import { useAppTheme } from "@/lib/theme-context";
 import { env } from "@pass/env/native";
 
@@ -27,17 +29,19 @@ const API = env.EXPO_PUBLIC_SERVER_URL;
 
 const GRADES = ["Grade 7", "Form 4", "Form 6"] as const;
 
-const SUBJECTS_BY_GRADE: Record<string, string[]> = {
-  "Grade 7": ["Heritage Studies", "Mathematics", "English", "Science", "Shona/Ndebele"],
-  "Form 4": ["History", "Combined Science", "Agriculture", "Biology", "Chemistry", "Geography", "Shona", "English Literature"],
-  "Form 6": ["History", "Geography", "Sociology", "Agriculture", "Biology", "Chemistry", "Physics"],
-};
+// Canonical ZIMSEC subjects — must match the server's SUPPORTED_SUBJECTS set
+const SUPPORTED_SUBJECTS = new Set([
+  "mathematics", "english language", "combined science", "physics", "chemistry",
+  "biology", "agriculture", "history", "geography", "commerce", "accounting",
+  "computer science", "food and nutrition", "shona", "ndebele", "literature in english",
+  "sociology", "economics", "heritage studies", "religious and moral education", "art", "music",
+]);
 
-const CATEGORIES = [
-  { id: "Culture & History", emoji: "🏺", title: "Culture & History", desc: "Totems, liberation struggle, customs, languages" },
-  { id: "Indigenous Sciences", emoji: "🌿", title: "Indigenous Sciences", desc: "Traditional medicine, farming, energy systems" },
-  { id: "Arts & Lifestyle", emoji: "🎭", title: "Arts & Lifestyle", desc: "Music, architecture, food, traditional games" },
-] as const;
+const SUBJECT_HINTS: Record<string, string> = {
+  "Grade 7": "e.g. Mathematics, Heritage Studies, Science",
+  "Form 4": "e.g. Biology, History, Chemistry, Geography",
+  "Form 6": "e.g. Biology, Physics, Sociology, History",
+};
 
 interface Project {
   id: string;
@@ -60,6 +64,8 @@ function timeAgo(iso: string) {
 
 export default function ProjectsScreen() {
   const { colors } = useAppTheme();
+  const router = useRouter();
+  const { openModal } = useLocalSearchParams<{ openModal?: string }>();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -74,9 +80,8 @@ export default function ProjectsScreen() {
   const [centreNumber, setCentreNumber] = useState("");
   const [candidateNumber, setCandidateNumber] = useState("");
   const [grade, setGrade] = useState<string>(GRADES[1]);
-  const [subject, setSubject] = useState<string>(SUBJECTS_BY_GRADE["Form 4"][0]);
-  const [category, setCategory] = useState<string>("");
-  const [isGroupProject, setIsGroupProject] = useState(false);
+  const [subject, setSubject] = useState<string>("");
+  const [subjectError, setSubjectError] = useState<string>("");
 
   // Step 2 generation state
   const [generating, setGenerating] = useState(false);
@@ -107,11 +112,41 @@ export default function ProjectsScreen() {
     }
   }
 
+  // Open modal when navigated here with openModal=1 (e.g. from home quick action)
+  useFocusEffect(useCallback(() => {
+    if (openModal === "1" && !showModal) {
+      openNewModal();
+      router.setParams({ openModal: undefined });
+    }
+  }, [openModal])); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => { fetchProjects(); }, []);
+
+  // Pre-fill session info when modal opens
+  async function prefillFromSession() {
+    const token = await getToken();
+    if (!token) return;
+    try {
+      const res = await fetch(`${API}/users/me`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) return;
+      const data = await res.json();
+      const u = data.user;
+      if (u?.name) setStudentName(u.name);
+      if (u?.school) setSchoolName(u.school);
+      if (u?.grade && GRADES.includes(u.grade as typeof GRADES[number])) setGrade(u.grade);
+    } catch {}
+  }
+
+  function openNewModal() {
+    resetModal();
+    prefillFromSession();
+    setShowModal(true);
+  }
 
   function handleGradeChange(g: string) {
     setGrade(g);
-    setSubject(SUBJECTS_BY_GRADE[g][0]);
+    // Clear subject hint-placeholder but keep any typed value; clear error
+    setSubjectError("");
   }
 
   function resetModal() {
@@ -121,13 +156,23 @@ export default function ProjectsScreen() {
     setCentreNumber("");
     setCandidateNumber("");
     setGrade(GRADES[1]);
-    setSubject(SUBJECTS_BY_GRADE["Form 4"][0]);
-    setCategory("");
-    setIsGroupProject(false);
+    setSubject("");
+    setSubjectError("");
     setStreamedContent("");
     setGenError("");
     setGenDone(false);
     setGenerating(false);
+  }
+
+  function validateSubject(): boolean {
+    const s = subject.trim();
+    if (!s) { setSubjectError("Subject is required."); return false; }
+    if (!SUPPORTED_SUBJECTS.has(s.toLowerCase())) {
+      setSubjectError("Subject not recognised. Try: Biology, Chemistry, History, Mathematics…");
+      return false;
+    }
+    setSubjectError("");
+    return true;
   }
 
   async function startGeneration() {
@@ -147,7 +192,7 @@ export default function ProjectsScreen() {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ studentName, schoolName, centreNumber, candidateNumber, grade, subject, category, isGroupProject }),
+        body: JSON.stringify({ studentName, schoolName, centreNumber, candidateNumber, grade, subject }),
         signal: abort.signal,
       });
 
@@ -192,7 +237,7 @@ export default function ProjectsScreen() {
     }
   }
 
-  const canContinue = !!(grade && subject);
+  const canContinue = !!(grade && subject.trim());
 
   async function downloadPdf(project: Project) {
     if (downloading) return;
@@ -298,7 +343,7 @@ export default function ProjectsScreen() {
         <Text style={{ fontSize: 22, fontWeight: "700", color: colors.text, letterSpacing: -0.5 }}>Projects</Text>
         <Text style={{ fontSize: 13, color: colors.textTertiary, marginTop: 2, marginBottom: 14 }}>ZIMSEC Heritage-Based Curriculum projects</Text>
         <Pressable
-          onPress={() => { resetModal(); setShowModal(true); }}
+          onPress={openNewModal}
           style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: colors.brand, borderRadius: 10, paddingVertical: 11 }}
         >
           <Sparkle size={15} color="#FFFFFF" />
@@ -335,7 +380,7 @@ export default function ProjectsScreen() {
                 Your generated HBC projects will appear here.
               </Text>
               <Pressable
-                onPress={() => { resetModal(); setShowModal(true); }}
+                onPress={openNewModal}
                 style={{ marginTop: 4, flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: colors.brand, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10 }}
               >
                 <Sparkle size={14} color="#FFFFFF" />
@@ -402,7 +447,7 @@ export default function ProjectsScreen() {
       </Modal>
 
       {/* Generate modal — multi-step */}
-      <Modal visible={showModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => !generating && (resetModal(), setShowModal(false))}>
+      <Modal visible={showModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => { if (!generating) resetModal(); setShowModal(false); }}>
         <SafeAreaView style={{ flex: 1, backgroundColor: colors.card }}>
           <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
             {/* Modal header */}
@@ -413,11 +458,9 @@ export default function ProjectsScreen() {
               </View>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                 <Text style={{ fontSize: 12, color: colors.textTertiary }}>Step {step} of 2</Text>
-                {!generating && (
-                  <Pressable onPress={() => { resetModal(); setShowModal(false); }} style={{ padding: 8 }}>
-                    <X size={20} color={colors.textTertiary} />
-                  </Pressable>
-                )}
+                <Pressable onPress={() => { if (!generating) resetModal(); setShowModal(false); }} style={{ padding: 8 }}>
+                  <X size={20} color={colors.textTertiary} />
+                </Pressable>
               </View>
             </View>
 
@@ -494,70 +537,31 @@ export default function ProjectsScreen() {
                     ))}
                   </ScrollView>
 
-                  <Text style={{ fontSize: 12, fontWeight: "600", color: colors.textTertiary, marginBottom: 8 }}>SUBJECT</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 20 }}>
-                    {(SUBJECTS_BY_GRADE[grade] ?? []).map((s) => (
-                      <Pressable
-                        key={s}
-                        onPress={() => setSubject(s)}
-                        style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: subject === s ? colors.brand : colors.borderSubtle }}
-                      >
-                        <Text style={{ fontSize: 13, fontWeight: "500", color: subject === s ? "#FFFFFF" : colors.textTertiary }}>
-                          {s}
-                        </Text>
-                      </Pressable>
-                    ))}
-                  </ScrollView>
-
-                  <Text style={{ fontSize: 12, fontWeight: "600", color: colors.textTertiary, marginBottom: 8 }}>CATEGORY</Text>
-                  {CATEGORIES.map((cat) => (
-                    <Pressable
-                      key={cat.id}
-                      onPress={() => setCategory(cat.id)}
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: 12,
-                        borderWidth: 1,
-                        borderColor: category === cat.id ? colors.brand : colors.border,
-                        borderRadius: 12,
-                        padding: 14,
-                        marginBottom: 10,
-                        backgroundColor: category === cat.id ? colors.indigoBg : colors.card,
-                      }}
-                    >
-                      <Text style={{ fontSize: 24 }}>{cat.emoji}</Text>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 14, fontWeight: "600", color: category === cat.id ? colors.brand : colors.text }}>
-                          {cat.title}
-                        </Text>
-                        <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: 2 }}>
-                          {cat.desc}
-                        </Text>
-                      </View>
-                    </Pressable>
-                  ))}
-
-                  {/* Group project toggle */}
-                  <Pressable
-                    onPress={() => setIsGroupProject((v) => !v)}
-                    style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 16, marginTop: 4 }}
-                  >
-                    <View style={{
-                      width: 20, height: 20, borderRadius: 4,
-                      borderWidth: 1.5,
-                      borderColor: isGroupProject ? colors.brand : colors.border,
-                      backgroundColor: isGroupProject ? colors.brand : "transparent",
-                      alignItems: "center", justifyContent: "center",
-                    }}>
-                      {isGroupProject && <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "700" }}>✓</Text>}
-                    </View>
-                    <Text style={{ fontSize: 14, color: colors.textSecondary }}>This is a group project</Text>
-                  </Pressable>
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: colors.textTertiary, marginBottom: 6 }}>SUBJECT</Text>
+                  <TextInput
+                    placeholder={SUBJECT_HINTS[grade] ?? "e.g. Biology, Chemistry, History"}
+                    placeholderTextColor={colors.textPlaceholder}
+                    value={subject}
+                    onChangeText={(v) => { setSubject(v); if (subjectError) setSubjectError(""); }}
+                    style={{
+                      borderWidth: 1,
+                      borderColor: subjectError ? colors.error : colors.border,
+                      borderRadius: 10,
+                      paddingHorizontal: 14,
+                      paddingVertical: 12,
+                      fontSize: 14,
+                      color: colors.text,
+                      marginBottom: subjectError ? 4 : 20,
+                      backgroundColor: colors.cardSubtle,
+                    }}
+                  />
+                  {subjectError ? (
+                    <Text style={{ fontSize: 12, color: colors.error, marginBottom: 16 }}>{subjectError}</Text>
+                  ) : null}
 
                   <Pressable
                     onPress={() => {
-                      if (canContinue) {
+                      if (validateSubject()) {
                         setStep(2);
                         startGeneration();
                       }
@@ -609,7 +613,15 @@ export default function ProjectsScreen() {
                     <View style={{ alignItems: "center", paddingVertical: 24, gap: 12 }}>
                       <ActivityIndicator size="large" color={colors.brand} />
                       <Text style={{ fontSize: 14, fontWeight: "500", color: colors.text }}>Generating your project…</Text>
-                      <Text style={{ fontSize: 12, color: colors.textTertiary }}>This takes about 30–60 seconds</Text>
+                      <Text style={{ fontSize: 12, color: colors.textTertiary, textAlign: "center", paddingHorizontal: 20 }}>
+                        This takes 1–3 minutes. You can close this and we'll notify you when it's ready.
+                      </Text>
+                      <Pressable
+                        onPress={() => { setShowModal(false); }}
+                        style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 20, paddingVertical: 9, marginTop: 4 }}
+                      >
+                        <Text style={{ fontSize: 13, color: colors.textSecondary }}>Generate in background</Text>
+                      </Pressable>
                     </View>
                   )}
 
