@@ -29,18 +29,52 @@ const API = env.EXPO_PUBLIC_SERVER_URL;
 
 const GRADES = ["Grade 7", "Form 4", "Form 6"] as const;
 
-// Canonical ZIMSEC subjects — must match the server's SUPPORTED_SUBJECTS set
-const SUPPORTED_SUBJECTS = new Set([
-  "mathematics", "english language", "combined science", "physics", "chemistry",
-  "biology", "agriculture", "history", "geography", "commerce", "accounting",
-  "computer science", "food and nutrition", "shona", "ndebele", "literature in english",
-  "sociology", "economics", "heritage studies", "religious and moral education", "art", "music",
+// Normalise a subject string the same way the server does:
+// lowercase → strip non-alphanumeric → collapse spaces → replace with "-"
+function toSubjectKey(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim().replace(/ /g, "-");
+}
+
+// Aliases (same as server lib/subjects.ts)
+const SUBJECT_ALIASES: Record<string, string> = {
+  "maths": "mathematics", "math": "mathematics",
+  "english": "english-language", "lit": "literature-in-english", "literature": "literature-in-english",
+  "combined": "combined-science", "phy": "physics", "phys": "physics",
+  "chem": "chemistry", "bio": "biology", "agri": "agriculture", "agric": "agriculture",
+  "geo": "geography", "geog": "geography", "hist": "history",
+  "econ": "economics", "acc": "accounting", "accounts": "accounting",
+  "cs": "computer-science", "it": "computer-science", "computing": "computer-science", "computer": "computer-science",
+  "rme": "religious-and-moral-education", "religion": "religious-and-moral-education",
+  "heritage": "heritage-studies", "food": "food-and-nutrition",
+  "business": "business-studies", "pe": "physical-education",
+  "environmental": "environmental-science", "soc": "sociology",
+};
+
+// Full flat ZIMSEC subject list (keys after normalisation)
+const SUBJECT_KEYS = new Set([
+  "mathematics","additional-mathematics","further-mathematics","statistics",
+  "english-language","literature-in-english","shona","ndebele",
+  "combined-science","physics","chemistry","biology","environmental-science","science",
+  "agriculture","food-and-nutrition","food-science-and-technology",
+  "history","geography","sociology","law","philosophy",
+  "heritage-studies","religious-and-moral-education","religious-studies",
+  "commerce","accounting","economics","business-studies","business-enterprise",
+  "computer-science","technical-graphics","building-technology",
+  "metal-technology","wood-technology","electrical-technology",
+  "art","art-and-design","art-and-craft","music",
+  "clothing-and-textiles","fashion-and-fabrics","home-economics",
+  "physical-education",
 ]);
+
+function isValidSubject(s: string): boolean {
+  const key = toSubjectKey(s);
+  return SUBJECT_KEYS.has(key) || SUBJECT_KEYS.has(SUBJECT_ALIASES[key] ?? "");
+}
 
 const SUBJECT_HINTS: Record<string, string> = {
   "Grade 7": "e.g. Mathematics, Heritage Studies, Science",
-  "Form 4": "e.g. Biology, History, Chemistry, Geography",
-  "Form 6": "e.g. Biology, Physics, Sociology, History",
+  "Form 4": "e.g. Mathematics, Biology, History, Chemistry, Geography",
+  "Form 6": "e.g. Mathematics, Physics, Biology, Sociology, History",
 };
 
 interface Project {
@@ -167,8 +201,8 @@ export default function ProjectsScreen() {
   function validateSubject(): boolean {
     const s = subject.trim();
     if (!s) { setSubjectError("Subject is required."); return false; }
-    if (!SUPPORTED_SUBJECTS.has(s.toLowerCase())) {
-      setSubjectError("Subject not recognised. Try: Biology, Chemistry, History, Mathematics…");
+    if (!isValidSubject(s)) {
+      setSubjectError("Subject not recognised. Try: Mathematics, Biology, Chemistry, History…");
       return false;
     }
     setSubjectError("");

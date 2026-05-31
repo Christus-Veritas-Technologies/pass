@@ -8,6 +8,7 @@
 import type { Message } from "whatsapp-web.js";
 import type { ConversationState } from "../types";
 import { extractHbcFields, type HbcFields } from "../utils/extractFields";
+import { canonicalSubject, SUBJECT_NAMES } from "../../lib/subjects";
 import {
   PROJECT_ASK_NAME,
   PROJECT_ASK_SCHOOL,
@@ -53,10 +54,11 @@ function withAutoFields(c: Collected): Collected {
   return c;
 }
 
-const SUBJECTS_BY_GRADE: Record<string, string[]> = {
-  "Grade 7": ["Heritage Studies", "Mathematics", "English", "Science", "Shona/Ndebele"],
-  "Form 4": ["History", "Combined Science", "Agriculture", "Biology", "Chemistry", "Geography", "Shona", "English Literature"],
-  "Form 6": ["History", "Geography", "Sociology", "Agriculture", "Biology", "Chemistry", "Physics"],
+// Grade-specific subject hints shown in error messages (subset of the full list)
+const SUBJECT_HINTS_BY_GRADE: Record<string, string[]> = {
+  "Grade 7": ["Mathematics", "English Language", "Heritage Studies", "Science", "Shona"],
+  "Form 4": ["Mathematics", "Biology", "History", "Chemistry", "Geography", "Shona"],
+  "Form 6": ["Mathematics", "Physics", "Biology", "Sociology", "History", "Geography"],
 };
 
 const VALID_GRADES = ["Grade 7", "Form 4", "Form 6"];
@@ -136,10 +138,10 @@ export async function handleProjectBriefReply(
     const normalized = normalizeSubject(text.trim(), collected.grade);
     if (!normalized) {
       const gradeStr = collected.grade ?? "your grade";
-      const examples = (SUBJECTS_BY_GRADE[collected.grade ?? ""] ?? []).slice(0, 5).join(", ");
+      const hints = (SUBJECT_HINTS_BY_GRADE[collected.grade ?? ""] ?? SUBJECT_NAMES.slice(0, 6)).join(", ");
       await msg.reply(
         `I don't recognise "${text.trim()}" as a ZIMSEC subject for ${gradeStr}.\n\n` +
-        `Examples: ${examples}${examples ? "…" : ""}\n\nPlease try again.`,
+        `Examples: ${hints}…\n\nPlease try again.`,
       );
       return { state };
     }
@@ -221,12 +223,13 @@ export async function handleProjectBriefReply(
     extracted.grade = norm ?? undefined;
   }
 
-  // Validate subject against grade (if we have a grade)
-  const effectiveGrade = extracted.grade ?? collected.grade;
-  if (extracted.subject && effectiveGrade) {
-    const validSubs = SUBJECTS_BY_GRADE[effectiveGrade] ?? [];
-    if (!validSubs.some((s) => s.toLowerCase() === extracted.subject?.toLowerCase())) {
-      extracted.subject = undefined; // ignore invalid subject for this grade
+  // Validate subject against the full ZIMSEC subject list
+  if (extracted.subject) {
+    const canonical = canonicalSubject(extracted.subject);
+    if (canonical) {
+      extracted.subject = canonical; // normalise to title-case
+    } else {
+      extracted.subject = undefined; // ignore unrecognised subject
     }
   }
 
@@ -340,37 +343,9 @@ function normalizeGrade(raw: string): string | undefined {
 }
 
 /**
- * Normalise a raw subject string against the allowed subjects for a grade.
- * Returns the canonical name or undefined if no match is found.
+ * Normalise a raw subject string against the full ZIMSEC subject list.
+ * Returns the canonical (title-case) name, or undefined if not recognised.
  */
-function normalizeSubject(raw: string, grade: string | undefined): string | undefined {
-  const allowed = grade ? (SUBJECTS_BY_GRADE[grade] ?? []) : Object.values(SUBJECTS_BY_GRADE).flat();
-  const t = raw.trim().toLowerCase();
-
-  // 1. Exact match
-  const exact = allowed.find((s) => s.toLowerCase() === t);
-  if (exact) return exact;
-
-  // 2. Substring — longer names first to avoid "Science" winning over "Combined Science"
-  const sorted = [...allowed].sort((a, b) => b.length - a.length);
-  const sub = sorted.find((s) => t.includes(s.toLowerCase()) || s.toLowerCase().includes(t));
-  if (sub) return sub;
-
-  // 3. Common abbreviations
-  const abbrev: Record<string, string> = {
-    maths: "Mathematics", math: "Mathematics",
-    phys: "Physics", chem: "Chemistry", bio: "Biology",
-    geo: "Geography", hist: "History", agric: "Agriculture",
-    eng: "English", lit: "English Literature", "english lit": "English Literature",
-    "combined sci": "Combined Science", "comb sci": "Combined Science",
-    sociol: "Sociology", "heritage": "Heritage Studies",
-    shona: "Shona", ndebele: "Shona/Ndebele",
-    sci: "Science", "rel": "Religious and Moral Education",
-    "food": "Food and Nutrition", "comp": "Computer Science",
-  };
-  for (const [key, val] of Object.entries(abbrev)) {
-    if (t.includes(key) && allowed.find((s) => s === val)) return val;
-  }
-
-  return undefined;
+function normalizeSubject(raw: string, _grade: string | undefined): string | undefined {
+  return canonicalSubject(raw.trim());
 }

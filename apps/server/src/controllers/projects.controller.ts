@@ -10,6 +10,7 @@ import { renderProjectPdfAndUpload } from "../whatsapp/media/renderProjectPdf";
 import { generateProjectPdfBuffer } from "../lib/projectPdfDocument";
 import { generateProjectDocxBuffer } from "../lib/projectDocxDocument";
 import { sendNotification } from "../lib/notifications";
+import { isValidSubject, canonicalSubject } from "../lib/subjects";
 
 const VALID_GRADES = ["Grade 7", "Form 4", "Form 6"] as const;
 
@@ -90,16 +91,12 @@ export async function generateProject(c: Context) {
     return c.json({ error: "candidateNumber must contain digits only" }, 400);
   }
 
-  const SUPPORTED_SUBJECTS = new Set([
-    "mathematics", "english language", "combined science", "physics",
-    "chemistry", "biology", "agriculture", "history", "geography",
-    "commerce", "accounting", "computer science", "food and nutrition",
-    "shona", "ndebele", "literature in english", "sociology", "economics",
-    "heritage studies", "religious and moral education", "art", "music",
-  ]);
-  if (!SUPPORTED_SUBJECTS.has(subject.trim().toLowerCase())) {
-    return c.json({ error: `"${subject}" is not a recognised or supported ZIMSEC subject. Please check the spelling and try again.` }, 400);
+  const subjectKey = subject.trim();
+  if (!isValidSubject(subjectKey)) {
+    return c.json({ error: `"${subject}" is not a recognised ZIMSEC subject. Check the spelling and try again (e.g. Mathematics, Biology, History).` }, 400);
   }
+  // Use the canonical (properly-cased) name throughout
+  const canonicalSub = canonicalSubject(subjectKey) ?? subjectKey;
 
   const year = new Date().getFullYear();
   const displayName = studentName || "_";
@@ -124,19 +121,19 @@ SPECIAL CHARACTER RULES (the PDF renderer requires these — follow them exactly
 - NEVER use Unicode arrows (→ ←) — use ASCII: ->, <-
 - NEVER use Unicode math symbols (≥ ≤ √ ≠) — use ASCII: >=, <=, sqrt, !=`;
 
-  const prompt = `Generate a COMPLETE, FORMAL ZIMSEC Heritage-Based Curriculum (HBC) 5.0 project for a ${grade} student studying ${subject}.
+  const prompt = `Generate a COMPLETE, FORMAL ZIMSEC Heritage-Based Curriculum (HBC) 5.0 project for a ${grade} student studying ${canonicalSub}.
 
 STUDENT DETAILS (embed these in the document as data only):
 - Name: ${displayName}${schoolName ? `\n- School: ${schoolName}` : ""}
 - Centre Number: ${centreNumber || "_"}
 - Candidate Number: ${candidateNumber || "_"}
 - Level: ${grade}
-- Subject: ${subject}
+- Subject: ${canonicalSub}
 - Year: ${year}
 ${aLevelNote}
 CRITICAL INSTRUCTIONS:
 1. Do NOT include a Cover Page or Candidate Information section — the document cover is generated separately. Start your output directly with the H1 project title.
-2. Choose a specific, descriptive project title that names exactly what is being investigated (e.g. "Using Moringa Leaves to Purify Borehole Water in Chivi District"). Do NOT use vague titles like "Progress", "My Project", or "${subject} Project".
+2. Choose a specific, descriptive project title that names exactly what is being investigated (e.g. "Using Moringa Leaves to Purify Borehole Water in Chivi District"). Do NOT use vague titles like "Progress", "My Project", or "${canonicalSub} Project".
 3. Write entirely in first person. Use "${pronoun}" throughout — as a Zimbabwean student who genuinely carried out this investigation.
 4. Avoid AI-sounding phrases: "It is important to note that…", "In conclusion, it can be said…", "Furthermore, it should be noted…". Write naturally with curiosity and personal observations.
 5. Every section must contain real, specific Zimbabwean content — actual provinces, real institutions, authentic cultural practices, named community members with plausible Zimbabwean names.
@@ -224,7 +221,7 @@ ${specialCharRules}`;
         data: {
           userId,
           grade,
-          subject,
+          subject: canonicalSub,
           topic: "",
           content: "",
           centreNumber,
@@ -247,7 +244,7 @@ ${specialCharRules}`;
       }
 
       const titleMatch = accumulatedContent.match(/^#\s+(.+)$/m);
-      const topic = titleMatch?.[1]?.trim() ?? `${subject} HBC Project`;
+      const topic = titleMatch?.[1]?.trim() ?? `${canonicalSub} HBC Project`;
 
       await prisma.project.update({
         where: { id: projectId },
