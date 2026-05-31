@@ -7,6 +7,7 @@ import {
   Edit01Icon,
   Logout01Icon,
   User02Icon,
+  Upload01Icon,
   AlertCircleIcon,
   ArrowRight01Icon,
   SmartPhone01Icon,
@@ -41,6 +42,7 @@ interface UserProfile {
   grade: string | null;
   school: string | null;
   plan: string;
+  avatarUrl?: string | null;
 }
 
 interface Stats {
@@ -113,6 +115,7 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [saveOk, setSaveOk] = useState(false);
   const [saveErr, setSaveErr] = useState("");
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
   useEffect(() => {
     const token = getAccessToken();
@@ -183,6 +186,36 @@ export default function ProfilePage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function handleAvatarUpload(file: File) {
+    const token = getAccessToken();
+    if (!token) return;
+    setAvatarUploading(true);
+    try {
+      // 1. Get presigned URL
+      const presignRes = await fetch(`${API}/upload/presign`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "avatar", contentType: file.type, filename: file.name }),
+      });
+      if (!presignRes.ok) throw new Error("Failed to get upload URL");
+      const { uploadUrl, publicUrl } = await presignRes.json() as { uploadUrl: string; publicUrl: string };
+
+      // 2. PUT directly to R2
+      const uploadRes = await fetch(uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+      if (!uploadRes.ok) throw new Error("Upload failed");
+
+      // 3. Save URL to profile
+      const patchRes = await fetch(`${API}/users/me`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ avatarUrl: publicUrl }),
+      });
+      const data = await patchRes.json() as { user: UserProfile };
+      if (data.user) setUser(data.user);
+    } catch { /* non-fatal */ }
+    finally { setAvatarUploading(false); }
   }
 
   function handleLogout() {
@@ -311,13 +344,39 @@ export default function ProfilePage() {
         <CardContent className="px-6 pb-6">
           {/* Avatar overlap */}
           <div className="-mt-10 mb-4 flex items-end justify-between">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-background bg-primary text-white text-2xl font-bold">
-              {initials !== "?" ? (
-                initials
-              ) : (
-                <HugeiconsIcon icon={User02Icon} className="h-9 w-9 text-white" />
-              )}
-            </div>
+            <label
+              htmlFor="avatar-upload"
+              className="relative group cursor-pointer"
+              title="Change profile picture"
+            >
+              <div className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-background bg-primary text-white text-2xl font-bold overflow-hidden">
+                {user?.avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={user.avatarUrl} alt="Profile" className="h-full w-full object-cover" />
+                ) : initials !== "?" ? (
+                  initials
+                ) : (
+                  <HugeiconsIcon icon={User02Icon} className="h-9 w-9 text-white" />
+                )}
+              </div>
+              <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
+                {avatarUploading
+                  ? <div className="h-5 w-5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                  : <HugeiconsIcon icon={Upload01Icon} className="h-5 w-5 text-white" />
+                }
+              </div>
+              <input
+                id="avatar-upload"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleAvatarUpload(file);
+                  e.target.value = "";
+                }}
+              />
+            </label>
             <Badge variant={PLAN_BADGE[user?.plan ?? "FREE"] ?? "default"} className="mb-1">
               {user?.plan !== "FREE" && <HugeiconsIcon icon={CrownIcon} className="mr-1 h-3 w-3" />}
               {PLAN_LABEL[user?.plan ?? "FREE"] ?? "Free plan"}

@@ -1,4 +1,4 @@
-import { ArrowRight, X, CheckCircle, Crown, Moon, Monitor, PencilSimple, SignOut, Sun, WarningCircle, Copy } from "@vuduc0801/react-native-phosphor-icons";
+import { ArrowRight, X, CheckCircle, Crown, Moon, Monitor, PencilSimple, SignOut, Sun, WarningCircle, Copy, Camera } from "@vuduc0801/react-native-phosphor-icons";
 import * as SecureStore from "expo-secure-store";
 import * as Clipboard from "expo-clipboard";
 import { useRouter } from "expo-router";
@@ -7,6 +7,8 @@ import { Easing } from "react-native-reanimated";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -39,6 +41,7 @@ interface UserProfile {
   grade: string | null;
   school: string | null;
   plan: string;
+  avatarUrl?: string | null;
 }
 
 interface Stats {
@@ -108,6 +111,7 @@ export default function ProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [saveOk, setSaveOk] = useState(false);
   const [saveErr, setSaveErr] = useState("");
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
   const PLAN_COLOR: Record<string, { bg: string; text: string }> = {
     FREE:  { bg: colors.borderSubtle,   text: colors.textTertiary },
@@ -192,6 +196,57 @@ export default function ProfileScreen() {
     }
   }
 
+  async function handleAvatarPick() {
+    try {
+      const ImagePicker = await import("expo-image-picker");
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert("Permission required", "Please allow photo library access to upload a profile picture.");
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+      const asset = result.assets[0];
+      const token = await getToken();
+      if (!token) return;
+      setAvatarUploading(true);
+
+      // Determine MIME type
+      const ext = asset.uri.split(".").pop()?.toLowerCase() ?? "jpg";
+      const contentType = ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
+      const filename = `avatar.${ext}`;
+
+      // 1. Get presigned URL
+      const presignRes = await fetch(`${API}/upload/presign`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "avatar", contentType, filename }),
+      });
+      if (!presignRes.ok) throw new Error("Failed to get upload URL");
+      const { uploadUrl, publicUrl } = (await presignRes.json()) as { uploadUrl: string; publicUrl: string };
+
+      // 2. PUT file directly to R2
+      const fileBlob = await fetch(asset.uri).then((r) => r.blob());
+      const uploadRes = await fetch(uploadUrl, { method: "PUT", body: fileBlob, headers: { "Content-Type": contentType } });
+      if (!uploadRes.ok) throw new Error("Upload failed");
+
+      // 3. Save URL to profile
+      const patchRes = await fetch(`${API}/users/me`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ avatarUrl: publicUrl }),
+      });
+      const data = await patchRes.json() as { user: UserProfile };
+      if (data.user) setUser(data.user);
+    } catch { /* non-fatal */ }
+    finally { setAvatarUploading(false); }
+  }
+
   async function handleCopyReferral() {
     if (!referral?.code) return;
     const url = `https://pass.co.zw/signup?ref=${referral.code}`;
@@ -268,6 +323,26 @@ export default function ProfileScreen() {
           </View>
 
           <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
+            {/* Avatar change */}
+            <View style={{ alignItems: "center" }}>
+              <Pressable onPress={handleAvatarPick} disabled={avatarUploading} style={{ position: "relative" }}>
+                <View style={{ width: 80, height: 80, borderRadius: 40, overflow: "hidden", backgroundColor: colors.brand, alignItems: "center", justifyContent: "center" }}>
+                  {user?.avatarUrl ? (
+                    <Image source={{ uri: user.avatarUrl }} style={{ width: "100%", height: "100%" }} />
+                  ) : (
+                    <Text style={{ fontSize: 26, fontWeight: "700", color: "#FFFFFF" }}>{initials}</Text>
+                  )}
+                </View>
+                <View style={{ position: "absolute", bottom: 0, right: 0, width: 26, height: 26, borderRadius: 13, backgroundColor: colors.brand, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: colors.background }}>
+                  {avatarUploading
+                    ? <ActivityIndicator size="small" color="#FFFFFF" />
+                    : <Camera size={13} color="#FFFFFF" />
+                  }
+                </View>
+              </Pressable>
+              <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: 6 }}>Tap to change photo</Text>
+            </View>
+
             <View style={{ backgroundColor: colors.card, borderRadius: 14, padding: 18, gap: 14 }}>
               <View>
                 <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textTertiary, letterSpacing: 0.5, marginBottom: 6 }}>FULL NAME</Text>
@@ -775,13 +850,19 @@ export default function ProfileScreen() {
           alignItems: "center",
           zIndex: 10,
         }}>
-          <Avatar
-            size={AVATAR_SIZE}
-            initials={initials !== "?" ? initials : undefined}
-            color={colors.brand}
-            borderWidth={4}
-            borderColor={colors.background}
-          />
+          {user?.avatarUrl ? (
+            <View style={{ width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2, borderWidth: 4, borderColor: colors.background, overflow: "hidden" }}>
+              <Image source={{ uri: user.avatarUrl }} style={{ width: "100%", height: "100%" }} />
+            </View>
+          ) : (
+            <Avatar
+              size={AVATAR_SIZE}
+              initials={initials !== "?" ? initials : undefined}
+              color={colors.brand}
+              borderWidth={4}
+              borderColor={colors.background}
+            />
+          )}
         </View>
 
       </View>
