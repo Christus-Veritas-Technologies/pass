@@ -146,19 +146,12 @@ function buildStyles(t: Theme) {
     coverFooterCenter:   { fontFamily: "Helvetica", fontSize: 9, color: t.accent, textAlign: "center", flex: 1 },
 
     // ── Body page ────────────────────────────────────────────────────────────
-    bodyPage: { fontFamily: t.bodyFont, fontSize: 11, lineHeight: 1.7, color: BLACK, paddingTop: 60, paddingBottom: 72, paddingLeft: 60, paddingRight: 60 },
+    bodyPage: { fontFamily: t.bodyFont, fontSize: 11, lineHeight: 1.7, color: BLACK, paddingTop: 60, paddingBottom: 60, paddingLeft: 60, paddingRight: 60 },
 
     // ── Running header ───────────────────────────────────────────────────────
     runningHeader:      { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingBottom: 5, marginBottom: 12, borderBottomWidth: 1, borderBottomColor: t.accent },
     runningHeaderLeft:  { fontFamily: "Helvetica", fontSize: 8, color: t.primary },
     runningHeaderRight: { fontFamily: "Helvetica", fontSize: 8, color: GREY_TEXT },
-
-    // ── Running footer (body pages) ──────────────────────────────────────────
-    runningFooter:       { position: "absolute", bottom: 24, left: 60, right: 60, flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderTopWidth: 1, borderTopColor: GREY_RULE, paddingTop: 5 },
-    runningFooterLeft:   { fontFamily: "Helvetica", fontSize: 8, color: GREY_TEXT, flex: 1 },
-    runningFooterCenter: { fontFamily: "Helvetica", fontSize: 8, color: GREY_TEXT, textAlign: "center", flex: 1 },
-    runningFooterRight:  { fontFamily: "Helvetica", fontSize: 8, color: GREY_TEXT, flex: 1, textAlign: "right" },
-    runningFooterItalic: { fontFamily: "Helvetica-Oblique", fontSize: 8, color: GREY_TEXT, textAlign: "center", flex: 1 },
 
     // ── Headings ─────────────────────────────────────────────────────────────
     h1Wrapper,
@@ -604,57 +597,6 @@ function CoverPage({ project, S, t }: { project: Project; S: Styles; t: Theme })
 
 // ── Body Pages ────────────────────────────────────────────────────────────────
 
-function BodyFooter({ project, S, t }: { project: Project; S: Styles; t: Theme }) {
-  const name   = project.studentName && project.studentName !== "_" ? project.studentName : "";
-  const school = project.schoolName  && project.schoolName  !== "_" ? project.schoolName  : "";
-
-  if (t.footerStyle === "centered") {
-    const mid = [name, school].filter(Boolean).join("  ·  ");
-    return (
-      <View style={S.runningFooter} fixed>
-        <Text style={S.runningFooterLeft} />
-        <Text style={S.runningFooterCenter}>{mid}</Text>
-        <Text
-          style={S.runningFooterRight}
-          render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
-        />
-      </View>
-    );
-  }
-  if (t.footerStyle === "italic") {
-    const mid = name && school ? `${name} — ${school}` : (name || school || "");
-    return (
-      <View style={S.runningFooter} fixed>
-        <Text style={S.runningFooterItalic}>{mid}</Text>
-      </View>
-    );
-  }
-  if (t.footerStyle === "threeCol") {
-    return (
-      <View style={S.runningFooter} fixed>
-        <Text style={S.runningFooterLeft}>{name}</Text>
-        <Text style={S.runningFooterCenter}>{school}</Text>
-        <Text
-          style={S.runningFooterRight}
-          render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
-        />
-      </View>
-    );
-  }
-  // twoCol (default)
-  return (
-    <View style={S.runningFooter} fixed>
-      <Text style={S.runningFooterLeft}>{name}</Text>
-      <Text
-        style={S.runningFooterRight}
-        render={({ pageNumber, totalPages }) =>
-          `${school ? school + "  ·  " : ""}Page ${pageNumber} of ${totalPages}`
-        }
-      />
-    </View>
-  );
-}
-
 function BodyPages({ project, blocks, S, t }: { project: Project; blocks: Block[]; S: Styles; t: Theme }) {
   const raw       = project.topic || project.subject;
   const shortTitle = raw.length > 55 ? raw.slice(0, 55) + "…" : raw;
@@ -672,8 +614,6 @@ function BodyPages({ project, blocks, S, t }: { project: Project; blocks: Block[
       </View>
 
       {blocks.map((block, i) => <BlockView key={i} block={block} S={S} t={t} />)}
-
-      <BodyFooter project={project} S={S} t={t} />
     </Page>
   );
 }
