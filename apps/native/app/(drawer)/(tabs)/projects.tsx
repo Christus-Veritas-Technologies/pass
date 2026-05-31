@@ -294,17 +294,15 @@ export default function ProjectsScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.cardSubtle }} edges={["top"]}>
       {/* Header */}
-      <View style={{ backgroundColor: colors.card, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-        <View>
-          <Text style={{ fontSize: 22, fontWeight: "700", color: colors.text, letterSpacing: -0.5 }}>Projects</Text>
-          <Text style={{ fontSize: 13, color: colors.textTertiary, marginTop: 2 }}>ZIMSEC Heritage-Based Curriculum projects</Text>
-        </View>
+      <View style={{ backgroundColor: colors.card, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16 }}>
+        <Text style={{ fontSize: 22, fontWeight: "700", color: colors.text, letterSpacing: -0.5 }}>Projects</Text>
+        <Text style={{ fontSize: 13, color: colors.textTertiary, marginTop: 2, marginBottom: 14 }}>ZIMSEC Heritage-Based Curriculum projects</Text>
         <Pressable
           onPress={() => { resetModal(); setShowModal(true); }}
-          style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: colors.brand, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 9 }}
+          style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: colors.brand, borderRadius: 10, paddingVertical: 11 }}
         >
           <Sparkle size={15} color="#FFFFFF" />
-          <Text style={{ fontSize: 13, fontWeight: "600", color: "#FFFFFF" }}>New Project</Text>
+          <Text style={{ fontSize: 14, fontWeight: "600", color: "#FFFFFF" }}>New Project</Text>
         </Pressable>
       </View>
 
@@ -350,13 +348,19 @@ export default function ProjectsScreen() {
 
       {/* Project viewer modal */}
       <Modal visible={!!selected} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setSelected(null)}>
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.card }}>
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+        {/* Use View (not SafeAreaView) so the modal sheet always has a defined height */}
+        <View style={{ flex: 1, backgroundColor: colors.card }}>
+          {/* Modal handle indicator */}
+          <View style={{ alignItems: "center", paddingTop: 10, paddingBottom: 4 }}>
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border }} />
+          </View>
+          {/* Header */}
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border }}>
             <View style={{ flex: 1, marginRight: 12 }}>
-              <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text }} numberOfLines={1}>
+              <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text }} numberOfLines={2}>
                 {selected?.topic}
               </Text>
-              <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: 1 }}>
+              <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: 2 }}>
                 {selected?.subject} · {selected?.grade}
               </Text>
             </View>
@@ -378,10 +382,23 @@ export default function ProjectsScreen() {
               <X size={20} color={colors.textTertiary} />
             </Pressable>
           </View>
-          <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
-            {selected && renderContent(selected.content)}
+          {/* Content */}
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
+            showsVerticalScrollIndicator={false}
+          >
+            {selected?.content
+              ? renderContent(selected.content)
+              : (
+                <View style={{ alignItems: "center", paddingTop: 60, gap: 8 }}>
+                  <ActivityIndicator size="large" color={colors.brand} />
+                  <Text style={{ fontSize: 13, color: colors.textTertiary }}>Loading content…</Text>
+                </View>
+              )
+            }
           </ScrollView>
-        </SafeAreaView>
+        </View>
       </Modal>
 
       {/* Generate modal — multi-step */}
