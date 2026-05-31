@@ -367,7 +367,14 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
         await saveState(whatsappId, state);
         return;
       }
-      state = await startPaper(client, msg, resource, userId, state);
+      // Ask study or download
+      await msg.reply(
+        `📄 *${resource.title}* (${resource.year})\n${resource.grade} · ${resource.subject}\n\n` +
+        `What would you like to do?\n\n` +
+        `*1.* Study — question by question with AI feedback\n` +
+        `*2.* Download — get the full PDF sent to you`,
+      );
+      state = { ...state, mode: { kind: "paper_action_choice", paperId: resource.id, paperTitle: resource.title } };
       await saveState(whatsappId, state);
       return;
     }
@@ -379,6 +386,50 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
       await saveState(whatsappId, newState);
       return;
     }
+  }
+
+  // ── Paper action choice: study or download ────────────────────────────────
+  if (state.mode.kind === "paper_action_choice") {
+    const { paperId } = state.mode;
+    const resource = await prisma.resource.findUnique({ where: { id: paperId } });
+    if (!resource) {
+      await msg.reply("Sorry, that paper is no longer available. Reply *papers* to browse again.");
+      state = { ...state, mode: { kind: "idle" } };
+      await saveState(whatsappId, state);
+      return;
+    }
+
+    const t = text.toLowerCase().trim();
+    const wantsStudy   = t === "1" || /^stud/i.test(t);
+    const wantsDownload = t === "2" || /^(down|send|get|pdf)/i.test(t);
+
+    if (wantsStudy) {
+      state = await startPaper(client, msg, resource, userId, state);
+      await saveState(whatsappId, state);
+      return;
+    }
+
+    if (wantsDownload) {
+      await msg.reply(`⏳ Sending *${resource.title}* as a PDF…`);
+      const result = await sendPaperPdf(client, whatsappId, resource, userId);
+      if (result === "quota_exceeded") {
+        const qUser = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } });
+        const planStr = (qUser?.plan ?? "FREE").charAt(0) + (qUser?.plan ?? "FREE").slice(1).toLowerCase();
+        await msg.reply(
+          `📥 You've used all your paper downloads on the *${planStr}* plan this month.\n\nReply *UPGRADE* or visit https://pass.co.zw/pricing to unlock more.\n\nYou can still study it — reply *1* to study question by question.`,
+        );
+      } else if (result === "no_file") {
+        await msg.reply(`📄 The PDF for this paper isn't available for download. You can study it instead — reply *1* to start.`);
+      } else {
+        state = { ...state, mode: { kind: "idle" } };
+      }
+      await saveState(whatsappId, state);
+      return;
+    }
+
+    await msg.reply("Reply *1* to study this paper or *2* to download the PDF.");
+    await saveState(whatsappId, state);
+    return;
   }
 
   // project_brief: slot collection is free (no AI quota); NLP extraction uses Haiku

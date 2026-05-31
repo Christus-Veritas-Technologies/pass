@@ -38,7 +38,7 @@ export type ConversationMode =
     }
   | {
       kind: "project_brief";
-      awaiting: "name" | "school" | "centre" | "candidate" | "grade" | "subject" | "title";
+      awaiting: "name" | "school" | "centre" | "candidate" | "grade" | "subject" | "title" | "outline";
       collected: {
         studentName?: string;
         schoolName?: string;
@@ -48,7 +48,13 @@ export type ConversationMode =
         subject?: string;
         category?: string;
         title?: string;        // user-supplied title; empty string = "let AI choose"
+        outline?: string;      // optional project outline/guide; empty string = none
       };
+    }
+  | {
+      kind: "paper_action_choice";
+      paperId: string;
+      paperTitle: string;
     }
   | { kind: "project_generating"; projectId: string }
   | { kind: "ai_chat" }
