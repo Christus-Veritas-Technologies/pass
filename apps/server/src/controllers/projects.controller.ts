@@ -103,11 +103,13 @@ export async function generateProject(c: Context) {
 
   // ── Quota enforcement ─────────────────────────────────────────────────────────
   {
-    const quotaUser = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true, bonusProjects: true } });
+    const month = currentMonthKey();
+    const [quotaUser, usage] = await Promise.all([
+      prisma.user.findUnique({ where: { id: userId }, select: { plan: true, bonusProjects: true } }),
+      prisma.monthlyUsage.findUnique({ where: { userId_month: { userId, month } } }),
+    ]);
     if (quotaUser) {
       const limits = PLAN_LIMITS[quotaUser.plan as PlanKey];
-      const month = currentMonthKey();
-      const usage = await prisma.monthlyUsage.findUnique({ where: { userId_month: { userId, month } } });
       const projectsUsed = usage?.projectsUsed ?? 0;
       if (projectsUsed >= limits.projects) {
         if ((quotaUser.bonusProjects ?? 0) > 0) {

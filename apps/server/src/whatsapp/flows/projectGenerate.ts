@@ -219,16 +219,13 @@ export async function generateProject(
   const whatsappId = chat.id._serialized;
 
   // ── Project quota check ───────────────────────────────────────────────────
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { plan: true, bonusProjects: true },
-  });
+  const month = currentMonthKey();
+  const [user, usage] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, select: { plan: true, bonusProjects: true } }),
+    prisma.monthlyUsage.findUnique({ where: { userId_month: { userId, month } } }),
+  ]);
   if (user) {
     const limits = PLAN_LIMITS[user.plan as PlanKey];
-    const month = currentMonthKey();
-    const usage = await prisma.monthlyUsage.findUnique({
-      where: { userId_month: { userId, month } },
-    });
     const projectsUsed = usage?.projectsUsed ?? 0;
     if (projectsUsed >= limits.projects) {
       if ((user.bonusProjects ?? 0) > 0) {
