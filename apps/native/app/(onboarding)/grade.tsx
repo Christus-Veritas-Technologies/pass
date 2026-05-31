@@ -12,6 +12,7 @@ const { width } = Dimensions.get("window");
 const CARD_WIDTH = (width - 24 * 2 - 10) / 2;
 
 const GRADE_SECTIONS = [
+  { label: "Primary", grades: ["Grade 3", "Grade 4", "Grade 5", "Grade 6", "Grade 7"] },
   { label: "O-Level", grades: ["Form 1", "Form 2", "Form 3", "Form 4"] },
   { label: "A-Level", grades: ["Form 5", "Form 6"] },
 ] as const;
