@@ -82,14 +82,13 @@ export default function NewProjectPage() {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2>(1);
 
-  // Step 1 form state
+  // Step 1 form state — pre-filled from session on mount
   const [studentName, setStudentName] = useState("");
   const [schoolName, setSchoolName] = useState("");
   const [centreNumber, setCentreNumber] = useState("");
   const [candidateNumber, setCandidateNumber] = useState("");
   const [grade, setGrade] = useState<string>(GRADES[1]);
   const [subject, setSubject] = useState("");
-  const [isGroupProject, setIsGroupProject] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
 
   // Step 2 generation state
@@ -99,6 +98,22 @@ export default function NewProjectPage() {
   const [done, setDone] = useState(false);
   const [genError, setGenError] = useState("");
   const abortRef = useRef<AbortController | null>(null);
+
+  // Pre-fill name / school / grade from the authenticated session on mount
+  useEffect(() => {
+    const token = getAccessToken();
+    if (!token) return;
+    fetch(`${API}/users/me`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((data) => {
+        const u = data.user;
+        if (!u) return;
+        if (u.name) setStudentName(u.name);
+        if (u.school) setSchoolName(u.school);
+        if (u.grade && (["Grade 7", "Form 4", "Form 6"] as string[]).includes(u.grade)) setGrade(u.grade);
+      })
+      .catch(() => undefined);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function validate(): FormErrors {
     const errs: FormErrors = {};
@@ -142,7 +157,7 @@ export default function NewProjectPage() {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ studentName, schoolName, centreNumber, candidateNumber, grade, subject, isGroupProject }),
+        body: JSON.stringify({ studentName, schoolName, centreNumber, candidateNumber, grade, subject }),
         signal: abort.signal,
       });
 
@@ -336,17 +351,6 @@ export default function NewProjectPage() {
             )}
           </div>
 
-          {/* Group project toggle */}
-          <label className="flex items-center gap-2.5 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={isGroupProject}
-              onChange={(e) => setIsGroupProject(e.target.checked)}
-              className="h-4 w-4 rounded border-border accent-primary"
-            />
-            <span className="text-sm text-foreground/80">This is a group project</span>
-          </label>
-
           <Button
             className="w-full mt-2"
             disabled={!canContinue}
@@ -392,7 +396,7 @@ export default function NewProjectPage() {
                   <HugeiconsIcon icon={SparklesIcon} className="h-6 w-6 text-primary" />
                 </div>
                 <p className="text-sm font-medium">Generating your project…</p>
-                <p className="text-xs text-muted-foreground">This takes about 30–60 seconds</p>
+                <p className="text-xs text-muted-foreground">This takes 1–3 minutes. You can navigate away — we'll notify you when it's ready.</p>
               </CardContent>
             </Card>
           )}
