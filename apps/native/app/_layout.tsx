@@ -65,9 +65,16 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const segments = useSegments();
 
+  // Re-read the token every time the active route group changes.
+  // Setting `undefined` first marks the read as in-flight, which suppresses
+  // the redirect guard below while the async SecureStore call is pending.
+  // This prevents the race condition where segments flip to "(drawer)" after
+  // a successful login while `token` is still `null` in state, causing the
+  // guard to redirect straight back to the login screen.
   useEffect(() => {
+    setToken(undefined);
     SecureStore.getItemAsync("pass_access_token").then(setToken);
-  }, []);
+  }, [segments[0]]); // re-check only when the root group changes (auth↔drawer)
 
   useEffect(() => {
     // undefined = SecureStore read still in-flight; skip to prevent a flash of
