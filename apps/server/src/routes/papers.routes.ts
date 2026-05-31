@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import {
   completeSession,
+  downloadPaper,
   getPaper,
   getPapers,
   getRecentSessions,
@@ -20,6 +21,7 @@ router.get("/sessions/recent", requireAuth, getRecentSessions);
 router.get("/sessions/:sessionId", requireAuth, getSession);
 
 router.get("/:id", getPaper);
+router.get("/:id/download", requireAuth, downloadPaper);
 
 // Session endpoints — require auth
 router.post("/:id/session/start", requireAuth, startSession);

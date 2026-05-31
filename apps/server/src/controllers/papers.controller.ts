@@ -1,4 +1,6 @@
 import { streamSSE } from "hono/streaming";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import type { Context } from "hono";
 
 import prisma from "@pass/db";
@@ -6,6 +8,10 @@ import { feedbackAgent } from "../mastra/agents/feedback.agent";
 import { explainAgent } from "../mastra/agents/explain.agent";
 import { effectiveGuide } from "../lib/grading";
 import { PLAN_LIMITS, currentMonthKey } from "../lib/planLimits";
+import { checkAndIncrementAiMessage } from "../lib/aiQuota";
+import type { PlanKey } from "../lib/planLimits";
+
+const PAPERS_DIR = join(import.meta.dir, "../../../../packages/papers/papers");
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -76,24 +82,31 @@ export async function startSession(c: Context) {
   // Enforce monthly paper limit
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } });
   if (user) {
-    const limits = PLAN_LIMITS[user.plan];
+    const limits = PLAN_LIMITS[user.plan as PlanKey];
     const month = currentMonthKey();
     const usage = await prisma.monthlyUsage.findUnique({
       where: { userId_month: { userId, month } },
     });
     if ((usage?.papersUsed ?? 0) >= limits.papers) {
-      return c.json({
-        error: "Monthly paper limit reached for your plan",
-        limitReached: true,
-        plan: user.plan,
-        limit: limits.papers,
-      }, 402);
+      // Check bonus papers before rejecting
+      const userFull = await prisma.user.findUnique({ where: { id: userId }, select: { bonusPapers: true } });
+      if ((userFull?.bonusPapers ?? 0) > 0) {
+        await prisma.user.update({ where: { id: userId }, data: { bonusPapers: { decrement: 1 } } });
+      } else {
+        return c.json({
+          error: "Monthly paper limit reached for your plan",
+          limitReached: true,
+          plan: user.plan,
+          limit: limits.papers,
+        }, 402);
+      }
+    } else {
+      await prisma.monthlyUsage.upsert({
+        where: { userId_month: { userId, month } },
+        create: { userId, month, papersUsed: 1, projectsUsed: 0 },
+        update: { papersUsed: { increment: 1 } },
+      });
     }
-    await prisma.monthlyUsage.upsert({
-      where: { userId_month: { userId, month } },
-      create: { userId, month, papersUsed: 1, projectsUsed: 0 },
-      update: { papersUsed: { increment: 1 } },
-    });
   }
 
   const session = await prisma.paperSession.create({
@@ -177,6 +190,12 @@ ${guide ? `\nMarking rubric (source of truth):\n${guide}\n` : ""}
 Write a clear, well-structured solution suitable for a Form 4 or Form 6 student. Keep the language simple and the explanation thorough.
 
 Write in plain text only. Use blank lines to separate sections or paragraphs. If you need a list, start each item on its own line with "* " (asterisk followed by a space). Do not use any markdown — no # headings, no **bold**, no *italic*, no - bullets.`;
+  }
+
+  // AI message quota check
+  const aiCheck = await checkAndIncrementAiMessage(userId);
+  if (!aiCheck.allowed) {
+    return c.json({ error: "Monthly AI message limit reached for your plan", limitReached: true, limit: aiCheck.limit }, 402);
   }
 
   // Persist answer attempt (upsert in case of retry)
@@ -297,4 +316,68 @@ export async function getRecentSessions(c: Context) {
   }));
 
   return c.json({ sessions: formatted });
+}
+
+/**
+ * GET /papers/:id/download
+ * Authenticated. Enforces monthly download quota, then streams the PDF
+ * with Content-Disposition: attachment so browsers/native clients save it.
+ */
+export async function downloadPaper(c: Context) {
+  const userId = c.get("userId") as string;
+  const id = c.req.param("id");
+
+  const resource = await prisma.resource.findUnique({ where: { id } });
+  if (!resource) return c.json({ error: "Paper not found" }, 404);
+
+  // ── Download quota ────────────────────────────────────────────────────────
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } });
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
+
+  const limit = PLAN_LIMITS[user.plan as PlanKey].downloads;
+  if (limit !== Infinity) {
+    const month = currentMonthKey();
+    const usage = await prisma.monthlyUsage.upsert({
+      where: { userId_month: { userId, month } },
+      create: { userId, month, papersUsed: 0, projectsUsed: 0, aiMessagesUsed: 0, downloadsUsed: 1 },
+      update: { downloadsUsed: { increment: 1 } },
+    });
+    if (usage.downloadsUsed > limit) {
+      await prisma.monthlyUsage.update({
+        where: { userId_month: { userId, month } },
+        data: { downloadsUsed: { decrement: 1 } },
+      });
+      return c.json({ error: "Monthly download limit reached for your plan", limitReached: true, plan: user.plan, limit }, 402);
+    }
+  }
+
+  const safeTitle = resource.title.replace(/[^a-zA-Z0-9 _-]/g, "").trim().replace(/\s+/g, "_");
+  const filename = `${safeTitle}_${resource.year}.pdf`;
+  const headers = {
+    "Content-Type": "application/pdf",
+    "Content-Disposition": `attachment; filename="${filename}"`,
+    "Cache-Control": "private, max-age=300",
+  };
+
+  // ── R2 / CDN path ─────────────────────────────────────────────────────────
+  if (resource.fileUrl.startsWith("https://") || resource.fileUrl.startsWith("http://")) {
+    try {
+      const resp = await fetch(resource.fileUrl);
+      if (!resp.ok) throw new Error(`Upstream ${resp.status}`);
+      const bytes = await resp.arrayBuffer();
+      return new Response(bytes, { headers });
+    } catch {
+      // Fall through to local
+    }
+  }
+
+  // ── Local file path ───────────────────────────────────────────────────────
+  try {
+    const rel = resource.fileUrl.replace(/^\/static\/papers\//, "");
+    const abs = join(PAPERS_DIR, rel);
+    const bytes = await readFile(abs);
+    return new Response(bytes.buffer as ArrayBuffer, { headers });
+  } catch {
+    return c.json({ error: "Paper file not available for download" }, 404);
+  }
 }
