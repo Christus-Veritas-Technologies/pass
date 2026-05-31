@@ -5,6 +5,7 @@ import {
   CheckmarkCircle01Icon,
   Folder01Icon,
   SparklesIcon,
+  Upload01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useEffect, useRef, useState } from "react";
@@ -60,6 +61,17 @@ function isNumeric(value: string): boolean {
   return /^\d+$/.test(value.trim());
 }
 
+const TEXT_MIME = new Set(["text/plain", "text/markdown", "text/x-markdown"]);
+
+function readFileAsText(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("Could not read file"));
+    reader.readAsText(file);
+  });
+}
+
 function renderMarkdown(content: string) {
   return content.split("\n").map((line, i) => {
     if (line.startsWith("## ")) return <h2 key={i} className="text-base font-semibold mt-5 mb-2 text-foreground">{line.slice(3)}</h2>;
@@ -98,6 +110,8 @@ export default function NewProjectPage() {
   const [candidateNumber, setCandidateNumber] = useState("");
   const [grade, setGrade] = useState<string>(GRADES[1]);
   const [subject, setSubject] = useState("");
+  const [outline, setOutline] = useState("");
+  const [outlineFileName, setOutlineFileName] = useState("");
   const [errors, setErrors] = useState<FormErrors>({});
 
   // Step 2 generation state
@@ -166,7 +180,7 @@ export default function NewProjectPage() {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ studentName, schoolName, centreNumber, candidateNumber, grade, subject }),
+        body: JSON.stringify({ studentName, schoolName, centreNumber, candidateNumber, grade, subject, outline: outline.trim() || undefined }),
         signal: abort.signal,
       });
 
@@ -358,6 +372,50 @@ export default function NewProjectPage() {
                 Supported: Mathematics, Physics, Chemistry, Biology, History, Geography, Agriculture, Commerce, Accounting, Computer Science, Shona, Ndebele, and more.
               </p>
             )}
+          </div>
+
+          {/* Outline — optional */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-foreground/90">
+                Project Outline <span className="text-muted-foreground font-normal">(optional)</span>
+              </label>
+              <label
+                htmlFor="outline-file"
+                className="flex items-center gap-1.5 cursor-pointer text-xs text-primary hover:text-primary/80 transition-colors"
+              >
+                <HugeiconsIcon icon={Upload01Icon} className="h-3.5 w-3.5" />
+                {outlineFileName || "Upload .txt or .md file"}
+                <input
+                  id="outline-file"
+                  type="file"
+                  accept=".txt,.md,.markdown,text/plain,text/markdown"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    if (!TEXT_MIME.has(file.type) && !file.name.match(/\.(txt|md|markdown)$/i)) {
+                      setErrors((p) => ({ ...p }));
+                      alert("For PDF or Word documents, please copy and paste the content into the text area below.");
+                      return;
+                    }
+                    const text = await readFileAsText(file).catch(() => "");
+                    if (text) { setOutline(text); setOutlineFileName(file.name); }
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+            </div>
+            <textarea
+              placeholder="Paste or type your project outline, teacher guide, or any specific requirements here…"
+              value={outline}
+              onChange={(e) => { setOutline(e.target.value); if (e.target.value === "") setOutlineFileName(""); }}
+              rows={4}
+              className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground/50 hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent resize-none"
+            />
+            <p className="text-xs text-muted-foreground">
+              When provided, the AI will generate the project strictly according to your outline. Leave blank for a fully AI-structured project.
+            </p>
           </div>
 
           <Button
