@@ -87,6 +87,52 @@ export async function renderProjectPdfAndUpload(
   return publicUrl;
 }
 
+/**
+ * Upload pre-generated PDF bytes to R2 without re-rendering the document.
+ * Use this when you already have the buffer (e.g. from getProjectPdf) to avoid
+ * calling @react-pdf/renderer twice for the same project.
+ */
+export async function uploadProjectPdfBuffer(
+  project: Project,
+  pdfBytes: Buffer,
+): Promise<string> {
+  if (
+    !env.R2_ACCOUNT_ID ||
+    !env.R2_ACCESS_KEY_ID ||
+    !env.R2_SECRET_ACCESS_KEY ||
+    !env.R2_BUCKET_NAME
+  ) {
+    throw new Error("R2 storage is not configured — cannot store project PDF");
+  }
+
+  const key = `projects/${project.id}.pdf`;
+
+  const s3 = new S3Client({
+    region: "auto",
+    endpoint: `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+    credentials: {
+      accessKeyId: env.R2_ACCESS_KEY_ID,
+      secretAccessKey: env.R2_SECRET_ACCESS_KEY,
+    },
+  });
+
+  await s3.send(
+    new PutObjectCommand({
+      Bucket: env.R2_BUCKET_NAME,
+      Key: key,
+      Body: pdfBytes,
+      ContentType: "application/pdf",
+    }),
+  );
+
+  const publicUrl = `${env.R2_PUBLIC_URL?.replace(/\/$/, "")}/${key}`;
+  await prisma.project.update({
+    where: { id: project.id },
+    data: { pdfUrl: publicUrl },
+  });
+  return publicUrl;
+}
+
 export function estimatePageCount(content: string): number {
   const lines = content.split("\n").filter(Boolean).length;
   return Math.max(1, Math.ceil(lines / 40));

@@ -6,7 +6,7 @@ import prisma from "@pass/db";
 import { projectAgent } from "../mastra/agents/project.agent";
 import { verifyAccessToken } from "../lib/jwt";
 import { buildProjectHtml } from "../lib/projectHtml";
-import { renderProjectPdfAndUpload } from "../whatsapp/media/renderProjectPdf";
+import { uploadProjectPdfBuffer } from "../whatsapp/media/renderProjectPdf";
 import { generateProjectPdfBuffer } from "../lib/projectPdfDocument";
 import { generateProjectDocxBuffer } from "../lib/projectDocxDocument";
 import { sendNotification } from "../lib/notifications";
@@ -374,15 +374,8 @@ export async function getProjectPdf(c: Context) {
     return c.json({ error: "PDF generation failed. Please try again." }, 500);
   }
 
-  // Persist to R2 or tmp for next request (non-fatal)
-  try {
-    const pdfUrl = await renderProjectPdfAndUpload(project);
-    if (pdfUrl) {
-      await prisma.project.update({ where: { id }, data: { pdfUrl } });
-    }
-  } catch {
-    // Non-fatal — we still return the bytes we already have
-  }
+  // Upload same bytes to R2 for caching — skip re-rendering (non-fatal)
+  uploadProjectPdfBuffer(project, pdfBytes).catch(() => null);
 
   return pdfResponse(c, pdfBytes.buffer as ArrayBuffer, project);
 }
