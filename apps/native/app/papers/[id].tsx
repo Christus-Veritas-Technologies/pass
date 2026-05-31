@@ -1,7 +1,8 @@
-import { ArrowLeft, CheckCircle, DownloadSimple, File, Image, Sparkle, X } from "@vuduc0801/react-native-phosphor-icons";
+import { ArrowLeft, CheckCircle, DownloadSimple, File, Image, Sparkle } from "@vuduc0801/react-native-phosphor-icons";
 import * as SecureStore from "expo-secure-store";
-import * as FileSystem from "expo-file-system/legacy";
+import RNBlobUtil from "react-native-blob-util";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { Toast, useToast } from "@/components/ui/toast";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -147,14 +148,7 @@ export default function PaperSessionScreen() {
   const [pdfVisible, setPdfVisible] = useState(false);
   const [pdfPage, setPdfPage] = useState(1);
   const [downloading, setDownloading] = useState(false);
-  const [downloadStatus, setDownloadStatus] = useState<{ ok: boolean; msg: string } | null>(null);
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-
-  function showToast(ok: boolean, msg: string) {
-    clearTimeout(toastTimer.current);
-    setDownloadStatus({ ok, msg });
-    toastTimer.current = setTimeout(() => setDownloadStatus(null), 3500);
-  }
+  const { toastState, show: showToast } = useToast();
 
   const scrollRef = useRef<ScrollView>(null);
   const rafRef = useRef<number | undefined>(undefined);
@@ -271,36 +265,49 @@ export default function PaperSessionScreen() {
 
   async function handleDownload() {
     const token = await SecureStore.getItemAsync("pass_access_token");
-    if (!token) return;
+    if (!token) {
+      showToast("error", "Sign in required to download papers.");
+      return;
+    }
     setDownloading(true);
     try {
-      const papersDir = `${FileSystem.documentDirectory}Pass/Papers/`;
-      await FileSystem.makeDirectoryAsync(papersDir, { intermediates: true });
+      const { DocumentDir } = RNBlobUtil.fs.dirs;
+
+      // Create Pass/Papers directory hierarchy
+      const passDir = `${DocumentDir}/Pass`;
+      const papersDir = `${passDir}/Papers`;
+      if (!(await RNBlobUtil.fs.isDir(passDir))) await RNBlobUtil.fs.mkdir(passDir);
+      if (!(await RNBlobUtil.fs.isDir(papersDir))) await RNBlobUtil.fs.mkdir(papersDir);
 
       const safeTitle = (paper?.title ?? "paper").replace(/[^a-zA-Z0-9\-_. ]/g, "_").slice(0, 60);
       const filename = `${safeTitle}.pdf`;
-      const fileUri = `${papersDir}${filename}`;
+      const filePath = `${papersDir}/${filename}`;
 
-      const result = await FileSystem.downloadAsync(
-        `${API}/papers/${id}/download`,
-        fileUri,
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
+      console.log("[download-paper] fetching", `${API}/papers/${id}/download`);
+      const response = await RNBlobUtil
+        .config({ path: filePath, overwrite: true })
+        .fetch("GET", `${API}/papers/${id}/download`, {
+          Authorization: `Bearer ${token}`,
+        });
 
-      if (result.status !== 200) {
-        const errText = await FileSystem.readAsStringAsync(result.uri).catch(() => "{}");
-        await FileSystem.deleteAsync(result.uri, { idempotent: true });
+      const status = response.respInfo.status;
+      console.log("[download-paper] status", status, "path", filePath);
+
+      if (status !== 200) {
+        const text = await Promise.resolve(response.text());
+        await RNBlobUtil.fs.unlink(filePath).catch(() => {});
         let errObj: { error?: string; limitReached?: boolean } = {};
-        try { errObj = JSON.parse(errText); } catch { /* ignore */ }
-        showToast(false, errObj.limitReached
-          ? "Download limit reached — upgrade your plan for more downloads."
-          : errObj.error ?? "Download failed. Please try again.");
+        try { errObj = JSON.parse(text as string); } catch { /* */ }
+        showToast("error", errObj.limitReached
+          ? "Download limit reached — upgrade your plan for more."
+          : (errObj.error ?? `Download failed (${status}).`));
         return;
       }
 
-      showToast(true, `Saved to Pass/Papers/${filename}`);
-    } catch {
-      showToast(false, "Failed to download. Please try again.");
+      showToast("success", `Saved to Pass/Papers/${filename}`);
+    } catch (err) {
+      console.warn("[download-paper] error:", err);
+      showToast("error", "Failed to download. Check your connection and try again.");
     } finally {
       setDownloading(false);
     }
@@ -350,21 +357,7 @@ export default function PaperSessionScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#FFFFFF" }} edges={["top"]}>
-      {/* Download toast */}
-      {downloadStatus && (
-        <View style={{
-          position: "absolute", bottom: 36, left: 20, right: 20, zIndex: 200,
-          backgroundColor: downloadStatus.ok ? "#166534" : "#991B1B",
-          borderRadius: 12, paddingVertical: 12, paddingHorizontal: 14,
-          flexDirection: "row", alignItems: "center", gap: 10,
-          shadowColor: "#000", shadowOpacity: 0.18, shadowOffset: { width: 0, height: 4 }, shadowRadius: 12, elevation: 10,
-        }}>
-          {downloadStatus.ok
-            ? <CheckCircle size={16} color="#fff" />
-            : <X size={16} color="#fff" />}
-          <Text style={{ flex: 1, color: "#fff", fontSize: 13, fontWeight: "500" }}>{downloadStatus.msg}</Text>
-        </View>
-      )}
+      <Toast visible={toastState.visible} variant={toastState.variant} message={toastState.message} />
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12, gap: 12, borderBottomWidth: 1, borderBottomColor: "#F3F4F6" }}>
         <Pressable onPress={() => router.back()} hitSlop={8}>

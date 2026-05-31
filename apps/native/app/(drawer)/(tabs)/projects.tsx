@@ -1,6 +1,7 @@
-import { ArrowDown, CheckCircle, Folder, SealCheck, Sparkle, X } from "@vuduc0801/react-native-phosphor-icons";
-import * as FileSystem from "expo-file-system/legacy";
+import { ArrowDown, Folder, SealCheck, Sparkle, X } from "@vuduc0801/react-native-phosphor-icons";
 import * as SecureStore from "expo-secure-store";
+import RNBlobUtil from "react-native-blob-util";
+import { Toast, useToast } from "@/components/ui/toast";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { MotiView } from "moti";
 import { Easing } from "react-native-reanimated";
@@ -104,14 +105,7 @@ export default function ProjectsScreen() {
   const [showModal, setShowModal] = useState(false);
   const [selected, setSelected] = useState<Project | null>(null);
   const [downloading, setDownloading] = useState(false);
-  const [downloadStatus, setDownloadStatus] = useState<{ ok: boolean; msg: string } | null>(null);
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-
-  function showToast(ok: boolean, msg: string) {
-    clearTimeout(toastTimer.current);
-    setDownloadStatus({ ok, msg });
-    toastTimer.current = setTimeout(() => setDownloadStatus(null), 3500);
-  }
+  const { toastState, show: showToast } = useToast();
 
   // Step 1 form state
   const [step, setStep] = useState<1 | 2>(1);
@@ -286,32 +280,46 @@ export default function ProjectsScreen() {
     setDownloading(true);
     try {
       const token = await getToken();
-      const projectsDir = `${FileSystem.documentDirectory}Pass/Projects/`;
-      await FileSystem.makeDirectoryAsync(projectsDir, { intermediates: true });
+      const { DocumentDir } = RNBlobUtil.fs.dirs;
+
+      // Create Pass/Projects directory hierarchy
+      const passDir = `${DocumentDir}/Pass`;
+      const projectsDir = `${passDir}/Projects`;
+      if (!(await RNBlobUtil.fs.isDir(passDir))) await RNBlobUtil.fs.mkdir(passDir);
+      if (!(await RNBlobUtil.fs.isDir(projectsDir))) await RNBlobUtil.fs.mkdir(projectsDir);
 
       const safeTitle = project.topic.replace(/[^a-zA-Z0-9\-_. ]/g, "_").slice(0, 60);
       const filename = `${safeTitle}.pdf`;
-      const localPath = `${projectsDir}${filename}`;
+      const filePath = `${projectsDir}/${filename}`;
       const pdfUrl = `${API}/projects/${project.id}/pdf`;
       const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
-      let result = await FileSystem.downloadAsync(pdfUrl, localPath, { headers });
+      console.log("[download-project] fetching", pdfUrl);
+      let response = await RNBlobUtil
+        .config({ path: filePath, overwrite: true })
+        .fetch("GET", pdfUrl, headers);
 
-      if (result.status !== 200) {
+      let status = response.respInfo.status;
+      console.log("[download-project] status", status);
+
+      if (status !== 200) {
         // PDF may still be generating — wait and retry once
-        await new Promise<void>((resolve) => setTimeout(resolve, 3000));
-        result = await FileSystem.downloadAsync(pdfUrl, localPath, { headers });
-        if (result.status !== 200) {
-          await FileSystem.deleteAsync(result.uri, { idempotent: true });
-          showToast(false, "PDF not ready yet — please try again in a moment.");
+        await new Promise<void>((r) => setTimeout(r, 3000));
+        response = await RNBlobUtil
+          .config({ path: filePath, overwrite: true })
+          .fetch("GET", pdfUrl, headers);
+        status = response.respInfo.status;
+        if (status !== 200) {
+          await RNBlobUtil.fs.unlink(filePath).catch(() => {});
+          showToast("error", "PDF not ready yet — please try again in a moment.");
           return;
         }
       }
 
-      showToast(true, `Saved to Pass/Projects/${filename}`);
+      showToast("success", `Saved to Pass/Projects/${filename}`);
     } catch (err: unknown) {
-      console.warn("[projects] downloadPdf failed:", (err as Error).message ?? "");
-      showToast(false, "Could not download the PDF. Please try again.");
+      console.warn("[download-project] error:", err);
+      showToast("error", "Could not download the PDF. Please try again.");
     } finally {
       setDownloading(false);
     }
@@ -394,21 +402,7 @@ export default function ProjectsScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.cardSubtle }} edges={["top"]}>
-      {/* Download toast */}
-      {downloadStatus && (
-        <View style={{
-          position: "absolute", bottom: 36, left: 20, right: 20, zIndex: 200,
-          backgroundColor: downloadStatus.ok ? "#166534" : "#991B1B",
-          borderRadius: 12, paddingVertical: 12, paddingHorizontal: 14,
-          flexDirection: "row", alignItems: "center", gap: 10,
-          shadowColor: "#000", shadowOpacity: 0.18, shadowOffset: { width: 0, height: 4 }, shadowRadius: 12, elevation: 10,
-        }}>
-          {downloadStatus.ok
-            ? <CheckCircle size={16} color="#fff" />
-            : <X size={16} color="#fff" />}
-          <Text style={{ flex: 1, color: "#fff", fontSize: 13, fontWeight: "500" }}>{downloadStatus.msg}</Text>
-        </View>
-      )}
+      <Toast visible={toastState.visible} variant={toastState.variant} message={toastState.message} />
       {/* Header */}
       <View style={{ backgroundColor: colors.card, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16 }}>
         <Text style={{ fontSize: 22, fontWeight: "700", color: colors.text, letterSpacing: -0.5 }}>Projects</Text>
