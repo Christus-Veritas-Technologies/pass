@@ -151,7 +151,7 @@ export default function HomeScreen() {
             {/* containerStyle on the Pressable (outer) gives correct flex width;
                 style on the Animated.View (inner) fills that space visually */}
             <AnimatedPressable
-              onPress={() => router.push("/(drawer)/(tabs)/projects" as never)}
+              onPress={() => router.push({ pathname: "/(drawer)/(tabs)/projects" as never, params: { openModal: "1" } })}
               containerStyle={{ flex: 1 }}
               style={{
                 flex: 1,
