@@ -234,9 +234,32 @@ export default function ProfilePage() {
     const token = getAccessToken();
     if (!token || !notifSettings) return;
     const updated = { ...notifSettings, ...patch };
-    setNotifSettings(updated);
+    setNotifSettings(updated); // optimistic
     setNotifSaving(true);
     try {
+      // When enabling browser push, register the service worker subscription first
+      if (patch.webPushEnabled === true) {
+        const { initWebPush } = await import("@/lib/webPush");
+        const { env } = await import("@pass/env/web");
+        if (env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) {
+          await initWebPush(env.NEXT_PUBLIC_VAPID_PUBLIC_KEY).catch(() => undefined);
+        }
+      }
+
+      // When disabling browser push, unsubscribe at the browser level
+      if (patch.webPushEnabled === false && typeof window !== "undefined" && "serviceWorker" in navigator) {
+        const reg = await navigator.serviceWorker.getRegistration("/sw.js").catch(() => null);
+        const sub = await reg?.pushManager.getSubscription().catch(() => null);
+        if (sub) {
+          await fetch(`${API}/notifications/web-push/subscribe`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ endpoint: sub.endpoint }),
+          }).catch(() => undefined);
+          await sub.unsubscribe().catch(() => undefined);
+        }
+      }
+
       await fetch(`${API}/notifications/settings`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
