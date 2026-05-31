@@ -4,6 +4,7 @@ import {
   ArrowLeft01Icon,
   Cancel01Icon,
   CheckmarkCircle01Icon,
+  Download01Icon,
   File01Icon,
   Image01Icon,
   SparklesIcon,
@@ -71,6 +72,8 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
   const [pdfOpen, setPdfOpen] = useState(false);
   const [pdfPage, setPdfPage] = useState(1);
   const [startError, setStartError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const pdfUrl = paper?.fileUrl ? `${API}${paper.fileUrl}` : "";
   function openPdf(page = 1) {
@@ -93,6 +96,38 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [id]);
+
+  async function handleDownload() {
+    setDownloading(true);
+    setDownloadError(null);
+    const token = getAccessToken();
+    if (!token) { router.push("/login"); return; }
+    try {
+      const res = await fetch(`${API}/papers/${id}/download`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.status === 401) { clearTokens(); router.replace("/login"); return; }
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? "Download failed");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const filename = res.headers.get("Content-Disposition")?.match(/filename="([^"]+)"/)?.[1]
+        ?? `${paper?.title ?? "paper"}.pdf`;
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setDownloadError((err as Error).message ?? "Download failed. Please try again.");
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   async function handleStart() {
     setStarting(true);
@@ -284,6 +319,19 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
             <span className="hidden sm:inline">Original paper</span>
             <span className="sm:hidden">Paper</span>
           </Button>
+        )}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleDownload}
+          disabled={downloading}
+          className="gap-1.5 rounded-lg text-xs shrink-0"
+        >
+          <HugeiconsIcon icon={Download01Icon} className="h-3.5 w-3.5" />
+          {downloading ? "Downloading…" : "Download PDF"}
+        </Button>
+        {downloadError && (
+          <p className="text-xs text-destructive shrink-0">{downloadError}</p>
         )}
       </div>
 
