@@ -1,3 +1,4 @@
+import * as SecureStore from "expo-secure-store";
 import { router, useLocalSearchParams } from "expo-router";
 import { MotiView } from "moti";
 import { Easing } from "react-native-reanimated";
@@ -136,6 +137,8 @@ export default function OnboardingGrade() {
     } finally {
       setLoading(false);
     }
+    // Mark the post-signin onboarding as completed so it never shows again
+    await SecureStore.setItemAsync("signin_onboarding_shown", "true");
     router.replace("/(drawer)/(tabs)/home");
   }
 

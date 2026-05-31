@@ -1,4 +1,5 @@
 import { Eye, EyeSlash } from "@vuduc0801/react-native-phosphor-icons";
+import * as SecureStore from "expo-secure-store";
 import { router, Stack } from "expo-router";
 import { MotiView } from "moti";
 import { Easing } from "react-native-reanimated";
@@ -47,10 +48,19 @@ export default function LoginScreen() {
       const data = await apiLogin(email.trim().toLowerCase(), password);
       await storeTokens(data);
       registerPushToken().catch(() => undefined);
-      if (!data.user.grade) {
-        router.replace({ pathname: "/(onboarding)", params: { name: data.user.name } });
-      } else {
+
+      // Show the post-signin onboarding on the FIRST sign-in only.
+      // If the key is already set the user has been through it.
+      // If the key is missing but the user already has a grade they're an
+      // existing user — mark it done so the onboarding never surfaces again.
+      const onboardingShown = await SecureStore.getItemAsync("signin_onboarding_shown");
+      if (onboardingShown) {
         router.replace("/(drawer)/(tabs)/home");
+      } else if (data.user.grade) {
+        await SecureStore.setItemAsync("signin_onboarding_shown", "true");
+        router.replace("/(drawer)/(tabs)/home");
+      } else {
+        router.replace({ pathname: "/(onboarding)", params: { name: data.user.name } });
       }
     } catch (err: unknown) {
       setErrors({ form: err instanceof Error ? err.message : "Login failed" });
@@ -178,10 +188,14 @@ export default function LoginScreen() {
                   setErrors({});
                   try {
                     const { user, isNew } = await signInWithGoogle();
-                    if (isNew || !user.grade) {
-                      router.replace({ pathname: "/(onboarding)", params: { name: user.name } });
-                    } else {
+                    const onboardingShown = await SecureStore.getItemAsync("signin_onboarding_shown");
+                    if (onboardingShown) {
                       router.replace("/(drawer)/(tabs)/home");
+                    } else if (!isNew && user.grade) {
+                      await SecureStore.setItemAsync("signin_onboarding_shown", "true");
+                      router.replace("/(drawer)/(tabs)/home");
+                    } else {
+                      router.replace({ pathname: "/(onboarding)", params: { name: user.name } });
                     }
                   } catch (err: unknown) {
                     if (err instanceof Error && err.message !== "Google sign-in was cancelled") {
