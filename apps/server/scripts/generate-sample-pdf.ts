@@ -92,6 +92,7 @@ const fakeProject: Project = {
   content: SAMPLE_CONTENT,
   pdfUrl: null,
   outline: null,
+  category: "mathematics",
   createdAt: new Date("2026-05-31"),
 };
 
