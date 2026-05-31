@@ -276,20 +276,51 @@ export default function ProjectsScreen() {
   async function downloadPdf(project: Project) {
     if (downloading) return;
     setDownloading(true);
+
     try {
       const token = await getToken();
-      const pdfUrl = `${API}/projects/${project.id}/pdf${token ? `?token=${token}` : ""}`;
-      const localPath = `${(FileSystem as { cacheDirectory?: string }).cacheDirectory ?? ""}project_${project.id}.pdf`;
-      const result = await FileSystem.downloadAsync(pdfUrl, localPath, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      if (result.status !== 200) throw new Error("PDF not available");
-      await Sharing.shareAsync(result.uri, {
-        mimeType: "application/pdf",
-        dialogTitle: project.topic,
-      });
-    } catch {
-      Alert.alert("Download failed", "Could not download the PDF. Please try again.");
+      // Always use documentDirectory so the path is guaranteed to be absolute
+      const dir = FileSystem.documentDirectory ?? FileSystem.cacheDirectory;
+      if (!dir) throw new Error("No writable directory available");
+
+      const safeTitle = project.topic.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 40);
+      const localPath = `${dir}HBC_${safeTitle}.pdf`;
+      const pdfUrl = `${API}/projects/${project.id}/pdf`;
+      const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+
+      const result = await FileSystem.downloadAsync(pdfUrl, localPath, { headers });
+
+      if (result.status !== 200) {
+        // PDF may still be generating — give the server a moment and retry once
+        await new Promise<void>((resolve) => setTimeout(resolve, 3000));
+        const retry = await FileSystem.downloadAsync(pdfUrl, localPath, { headers });
+        if (retry.status !== 200) throw new Error(`Server returned ${retry.status}`);
+      }
+
+      // Download succeeded — let the user decide when/whether to share
+      Alert.alert(
+        "PDF ready",
+        "Your project PDF has been saved to this device.",
+        [
+          {
+            text: "Share / Save to Files",
+            onPress: () =>
+              Sharing.shareAsync(result.uri, {
+                mimeType: "application/pdf",
+                dialogTitle: project.topic,
+              }),
+          },
+          { text: "Done", style: "cancel" },
+        ],
+      );
+    } catch (err: unknown) {
+      const msg = (err as Error).message ?? "";
+      console.warn("[projects] downloadPdf failed:", msg);
+      Alert.alert(
+        "Download failed",
+        "Could not download the PDF right now. The file may still be generating — please try again in a moment.",
+        [{ text: "OK" }],
+      );
     } finally {
       setDownloading(false);
     }
