@@ -148,8 +148,11 @@ export default function HomeScreen() {
         {/* Quick actions */}
         <MotiView from={{ opacity: 0, translateY: 6, scale: 0.97 }} animate={{ opacity: 1, translateY: 0, scale: 1 }} transition={{ type: "timing", duration: 250, delay: 40, easing: Easing.bezier(0.23, 1, 0.32, 1) }}>
           <View style={{ flexDirection: "row", gap: 10, marginBottom: 24 }}>
+            {/* containerStyle on the Pressable (outer) gives correct flex width;
+                style on the Animated.View (inner) fills that space visually */}
             <AnimatedPressable
               onPress={() => router.push("/(drawer)/(tabs)/projects" as never)}
+              containerStyle={{ flex: 1 }}
               style={{
                 flex: 1,
                 backgroundColor: colors.brand,
@@ -167,6 +170,7 @@ export default function HomeScreen() {
 
             <AnimatedPressable
               onPress={() => router.push("/(drawer)/(tabs)/resources" as never)}
+              containerStyle={{ flex: 1 }}
               style={{
                 flex: 1,
                 backgroundColor: colors.cardSubtle,
