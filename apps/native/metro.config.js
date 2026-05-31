@@ -1,7 +1,34 @@
-// Patch Node's fs with graceful-fs before Metro opens any file handles.
-// This queues concurrent open() calls instead of failing with EMFILE on Windows.
+// ── EMFILE guard — must run before any other require ────────────────────────
+// graceful-fs patches the callback-based fs API.
+// Metro's newer code and the uniwind transformer use fs.promises, which
+// graceful-fs does NOT cover. We manually rate-limit readFile on the promises
+// API so Windows never opens more handles than it can hold at once.
 const fs = require("fs");
 require("graceful-fs").gracefulify(fs);
+
+(function patchFsPromises() {
+  const fsp = fs.promises;
+  const _readFile = fsp.readFile.bind(fsp);
+  const LIMIT = 64; // concurrent reads allowed at once
+  let active = 0;
+  const queue = [];
+
+  function next() {
+    if (queue.length === 0 || active >= LIMIT) return;
+    active++;
+    const { args, resolve, reject } = queue.shift();
+    _readFile(...args).then(
+      (v) => { active--; resolve(v); next(); },
+      (e) => { active--; reject(e); next(); },
+    );
+  }
+
+  fsp.readFile = (...args) =>
+    new Promise((resolve, reject) => {
+      queue.push({ args, resolve, reject });
+      next();
+    });
+})();
 
 const path = require("path");
 const { getDefaultConfig } = require("expo/metro-config");
