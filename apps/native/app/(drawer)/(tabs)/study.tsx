@@ -1,4 +1,4 @@
-import { CheckCircle, GraduationCap, Plus, Note, TrendUp } from "@vuduc0801/react-native-phosphor-icons";
+import { CheckCircle, GraduationCap, Note, Play, TrendUp } from "@vuduc0801/react-native-phosphor-icons";
 import * as SecureStore from "expo-secure-store";
 import { useRouter } from "expo-router";
 import { MotiView } from "moti";
@@ -38,6 +38,14 @@ interface StudyStats {
   sessions: Session[];
 }
 
+interface Paper {
+  id: string;
+  title: string;
+  subject: string;
+  grade: string;
+  year: number;
+}
+
 function timeAgo(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
   const days = Math.floor(diff / 86400000);
@@ -72,6 +80,8 @@ export default function StudyScreen() {
   const [data, setData] = useState<StudyStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [papers, setPapers] = useState<Paper[]>([]);
+  const [papersLoading, setPapersLoading] = useState(true);
 
   async function fetchStats(isRefresh = false) {
     if (isRefresh) setRefreshing(true);
@@ -87,7 +97,14 @@ export default function StudyScreen() {
     setRefreshing(false);
   }
 
-  useEffect(() => { fetchStats(); }, []);
+  useEffect(() => {
+    fetchStats();
+    fetch(`${API}/papers`)
+      .then((r) => r.json())
+      .then((d) => setPapers(d.papers ?? []))
+      .catch(() => setPapers([]))
+      .finally(() => setPapersLoading(false));
+  }, []);
 
   const lastFetchRef = useRef(0);
   useFocusEffect(useCallback(() => {
@@ -105,18 +122,9 @@ export default function StudyScreen() {
       >
         {/* Header */}
         <MotiView from={{ opacity: 0, translateY: -6 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 250, easing: Easing.bezier(0.23, 1, 0.32, 1) }}>
-          <View style={{ paddingTop: 24, paddingBottom: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-            <View>
-              <Text style={{ fontSize: 22, fontWeight: "700", color: colors.text, letterSpacing: -0.5 }}>Study</Text>
-              <Text style={{ fontSize: 13, color: colors.textTertiary, marginTop: 2 }}>Track progress and practise papers.</Text>
-            </View>
-            <Pressable
-              onPress={() => router.push("/study/new" as never)}
-              style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: colors.brand, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 9 }}
-            >
-              <Plus size={14} color="#FFFFFF" />
-              <Text style={{ fontSize: 13, fontWeight: "600", color: "#FFFFFF" }}>Study new paper</Text>
-            </Pressable>
+          <View style={{ paddingTop: 24, paddingBottom: 20 }}>
+            <Text style={{ fontSize: 22, fontWeight: "700", color: colors.text, letterSpacing: -0.5 }}>Study</Text>
+            <Text style={{ fontSize: 13, color: colors.textTertiary, marginTop: 2 }}>Track progress and practise papers.</Text>
           </View>
         </MotiView>
 
@@ -169,20 +177,14 @@ export default function StudyScreen() {
               <Text style={{ fontSize: 15, fontWeight: "600", color: colors.text, marginBottom: 12 }}>Recent sessions</Text>
 
               {!data?.sessions.length ? (
-                <View style={{ alignItems: "center", paddingVertical: 40, gap: 10, backgroundColor: colors.cardSubtle, borderRadius: 14, borderWidth: 1, borderColor: colors.borderSubtle }}>
+                <View style={{ alignItems: "center", paddingVertical: 36, gap: 8, backgroundColor: colors.cardSubtle, borderRadius: 14, borderWidth: 1, borderColor: colors.borderSubtle }}>
                   <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: colors.indigoBg, alignItems: "center", justifyContent: "center" }}>
                     <GraduationCap size={24} color={colors.brand} />
                   </View>
                   <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>No sessions yet</Text>
                   <Text style={{ fontSize: 13, color: colors.textTertiary, textAlign: "center", paddingHorizontal: 20 }}>
-                    Start your first session to track your progress.
+                    Pick a paper below to start your first session.
                   </Text>
-                  <Pressable
-                    onPress={() => router.push("/study/new" as never)}
-                    style={{ marginTop: 4, backgroundColor: colors.brand, borderRadius: 10, paddingHorizontal: 18, paddingVertical: 10 }}
-                  >
-                    <Text style={{ fontSize: 13, fontWeight: "600", color: "#FFFFFF" }}>Study new paper</Text>
-                  </Pressable>
                 </View>
               ) : (
                 <View style={{ gap: 8 }}>
@@ -211,6 +213,50 @@ export default function StudyScreen() {
                             <Text style={{ fontSize: 10, fontWeight: "600", color: s.mode === "GUIDE" ? colors.brand : colors.textTertiary }}>{s.mode}</Text>
                           </View>
                           <Text style={{ fontSize: 11, color: colors.textTertiary }}>{s.questionsAnswered}q · Review →</Text>
+                        </View>
+                      </View>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </MotiView>
+
+            {/* Past papers */}
+            <MotiView from={{ opacity: 0, translateY: 6, scale: 0.97 }} animate={{ opacity: 1, translateY: 0, scale: 1 }} transition={{ type: "timing", duration: 220, delay: 150, easing: Easing.bezier(0.23, 1, 0.32, 1) }}>
+              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.text, marginTop: 8, marginBottom: 12 }}>Past papers</Text>
+              {papersLoading ? (
+                <ActivityIndicator size="small" color={colors.brand} style={{ marginVertical: 20 }} />
+              ) : papers.length === 0 ? (
+                <View style={{ alignItems: "center", paddingVertical: 28, backgroundColor: colors.cardSubtle, borderRadius: 12, borderWidth: 1, borderColor: colors.borderSubtle }}>
+                  <Note size={22} color={colors.textPlaceholder} />
+                  <Text style={{ fontSize: 13, color: colors.textTertiary, marginTop: 8 }}>No papers available yet</Text>
+                </View>
+              ) : (
+                <View style={{ gap: 10 }}>
+                  {papers.map((p) => (
+                    <Pressable
+                      key={p.id}
+                      onPress={() => router.push(`/papers/${p.id}` as never)}
+                      style={({ pressed }) => ({
+                        backgroundColor: pressed ? colors.cardSubtle : colors.card,
+                        borderRadius: 12,
+                        borderWidth: 1,
+                        borderColor: colors.borderSubtle,
+                        padding: 14,
+                      })}
+                    >
+                      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                        <View style={{ backgroundColor: colors.indigoBg, borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3 }}>
+                          <Text style={{ fontSize: 11, fontWeight: "600", color: colors.brand }}>Past Paper</Text>
+                        </View>
+                        <Text style={{ fontSize: 12, color: colors.textPlaceholder }}>{p.year}</Text>
+                      </View>
+                      <Text style={{ fontSize: 14, fontWeight: "500", color: colors.text, marginBottom: 4 }} numberOfLines={2}>{p.title}</Text>
+                      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                        <Text style={{ fontSize: 12, color: colors.textTertiary }}>{p.subject} · {p.grade}</Text>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                          <Play size={12} color={colors.brand} />
+                          <Text style={{ fontSize: 12, fontWeight: "600", color: colors.brand }}>Study</Text>
                         </View>
                       </View>
                     </Pressable>
