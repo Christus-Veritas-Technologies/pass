@@ -73,6 +73,8 @@ model User {
   whatsappId       String?                  // wwebjs chat id, e.g. "263771234567@c.us"
   whatsappLinkedAt DateTime?
 
+  avatarUrl    String?  // profile picture — Google OAuth URL or R2 upload URL
+
   // Referral bonus credits (lifetime pool, decremented when monthly limit is exceeded)
   bonusPapers   Int @default(0)
   bonusProjects Int @default(0)
@@ -210,6 +212,7 @@ model Project {
   topic           String
   content         String
   pdfUrl          String?
+  outline         String?  // optional student-provided project guide/outline
   centreNumber    String   @default("")
   candidateNumber String   @default("")
   category        String   @default("")
