@@ -137,6 +137,11 @@ export async function startWhatsappBot(_app: Hono): Promise<void> {
     ? rawSessionDir
     : join(os.homedir(), ".wwebjs_auth");
 
+  // Ensure the session directory exists and is writable before the first
+  // Chrome launch. Without this, Chrome fails with "Permission denied (13)"
+  // when trying to create its SingletonLock file.
+  ensureSessionDirPerms(sessionDir);
+
   for (let attempt = 1; attempt <= MAX_INIT_RETRIES; attempt++) {
     // Destroy any stale client from a previous attempt so Puppeteer's
     // internal state (browser process handle, event listeners) is fully reset.
@@ -153,20 +158,6 @@ export async function startWhatsappBot(_app: Hono): Promise<void> {
       }
     });
 
-    // Kill any orphaned Chrome BEFORE clearing lock files.
-    // Chrome outputs "Failed to create a ProcessSingleton" when another Chrome
-    // holds the profile socket — Puppeteer reads those logs and throws the
-    // "already running" error. Killing first ensures the socket is stale by the
-    // time we launch, and clearing the lock files removes the symlink hint.
-    killOrphanedChrome(sessionDir);
-    // Always wait: SIGKILL is instant but the kernel still needs time to close
-    // the Chrome profile socket so the next launch can claim it cleanly.
-    await sleep(attempt === 1 ? 2_000 : 4_000);
-    await clearPuppeteerLockfile(sessionDir);
-    // Ensure the session directory exists and is writable before Chrome starts.
-    // Without this, Chrome fails with "Permission denied (13)" on SingletonLock.
-    ensureSessionDirPerms(sessionDir);
-
     try {
       console.log(`[whatsapp] Initialising… (attempt ${attempt}/${MAX_INIT_RETRIES})`);
       await client.initialize();
@@ -175,13 +166,27 @@ export async function startWhatsappBot(_app: Hono): Promise<void> {
       const msg = err instanceof Error ? err.message : String(err);
       const isLockError =
         msg.includes("already running") ||
+        msg.includes("Failed To Create") ||
         msg.includes("lockfile") ||
         msg.includes("SingletonLock") ||
         msg.includes("ProcessSingleton");
 
       if (attempt < MAX_INIT_RETRIES) {
-        console.warn(`[whatsapp] Init failed on attempt ${attempt}${isLockError ? " (browser lock)" : ""} — retrying in ${RETRY_DELAY_MS / 1000}s…`);
-        await sleep(RETRY_DELAY_MS);
+        if (isLockError) {
+          // Only kill Chrome and clear lock files when we actually hit a lock
+          // error. Killing pre-emptively on every attempt was wrong: it
+          // terminated a successfully-started Chrome before the "ready" event
+          // fired, causing an infinite restart loop.
+          console.warn(`[whatsapp] Browser lock detected — killing orphaned Chrome and retrying in ${RETRY_DELAY_MS / 1000}s…`);
+          killOrphanedChrome(sessionDir);
+          // SIGKILL is instant but the kernel needs time to release the profile
+          // socket before a new Chrome can claim it.
+          await sleep(attempt === 1 ? 2_000 : 4_000);
+          await clearPuppeteerLockfile(sessionDir);
+        } else {
+          console.warn(`[whatsapp] Init failed on attempt ${attempt} — retrying in ${RETRY_DELAY_MS / 1000}s…`);
+          await sleep(RETRY_DELAY_MS);
+        }
         continue;
       }
 
