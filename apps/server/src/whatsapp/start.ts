@@ -5,7 +5,7 @@
  */
 
 import { execSync } from "node:child_process";
-import { existsSync, rmSync, lstatSync } from "node:fs";
+import { existsSync, rmSync, lstatSync, readlinkSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import os from "node:os";
 import type { Hono } from "hono";
@@ -34,18 +34,29 @@ function killOrphanedChrome(sessionDir: string): void {
     return;
   }
 
-  // Linux / macOS: kill ALL Chrome/Chromium processes by binary name.
-  // Matching only on the session-dir path is unreliable — a Chrome launched
-  // in a previous server run may have a truncated or different command line.
-  // On a dedicated app server killing every Chrome is always correct.
+  // Linux / macOS — layered approach:
+  // 1. Read SingletonLock symlink → extract the exact Chrome PID → kill it.
+  //    This is the most targeted method and works even if Chrome renamed itself.
+  const lockFile = join(sessionDir, "session", "SingletonLock");
+  try {
+    const target = readlinkSync(lockFile);          // e.g. "hostname-12345"
+    const pid = parseInt(target.split("-").pop() ?? "", 10);
+    if (pid > 0) {
+      try { process.kill(pid, 9); } catch { /* already dead */ }
+      console.log(`[whatsapp] Killed Chrome PID ${pid} from SingletonLock`);
+    }
+  } catch { /* lock doesn't exist or isn't a symlink */ }
+
+  // 2. Kill every Chrome/Chromium process by binary name (catches any that
+  //    were started outside of our control or have stale PIDs).
   const chromeNames = ["chrome", "google-chrome", "google-chrome-stable", "chromium", "chromium-browser"];
   for (const name of chromeNames) {
     try {
       execSync(`pkill -9 -x ${name} 2>/dev/null; true`, { stdio: "ignore", timeout: 3_000 });
-    } catch { /* not installed or no match */ }
+    } catch { /* binary not installed or no match */ }
   }
-  // Belt-and-suspenders: also match any process with "chrom" in its argv
-  // (covers headless-shell, ungoogled-chromium, etc.)
+
+  // 3. Belt-and-suspenders: match any process with "chrom" in its full argv.
   try {
     execSync(
       `pids=$(pgrep -f 'chrom' 2>/dev/null); [ -n "$pids" ] && kill -9 $pids || true`,
