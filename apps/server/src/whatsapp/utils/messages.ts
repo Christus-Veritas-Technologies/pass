@@ -60,9 +60,12 @@ Send that code here.`;
 export const LINK_CODE_WRONG = `That code is wrong or expired — generate a new one in
 *Settings → Connect WhatsApp* and send it here.`;
 
-export function welcomeLinked(name: string, plan: string, grade?: string | null): string {
+export function welcomeLinked(name: string, plan: string, grade?: string | null, isAmbassador?: boolean): string {
   const planStr = plan.charAt(0) + plan.slice(1).toLowerCase();
   const gradeStr = grade ? ` • ${grade}` : "";
+  const ambassadorSuffix = isAmbassador
+    ? `\n\n🌟 *AMBASSADOR* — Thank you for representing Pass. You have 1 000 of every resource this month.`
+    : "";
   return `✅ Linked to *${name}* (${planStr} plan${gradeStr}).
 
 Try one of these:
@@ -70,7 +73,7 @@ Try one of these:
   • _"generate a Biology project on photosynthesis"_
   • _"explain Pythagoras' theorem"_
 
-Or just ask me anything.`;
+Or just ask me anything.${ambassadorSuffix}`;
 }
 
 export const HELP_MESSAGE = `*Pass — quick guide* 📚
@@ -97,6 +100,7 @@ export function usageCard(opts: {
   aiLimit: number;
   downloadsUsed: number;
   downloadsLimit: number;
+  isAmbassador?: boolean;
 }): string {
   const now = new Date();
   const monthName = now.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
@@ -110,6 +114,7 @@ export function usageCard(opts: {
   const aiBar       = opts.aiLimit       === Infinity ? "▓▓▓▓▓▓▓▓▓▓" : progressBar(opts.aiUsed,       opts.aiLimit);
   const dlBar       = opts.downloadsLimit === Infinity ? "▓▓▓▓▓▓▓▓▓▓" : progressBar(opts.downloadsUsed, opts.downloadsLimit);
 
+  const ambassadorLine = opts.isAmbassador ? `\n🌟 *AMBASSADOR* — 1 000 of every resource/month` : "";
   return `*This month (${monthName})*
 
 Plan: *${planStr}*
@@ -119,7 +124,7 @@ Downloads:  ${opts.downloadsUsed} / ${dlLimitStr} used   ${dlBar}
 AI chats:   ${opts.aiUsed} / ${aiLimitStr}     ${aiBar}
 
 Resets on ${reset}.
-Need more? https://pass.co.zw/pricing`;
+Need more? https://pass.co.zw/pricing${ambassadorLine}`;
 }
 
 // ─── Quota walls ─────────────────────────────────────────────────────────────

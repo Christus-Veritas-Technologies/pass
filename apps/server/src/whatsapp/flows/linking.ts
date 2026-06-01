@@ -49,10 +49,10 @@ export async function tryConsumeCode(
 
   const user = await prisma.user.findUnique({
     where: { id: record.userId },
-    select: { name: true, plan: true, grade: true },
+    select: { name: true, plan: true, grade: true, isAmbassador: true },
   });
 
-  await msg.reply(welcomeLinked(user?.name ?? "Student", user?.plan ?? "FREE", user?.grade));
+  await msg.reply(welcomeLinked(user?.name ?? "Student", user?.plan ?? "FREE", user?.grade, user?.isAmbassador ?? false));
 
   return { linked: true, newState: { ...state, mode: { kind: "idle" } } };
 }
