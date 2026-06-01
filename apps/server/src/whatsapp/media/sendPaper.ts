@@ -15,9 +15,7 @@ import type { Resource } from "@pass/db";
 import prisma from "@pass/db";
 import { PLAN_LIMITS, currentMonthKey, AMBASSADOR_LIMIT } from "../../lib/planLimits";
 import type { PlanKey } from "../../lib/planLimits";
-
-// import.meta.dir → apps/server/src/whatsapp/media
-const PAPERS_DIR = join(import.meta.dir, "../../../../..", "packages", "papers", "papers");
+import { resolvePaperPath, PAPERS_DIR } from "../../lib/papersDir";
 
 export type SendPaperResult =
   | "sent"
@@ -98,9 +96,22 @@ export async function sendPaperPdf(
   }
 
   // ── Local file path ────────────────────────────────────────────────────────
+  // Prefer filePath (repo-relative, set at ingestion time) over deriving from
+  // fileUrl — it's more reliable and survives URL scheme changes.
+  const rel = resource.filePath
+    ? resource.filePath.replace(/^packages\/papers\/papers\//, "")
+    : resource.fileUrl.replace(/^\/static\/papers\//, "");
+
+  const abs = resolvePaperPath(rel);
+  if (!abs) {
+    console.warn(
+      `[whatsapp] sendPaperPdf: file not found for resource ${resource.id} (${resource.title})\n` +
+      `  searched: ${join(PAPERS_DIR, rel)}`
+    );
+    return "no_file";
+  }
+
   try {
-    const rel = resource.fileUrl.replace(/^\/static\/papers\//, "");
-    const abs = join(PAPERS_DIR, rel);
     const media = MessageMedia.fromFilePath(abs);
     media.filename = filename;
     await client.sendMessage(chatId, media, {
@@ -109,14 +120,7 @@ export async function sendPaperPdf(
     } as MessageSendOptions);
     return "sent";
   } catch (err: unknown) {
-    // ENOENT means the file simply isn't on this server — expected in production
-    // when papers haven't been copied locally. Log a single line, not a stack trace.
-    const code = (err as NodeJS.ErrnoException).code;
-    if (code === "ENOENT") {
-      console.warn(`[whatsapp] sendPaperPdf: file not found locally for resource ${resource.id} (${resource.title})`);
-    } else {
-      console.error(`[whatsapp] sendPaperPdf local fallback failed for ${resource.id}:`, err);
-    }
+    console.error(`[whatsapp] sendPaperPdf failed to send ${abs}:`, err);
     return "no_file";
   }
 }

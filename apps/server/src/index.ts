@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { PAPERS_DIR, resolvePaperPath } from "./lib/papersDir";
 import { env } from "@pass/env/server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
@@ -54,10 +55,9 @@ app.onError((err, c) => {
 });
 
 // ─── Static past-paper PDFs ───────────────────────────────────────────────────
-// The 176 committed ZIMSEC PDFs live in packages/papers/papers. Resource.fileUrl
-// points here; react-native-pdf and the web viewer load these directly.
-// Absolute path resolved from this file so it survives any cwd.
-const PAPERS_DIR = join(import.meta.dir, "../../../packages/papers/papers");
+// PDFs live in packages/papers/papers (or the path overridden via PAPERS_LOCAL_DIR).
+// PAPERS_DIR / resolvePaperPath handle bundle-depth differences and extra-nesting
+// deployments automatically — see src/lib/papersDir.ts.
 
 app.get("/static/papers/*", async (c) => {
   const rel = decodeURIComponent(c.req.path.replace(/^\/static\/papers\//, ""));
@@ -65,8 +65,12 @@ app.get("/static/papers/*", async (c) => {
   if (rel.includes("..") || rel.startsWith("/")) {
     return c.text("Forbidden", 403);
   }
-  const file = Bun.file(join(PAPERS_DIR, rel));
-  if (!(await file.exists())) return c.text("Not found", 404);
+  const abs = resolvePaperPath(rel);
+  if (!abs) {
+    console.warn(`[static] paper not found: ${join(PAPERS_DIR, rel)}`);
+    return c.text("Not found", 404);
+  }
+  const file = Bun.file(abs);
   return new Response(file, {
     headers: {
       "Content-Type": "application/pdf",
