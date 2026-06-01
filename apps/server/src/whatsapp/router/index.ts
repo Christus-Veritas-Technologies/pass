@@ -33,6 +33,7 @@ import {
   unlinkedFeatureNudge,
   projectsQuotaMessage,
   aiQuotaMessage,
+  downloadsQuotaMessage,
 } from "../utils/messages";
 
 const RATE_WINDOW_MS   = 60_000;
@@ -348,12 +349,8 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
       }
       await msg.reply(`⏳ Sending *${resource.title}* as a PDF…`);
       const result = await sendPaperPdf(client, whatsappId, resource, userId);
-      if (result === "quota_exceeded") {
-        const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } });
-        const planStr = (user?.plan ?? "FREE").charAt(0) + (user?.plan ?? "FREE").slice(1).toLowerCase();
-        await msg.reply(
-          `📥 You've used all your paper downloads on the *${planStr}* plan this month.\n\nReply *UPGRADE* or visit https://pass.co.zw/pricing to unlock more.\n\nYou can still study papers question-by-question — just reply with the paper number!`,
-        );
+      if (typeof result === "object" && result.kind === "quota_exceeded") {
+        await msg.reply(downloadsQuotaMessage(result.plan, result.limit));
       } else if (result === "no_file") {
         await msg.reply(`📄 The PDF for this paper isn't available for download, but you can study it question-by-question.\n\nReply *${hard.n}* to start studying it.`);
       }
@@ -419,12 +416,8 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
     if (wantsDownload) {
       await msg.reply(`⏳ Sending *${resource.title}* as a PDF…`);
       const result = await sendPaperPdf(client, whatsappId, resource, userId);
-      if (result === "quota_exceeded") {
-        const qUser = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } });
-        const planStr = (qUser?.plan ?? "FREE").charAt(0) + (qUser?.plan ?? "FREE").slice(1).toLowerCase();
-        await msg.reply(
-          `📥 You've used all your paper downloads on the *${planStr}* plan this month.\n\nReply *UPGRADE* or visit https://pass.co.zw/pricing to unlock more.\n\nYou can still study it — reply *1* to study question by question.`,
-        );
+      if (typeof result === "object" && result.kind === "quota_exceeded") {
+        await msg.reply(downloadsQuotaMessage(result.plan, result.limit));
       } else if (result === "no_file") {
         await msg.reply(`📄 The PDF for this paper isn't available for download. You can study it instead — reply *1* to start.`);
       } else {

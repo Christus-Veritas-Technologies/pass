@@ -124,42 +124,71 @@ Need more? https://pass.co.zw/pricing`;
 
 // ─── Quota walls ─────────────────────────────────────────────────────────────
 
+/** Returns upgrade info for the next tier, or null if already on the top plan. */
+function nextPlan(plan: string): {
+  name: string; price: string;
+  papers: string; projects: string; ai: string; downloads: string;
+} | null {
+  switch (plan.toUpperCase()) {
+    case "FREE":
+      return { name: "Study", price: "$4.99/month", papers: "12", projects: "7", ai: "500", downloads: "50" };
+    case "STUDY":
+      return { name: "Pass", price: "$7.99/month", papers: "20", projects: "12", ai: "unlimited", downloads: "unlimited" };
+    default:
+      return null; // Already on PASS — top plan
+  }
+}
+
 export function papersQuotaMessage(plan: string, limit: number): string {
   const reset = formatResetDate(nextResetDate());
-  const planStr = plan.charAt(0) + plan.slice(1).toLowerCase();
-  return `📚 You've used all *${limit} papers* on the *${planStr}* plan this month — resets on ${reset}.
+  const up = nextPlan(plan);
+  if (!up) {
+    return `📚 You've used all *${limit} papers* this month — you're already on our top *Pass* plan!\n\nYour quota resets on *${reset}*. Hang tight! 💪`;
+  }
+  return `📚 You've used all *${limit} papers* this month.
 
-To unlock more papers right now:
-  • *Study* plan — 12 papers + 7 projects / month
-  • *Pass* plan  — 20 papers + 12 projects / month
+Upgrade to the *${up.name} plan* for just *${up.price}* and get *${up.papers} papers* per month.
 
-Reply *UPGRADE* or visit https://pass.co.zw/pricing.
-
-💬 You can still ask me study questions while you wait for the reset!`;
+Reply *UPGRADE* to upgrade now.`;
 }
 
 export function projectsQuotaMessage(plan: string, limit: number): string {
   const reset = formatResetDate(nextResetDate());
-  const planStr = plan.charAt(0) + plan.slice(1).toLowerCase();
-  return `📝 You've used all *${limit} projects* on the *${planStr}* plan this month — resets on ${reset}.
+  const up = nextPlan(plan);
+  if (!up) {
+    return `📝 You've used all *${limit} projects* this month — you're already on our top *Pass* plan!\n\nYour quota resets on *${reset}*. Hang tight! 💪`;
+  }
+  return `📝 You've used all *${limit} projects* this month.
 
-To generate more projects right now:
-  • *Study* plan — 7 projects / month
-  • *Pass* plan  — 12 projects / month
+Upgrade to the *${up.name} plan* for just *${up.price}* and get *${up.projects} projects* per month.
 
-Reply *UPGRADE* or visit https://pass.co.zw/pricing.
-
-📚 You can still study papers or ask me questions!`;
+Reply *UPGRADE* to upgrade now.`;
 }
 
 export function aiQuotaMessage(plan: string, limit: number): string {
   const reset = formatResetDate(nextResetDate());
-  const planStr = plan.charAt(0) + plan.slice(1).toLowerCase();
-  return `🤖 You've used all *${limit} AI replies* on the *${planStr}* plan this month — resets on ${reset}.
+  const up = nextPlan(plan);
+  if (!up) {
+    return `🤖 You've used all *${limit} AI replies* this month — you're already on our top *Pass* plan!\n\nYour quota resets on *${reset}*. Hang tight! 💪`;
+  }
+  return `🤖 You've used all *${limit} AI replies* this month.
 
-Reply *UPGRADE* or visit https://pass.co.zw/pricing to keep chatting.
+Upgrade to the *${up.name} plan* for just *${up.price}* and get *${up.ai} AI replies* per month.
 
-📚 You can still study papers and browse content in the meantime!`;
+Reply *UPGRADE* to upgrade now.`;
+}
+
+export function downloadsQuotaMessage(plan: string, limit: number): string {
+  const reset = formatResetDate(nextResetDate());
+  const up = nextPlan(plan);
+  if (!up) {
+    return `📥 You've used all *${limit} downloads* this month — you're already on our top *Pass* plan!\n\nYour quota resets on *${reset}*. Hang tight! 💪`;
+  }
+  return `📥 You've used all *${limit} downloads* this month.
+
+Upgrade to the *${up.name} plan* for just *${up.price}* and get *${up.downloads} downloads* per month.
+
+Reply *UPGRADE* to upgrade now.`;
 }
 
 // ─── Usage footer (soft warning at ≥ 50 %) ───────────────────────────────────
@@ -328,13 +357,11 @@ _(Could not attach the PDF right now, but the full text is in your Pass account.
 
 // ─── Quota exhausted (hard limit — no further AI calls) ──────────────────────
 
-export const AI_QUOTA_EXHAUSTED = `You've used all your AI messages for this month.
+export const AI_QUOTA_EXHAUSTED = `🤖 You've used all your AI replies this month.
 
-Upgrade to get more: reply *UPGRADE* or visit https://pass.co.zw/pricing
+Upgrade to the *Study plan* for just *$4.99/month* and get 500 AI replies per month.
 
-You can still use:
-  • \`UPGRADE\` — upgrade your plan
-  • \`HELP\`    — see the menu`;
+Reply *UPGRADE* to upgrade now.`;
 
 // ─── Errors / misc ────────────────────────────────────────────────────────────
 

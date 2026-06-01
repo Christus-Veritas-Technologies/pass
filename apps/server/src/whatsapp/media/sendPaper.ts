@@ -19,7 +19,10 @@ import type { PlanKey } from "../../lib/planLimits";
 // import.meta.dir → apps/server/src/whatsapp/media
 const PAPERS_DIR = join(import.meta.dir, "../../../../..", "packages", "papers", "papers");
 
-export type SendPaperResult = "sent" | "no_file" | "quota_exceeded";
+export type SendPaperResult =
+  | "sent"
+  | "no_file"
+  | { kind: "quota_exceeded"; plan: string; limit: number };
 
 /**
  * Check and (if allowed) increment the monthly download counter.
@@ -66,7 +69,7 @@ export async function sendPaperPdf(
   // ── Quota check (only for explicit downloads, not session-context sends) ───
   if (userId !== undefined) {
     const quota = await consumeDownloadQuota(userId);
-    if (!quota.allowed) return "quota_exceeded";
+    if (!quota.allowed) return { kind: "quota_exceeded", plan: quota.plan, limit: quota.limit };
   }
 
   const caption = `📄 *${resource.title}* (${resource.year})\n${resource.grade} · ${resource.subject}`;
