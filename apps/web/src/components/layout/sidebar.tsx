@@ -3,6 +3,7 @@
 import {
   BookOpen01Icon,
   ComputerIcon,
+  Download02Icon,
   Folder01Icon,
   GraduationScrollIcon,
   Home01Icon,
@@ -103,6 +104,21 @@ export function Sidebar({ onClose }: SidebarProps) {
           </div>
         </div>
       )}
+
+      {/* Download app */}
+      <div className="px-3 pb-2">
+        <a
+          href="https://expo.dev/artifacts/eas/kXitBg45EqzcvYpwirz3Go.apk"
+          download
+          className="flex w-full items-center gap-2.5 rounded-lg border border-border bg-muted/50 px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+        >
+          <HugeiconsIcon icon={Download02Icon} className="h-[18px] w-[18px] shrink-0 text-primary" />
+          <div className="min-w-0">
+            <p className="truncate text-xs font-semibold leading-tight">Download Android app</p>
+            <p className="text-[10px] text-muted-foreground leading-tight">Get the APK</p>
+          </div>
+        </a>
+      </div>
 
       {/* Theme toggle */}
       <div className="px-3 pb-4 pt-2">

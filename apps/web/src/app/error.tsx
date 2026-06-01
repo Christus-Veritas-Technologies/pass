@@ -2,6 +2,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect } from "react";
+
+function isChunkError(error: Error): boolean {
+  return (
+    error.name === "ChunkLoadError" ||
+    /Failed to load chunk|Loading chunk \d+ failed|Cannot find module/i.test(error.message)
+  );
+}
 
 export default function Error({
   error,
@@ -10,6 +18,25 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const chunkError = isChunkError(error);
+
+  // Chunk errors mean the browser has cached references to old JS bundles that
+  // no longer exist after a deployment. A hard reload fetches fresh HTML + chunks.
+  useEffect(() => {
+    if (chunkError) {
+      window.location.reload();
+    }
+  }, [chunkError]);
+
+  if (chunkError) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 text-center gap-4">
+        <Image src="/icon.png" alt="Pass" width={52} height={52} className="rounded-2xl" />
+        <p className="text-sm text-muted-foreground">Reloading page…</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 text-center gap-6">
       <Image src="/icon.png" alt="Pass" width={52} height={52} className="rounded-2xl" />

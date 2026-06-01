@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight01Icon, Cancel01Icon, Menu01Icon, Moon01Icon, Sun01Icon, ComputerIcon } from "@hugeicons/core-free-icons";
+import { ArrowRight01Icon, Cancel01Icon, Download02Icon, Menu01Icon, Moon01Icon, Sun01Icon, ComputerIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Image from "next/image";
@@ -97,6 +97,16 @@ export function MarketingNav() {
             >
               <HugeiconsIcon icon={themeIcon} className="h-4 w-4" />
             </button>
+
+            {/* Download APK */}
+            <a
+              href="https://expo.dev/artifacts/eas/kXitBg45EqzcvYpwirz3Go.apk"
+              download
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-sm font-medium text-foreground/80 transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <HugeiconsIcon icon={Download02Icon} className="h-3.5 w-3.5" />
+              Get app
+            </a>
 
             {/* Hydration-safe: render neutral until mounted */}
             {mounted && authed ? (
@@ -225,6 +235,15 @@ export function MarketingNav() {
                     </Link>
                   </>
                 )}
+                <a
+                  href="https://expo.dev/artifacts/eas/kXitBg45EqzcvYpwirz3Go.apk"
+                  download
+                  onClick={() => setOpen(false)}
+                  className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-border text-sm font-medium text-foreground/80 transition-colors hover:bg-muted"
+                >
+                  <HugeiconsIcon icon={Download02Icon} className="h-4 w-4" />
+                  Download Android app
+                </a>
               </div>
             </motion.div>
           </motion.div>
