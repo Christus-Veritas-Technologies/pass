@@ -34,21 +34,25 @@ function killOrphanedChrome(sessionDir: string): void {
     return;
   }
 
-  // Linux / macOS: use pgrep to collect PIDs then kill -9 them directly.
-  // pkill is not available on all distros; pgrep + kill is more portable.
-  // We match on the session dir so we only kill Chrome using OUR profile.
-  const needle = sessionDir.replace(/'/g, ""); // strip single quotes for shell safety
+  // Linux / macOS: kill ALL Chrome/Chromium processes by binary name.
+  // Matching only on the session-dir path is unreliable — a Chrome launched
+  // in a previous server run may have a truncated or different command line.
+  // On a dedicated app server killing every Chrome is always correct.
+  const chromeNames = ["chrome", "google-chrome", "google-chrome-stable", "chromium", "chromium-browser"];
+  for (const name of chromeNames) {
+    try {
+      execSync(`pkill -9 -x ${name} 2>/dev/null; true`, { stdio: "ignore", timeout: 3_000 });
+    } catch { /* not installed or no match */ }
+  }
+  // Belt-and-suspenders: also match any process with "chrom" in its argv
+  // (covers headless-shell, ungoogled-chromium, etc.)
   try {
-    // pgrep -f prints matching PIDs (one per line), xargs feeds them to kill.
-    // || true so the pipeline always exits 0 (pgrep exits 1 when nothing matches).
     execSync(
-      `pids=$(pgrep -f '${needle}' 2>/dev/null); [ -n "$pids" ] && kill -9 $pids || true`,
+      `pids=$(pgrep -f 'chrom' 2>/dev/null); [ -n "$pids" ] && kill -9 $pids || true`,
       { stdio: "ignore", timeout: 5_000, shell: "/bin/sh" },
     );
-    // Fallback: also try pkill in case pgrep is unavailable
-    execSync(`pkill -9 -f '${needle}' 2>/dev/null; true`, { stdio: "ignore", timeout: 3_000 });
-    console.log(`[whatsapp] Sent SIGKILL to Chrome processes for: ${needle}`);
-  } catch { /* no matching processes or tools not available */ }
+  } catch { /* pgrep not available */ }
+  console.log("[whatsapp] Sent SIGKILL to all Chrome/Chromium processes");
 }
 
 async function clearPuppeteerLockfile(sessionDir: string): Promise<void> {
