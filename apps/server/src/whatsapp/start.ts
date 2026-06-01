@@ -9,7 +9,7 @@ import { existsSync, rmSync, lstatSync, readlinkSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import os from "node:os";
 import type { Hono } from "hono";
-import { createClient } from "./client";
+import { createClient, destroyClient } from "./client";
 import { withChatLock } from "./middleware/mutex";
 import { handleMessage } from "./router/index";
 
@@ -113,17 +113,6 @@ function sleep(ms: number) {
 }
 
 export async function startWhatsappBot(_app: Hono): Promise<void> {
-  const client = createClient();
-
-  client.on("message", async (msg) => {
-    const chatId = msg.from;
-    try {
-      await withChatLock(chatId, () => handleMessage(client, msg));
-    } catch (err) {
-      console.error(`[whatsapp] Unhandled error for chat ${chatId}:`, err);
-    }
-  });
-
   // Mirror the dataPath resolution used in client.ts
   const rawSessionDir = process.env.WHATSAPP_SESSION_DIR ?? "./.wwebjs_auth";
   const sessionDir = isAbsolute(rawSessionDir)
@@ -131,32 +120,59 @@ export async function startWhatsappBot(_app: Hono): Promise<void> {
     : join(os.homedir(), ".wwebjs_auth");
 
   for (let attempt = 1; attempt <= MAX_INIT_RETRIES; attempt++) {
+    // Destroy any stale client from a previous attempt so Puppeteer's
+    // internal state (browser process handle, event listeners) is fully reset.
+    await destroyClient();
+
+    // Fresh client for this attempt — message handler re-registered each time.
+    const client = createClient();
+    client.on("message", async (msg) => {
+      const chatId = msg.from;
+      try {
+        await withChatLock(chatId, () => handleMessage(client, msg));
+      } catch (err) {
+        console.error(`[whatsapp] Unhandled error for chat ${chatId}:`, err);
+      }
+    });
+
     // Kill any orphaned Chrome BEFORE clearing lock files.
-    // A running Chrome recreates SingletonLock the instant we delete it,
-    // so the kill must happen first.
+    // Chrome outputs "Failed to create a ProcessSingleton" when another Chrome
+    // holds the profile socket — Puppeteer reads those logs and throws the
+    // "already running" error. Killing first ensures the socket is stale by the
+    // time we launch, and clearing the lock files removes the symlink hint.
     killOrphanedChrome(sessionDir);
-    // Always wait after SIGKILL — the kernel needs a moment to reap the
-    // process and release the profile directory handles before we delete
-    // the lock files (otherwise Chrome may not have released them yet).
-    await sleep(attempt === 1 ? 1_500 : 2_500);
+    // Always wait: SIGKILL is instant but the kernel still needs time to close
+    // the Chrome profile socket so the next launch can claim it cleanly.
+    await sleep(attempt === 1 ? 2_000 : 4_000);
     await clearPuppeteerLockfile(sessionDir);
 
     try {
       console.log(`[whatsapp] Initialising… (attempt ${attempt}/${MAX_INIT_RETRIES})`);
       await client.initialize();
-      return; // success
+      return; // success — keep this client alive
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      const isLockError = msg.includes("already running") || msg.includes("lockfile") || msg.includes("SingletonLock");
+      const isLockError =
+        msg.includes("already running") ||
+        msg.includes("lockfile") ||
+        msg.includes("SingletonLock") ||
+        msg.includes("ProcessSingleton");
 
-      if (isLockError && attempt < MAX_INIT_RETRIES) {
-        console.warn(`[whatsapp] Browser lock on attempt ${attempt} — retrying in ${RETRY_DELAY_MS / 1000}s…`);
+      if (attempt < MAX_INIT_RETRIES) {
+        console.warn(`[whatsapp] Init failed on attempt ${attempt}${isLockError ? " (browser lock)" : ""} — retrying in ${RETRY_DELAY_MS / 1000}s…`);
         await sleep(RETRY_DELAY_MS);
         continue;
       }
 
-      // Non-lock error or out of retries — propagate so the caller can log it
-      throw err;
+      // All retries exhausted. Log and schedule a long retry rather than
+      // throwing — throwing would crash the server and trigger a PM2 rapid
+      // restart loop (7000+ restarts!) where new instances race against each
+      // other's Chrome processes and perpetuate the lock.
+      console.error(`[whatsapp] All ${MAX_INIT_RETRIES} attempts failed. Retrying in 60s…`, err);
+      setTimeout(() => {
+        startWhatsappBot(_app).catch((e) => console.error("[whatsapp] Scheduled retry error:", e));
+      }, 60_000);
+      return; // ← don't throw: server stays up, PM2 stops restarting
     }
   }
 }

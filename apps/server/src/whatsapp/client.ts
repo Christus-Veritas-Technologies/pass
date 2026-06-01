@@ -92,5 +92,25 @@ export function createClient(): Client {
     }, 10_000);
   });
 
+  // Without an error handler, an unhandled 'error' event crashes the entire
+  // Bun/Node process (EventEmitter throws by default). This is what causes the
+  // 7000+ PM2 restart loop — Puppeteer emits 'error' when Chrome exits
+  // unexpectedly, PM2 sees the crash and restarts immediately, the new instance
+  // races with the dying Chrome, and the cycle repeats.
+  _client.on("error", (err) => {
+    console.error("[whatsapp] Client error (non-fatal):", err);
+  });
+
   return _client;
+}
+
+/**
+ * Destroy the current client and reset the singleton so the next
+ * createClient() call starts completely fresh. Call this after a failed
+ * initialize() so stale Puppeteer state doesn't poison the next attempt.
+ */
+export async function destroyClient(): Promise<void> {
+  if (!_client) return;
+  try { await _client.destroy(); } catch { /* already gone */ }
+  _client = null;
 }
