@@ -229,7 +229,11 @@ const S = StyleSheet.create({
   // ── Paragraph & list ─────────────────────────────────────────────────────
   paragraph: {
     marginBottom: 5,
-    textAlign: "justify",
+    // textAlign "justify" on a Text that contains nested inline <Text> children
+    // (our <Spans> component) causes @react-pdf/renderer to compute an
+    // out-of-range position for the child spans → pdfkit throws
+    // "unsupported number: -2.5e+21". Use "left" to avoid this.
+    textAlign: "left",
     fontSize: 11,
     color: BODY_GREY,
     fontFamily: "Times-Roman",
@@ -253,7 +257,7 @@ const S = StyleSheet.create({
     fontFamily: "Times-Roman",
     fontSize: 11,
     color: BODY_GREY,
-    textAlign: "justify",
+    textAlign: "left",
   },
 
   spacer: { height: 5 },
