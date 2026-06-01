@@ -1,6 +1,5 @@
 import { streamSSE } from "hono/streaming";
 import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 import type { Context } from "hono";
 
 import prisma from "@pass/db";
@@ -10,8 +9,7 @@ import { effectiveGuide } from "../lib/grading";
 import { PLAN_LIMITS, currentMonthKey } from "../lib/planLimits";
 import { checkAndIncrementAiMessage } from "../lib/aiQuota";
 import type { PlanKey } from "../lib/planLimits";
-
-const PAPERS_DIR = join(import.meta.dir, "../../../../packages/papers/papers");
+import { resolvePaperPath, PAPERS_DIR } from "../lib/papersDir";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -372,9 +370,15 @@ export async function downloadPaper(c: Context) {
   }
 
   // ── Local file path ───────────────────────────────────────────────────────
+  const rel = resource.filePath
+    ? resource.filePath.replace(/^packages\/papers\/papers\//, "")
+    : resource.fileUrl.replace(/^\/static\/papers\//, "");
+  const abs = resolvePaperPath(rel);
+  if (!abs) {
+    console.warn(`[download] paper file not found for ${resource.id} (${resource.title}), searched: ${PAPERS_DIR}/${rel}`);
+    return c.json({ error: "Paper file not available for download" }, 404);
+  }
   try {
-    const rel = resource.fileUrl.replace(/^\/static\/papers\//, "");
-    const abs = join(PAPERS_DIR, rel);
     const bytes = await readFile(abs);
     return new Response(bytes.buffer as ArrayBuffer, { headers });
   } catch {
