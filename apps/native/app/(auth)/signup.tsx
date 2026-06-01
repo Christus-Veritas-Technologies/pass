@@ -18,8 +18,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { apiSignup, signInWithGoogle, storeTokens, registerPushToken } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
-const BRAND = "#4F46E5";
+import { useAppTheme } from "@/lib/theme-context";
 
 const STRENGTH_COLORS = ["", "#EF4444", "#F59E0B", "#10B981"];
 const STRENGTH_LABELS = ["", "Weak", "Fair", "Strong"];
@@ -32,6 +31,9 @@ function getStrength(pw: string): number {
 }
 
 export default function SignupScreen() {
+  const { colors } = useAppTheme();
+  const BRAND = colors.brand;
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -75,11 +77,8 @@ export default function SignupScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
-      {/* Hide the header */}
-        <Stack.Screen
-          options={{ headerShown: false }}
-        />
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <Stack.Screen options={{ headerShown: false }} />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -99,14 +98,14 @@ export default function SignupScreen() {
                   source={require("../../assets/images/icon.png")}
                   style={{ width: 38, height: 38, borderRadius: 10 }}
                 />
-                <Text style={{ fontSize: 22, fontWeight: "700", color: "#111827", letterSpacing: -0.5 }}>Pass</Text>
+                <Text style={{ fontSize: 22, fontWeight: "700", color: colors.text, letterSpacing: -0.5 }}>Pass</Text>
               </View>
             </MotiView>
 
             {/* Heading */}
             <MotiView from={{ opacity: 0, translateY: 12 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: "timing", duration: 220, delay: 80, easing: Easing.bezier(0.23, 1, 0.32, 1) }} style={{ marginTop: 40 }}>
-              <Text style={{ fontSize: 26, fontWeight: "700", color: "#111827", letterSpacing: -0.5 }}>Create account</Text>
-              <Text style={{ fontSize: 15, color: "#6B7280", marginTop: 4 }}>Start your exam prep journey</Text>
+              <Text style={{ fontSize: 26, fontWeight: "700", color: colors.text, letterSpacing: -0.5 }}>Create account</Text>
+              <Text style={{ fontSize: 15, color: colors.textTertiary, marginTop: 4 }}>Start your exam prep journey</Text>
             </MotiView>
 
             {/* Form */}
@@ -139,12 +138,12 @@ export default function SignupScreen() {
 
               {/* Password with strength */}
               <View>
-                <Text style={{ fontSize: 14, fontWeight: "500", color: "#374151", marginBottom: 6 }}>Password</Text>
+                <Text style={{ fontSize: 14, fontWeight: "500", color: colors.textSecondary, marginBottom: 6 }}>Password</Text>
                 <View style={{ position: "relative" }}>
                   <TextInput
                     ref={passwordRef}
                     placeholder="Min 8 characters"
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={colors.textPlaceholder}
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry={!showPassword}
@@ -156,10 +155,10 @@ export default function SignupScreen() {
                       paddingRight: 48,
                       borderRadius: 12,
                       borderWidth: errors.password ? 2 : 1,
-                      borderColor: errors.password ? "#EF4444" : "#E5E7EB",
-                      backgroundColor: "#FFFFFF",
+                      borderColor: errors.password ? colors.error : colors.border,
+                      backgroundColor: colors.card,
                       fontSize: 15,
-                      color: "#111827",
+                      color: colors.text,
                     }}
                   />
                   <Pressable
@@ -167,10 +166,12 @@ export default function SignupScreen() {
                     style={{ position: "absolute", right: 14, top: 14 }}
                     hitSlop={8}
                   >
-                    {showPassword ? <EyeSlash size={20} color="#9CA3AF" /> : <Eye size={20} color="#9CA3AF" />}
+                    {showPassword
+                      ? <EyeSlash size={20} color={colors.textPlaceholder} />
+                      : <Eye size={20} color={colors.textPlaceholder} />}
                   </Pressable>
                 </View>
-                {errors.password && <Text style={{ fontSize: 12, color: "#EF4444", marginTop: 6 }}>{errors.password}</Text>}
+                {errors.password && <Text style={{ fontSize: 12, color: colors.error, marginTop: 6 }}>{errors.password}</Text>}
 
                 {/* Strength bar */}
                 {password.length > 0 && (
@@ -188,12 +189,12 @@ export default function SignupScreen() {
                             flex: 1,
                             height: 4,
                             borderRadius: 2,
-                            backgroundColor: i <= strength ? STRENGTH_COLORS[strength] : "#E5E7EB",
+                            backgroundColor: i <= strength ? STRENGTH_COLORS[strength] : colors.border,
                           }}
                         />
                       ))}
                     </View>
-                    <Text style={{ fontSize: 12, color: "#6B7280" }}>{STRENGTH_LABELS[strength]}</Text>
+                    <Text style={{ fontSize: 12, color: colors.textTertiary }}>{STRENGTH_LABELS[strength]}</Text>
                   </MotiView>
                 )}
               </View>
@@ -201,8 +202,8 @@ export default function SignupScreen() {
               {/* Form-level error */}
               {errors.form && (
                 <MotiView from={{ opacity: 0, translateY: -4 }} animate={{ opacity: 1, translateY: 0 }}>
-                  <View style={{ backgroundColor: "#FEF2F2", borderWidth: 1, borderColor: "#FECACA", borderRadius: 10, padding: 12 }}>
-                    <Text style={{ fontSize: 13, color: "#DC2626" }}>{errors.form}</Text>
+                  <View style={{ backgroundColor: colors.errorBg, borderWidth: 1, borderColor: colors.errorBorder, borderRadius: 10, padding: 12 }}>
+                    <Text style={{ fontSize: 13, color: colors.error }}>{errors.form}</Text>
                   </View>
                 </MotiView>
               )}
@@ -212,9 +213,9 @@ export default function SignupScreen() {
 
             {/* Divider */}
             <MotiView from={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ type: "timing", duration: 220, delay: 240, easing: Easing.bezier(0.23, 1, 0.32, 1) }} style={{ marginTop: 24, flexDirection: "row", alignItems: "center", gap: 12 }}>
-              <View style={{ flex: 1, height: 1, backgroundColor: "#E5E7EB" }} />
-              <Text style={{ fontSize: 13, color: "#9CA3AF" }}>or</Text>
-              <View style={{ flex: 1, height: 1, backgroundColor: "#E5E7EB" }} />
+              <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
+              <Text style={{ fontSize: 13, color: colors.textTertiary }}>or</Text>
+              <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
             </MotiView>
 
             {/* Google button */}
@@ -247,7 +248,7 @@ export default function SignupScreen() {
               >
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                   <Text style={{ fontSize: 17, lineHeight: 20 }}>G</Text>
-                  <Text style={{ fontSize: 15, fontWeight: "600", color: "#374151" }}>Continue with Google</Text>
+                  <Text style={{ fontSize: 15, fontWeight: "600", color: colors.textSecondary }}>Continue with Google</Text>
                 </View>
               </Button>
             </MotiView>
@@ -255,7 +256,7 @@ export default function SignupScreen() {
             {/* Login link */}
             <MotiView from={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ type: "timing", duration: 220, delay: 360, easing: Easing.bezier(0.23, 1, 0.32, 1) }} style={{ marginTop: 28, alignItems: "center" }}>
               <Pressable onPress={() => router.back()}>
-                <Text style={{ fontSize: 14, color: "#6B7280" }}>
+                <Text style={{ fontSize: 14, color: colors.textTertiary }}>
                   Already have an account?{" "}
                   <Text style={{ color: BRAND, fontWeight: "600" }}>Sign in</Text>
                 </Text>

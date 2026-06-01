@@ -13,8 +13,8 @@ import {
   type ViewToken,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useAppTheme } from "@/lib/theme-context";
 
-const BRAND = "#4F46E5";
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const IMAGE_HEIGHT = SCREEN_HEIGHT * 0.50;
 const ONBOARDING_KEY = "onboarding_complete";
@@ -49,12 +49,12 @@ const SLIDES = [
   },
 ];
 
-function Dot({ active, color }: { active: boolean; color: string }) {
+function Dot({ active, color, borderColor }: { active: boolean; color: string; borderColor: string }) {
   return (
     <MotiView
       animate={{
         width: active ? 24 : 8,
-        backgroundColor: active ? color : "#D1D5DB",
+        backgroundColor: active ? color : borderColor,
         opacity: active ? 1 : 0.6,
       }}
       transition={{ type: "spring", stiffness: 300, damping: 28 }}
@@ -64,6 +64,7 @@ function Dot({ active, color }: { active: boolean; color: string }) {
 }
 
 export default function LaunchScreen() {
+  const { colors } = useAppTheme();
   const [activeIndex, setActiveIndex] = useState(0);
   const listRef = useRef<FlatList>(null);
   const slide = SLIDES[activeIndex]!;
@@ -88,15 +89,10 @@ export default function LaunchScreen() {
     }
   }
 
-  async function handleLogin() {
-    await SecureStore.setItemAsync(ONBOARDING_KEY, "true");
-    router.replace("/(auth)/login");
-  }
-
   const isLast = activeIndex === SLIDES.length - 1;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       {/* ── Image carousel ─────────────────────────────────────────────────── */}
       <View style={{ height: IMAGE_HEIGHT, overflow: "hidden" }}>
         <FlatList
@@ -140,14 +136,10 @@ export default function LaunchScreen() {
         )}
       </View>
 
-      {/* ── Content section below image ─────────────────────────────────────
-            justifyContent: "space-between" keeps text at the top and controls
-            pinned to the bottom regardless of how many controls are shown.
-            This prevents the "mushed" appearance on step 3 when the sign-in
-            link joins the dots + button at the bottom. ─────────────────────── */}
+      {/* ── Content section below image ───────────────────────────────────── */}
       <View style={{ flex: 1, justifyContent: "space-between" }}>
 
-        {/* Animated text content — sits at the top of the flex space */}
+        {/* Animated text content */}
         <MotiView
           key={activeIndex}
           from={{ opacity: 0, translateY: 18 }}
@@ -159,7 +151,7 @@ export default function LaunchScreen() {
           <View
             style={{
               alignSelf: "flex-start",
-              backgroundColor: `${slide.accent}18`,
+              backgroundColor: `${slide.accent}22`,
               borderRadius: 20,
               paddingHorizontal: 12,
               paddingVertical: 5,
@@ -175,7 +167,7 @@ export default function LaunchScreen() {
             style={{
               fontSize: 28,
               fontWeight: "800",
-              color: "#111827",
+              color: colors.text,
               letterSpacing: -0.8,
               lineHeight: 34,
               marginBottom: 12,
@@ -183,17 +175,17 @@ export default function LaunchScreen() {
           >
             {slide.title}
           </Text>
-          <Text style={{ fontSize: 15, color: "#6B7280", lineHeight: 24 }}>
+          <Text style={{ fontSize: 15, color: colors.textTertiary, lineHeight: 24 }}>
             {slide.description}
           </Text>
         </MotiView>
 
-        {/* ── Bottom controls — pinned to the bottom of the flex space ─────── */}
+        {/* ── Bottom controls ────────────────────────────────────────────── */}
         <View style={{ paddingHorizontal: 24, paddingBottom: 36 }}>
           {/* Progress dots */}
           <View style={{ flexDirection: "row", gap: 6, alignItems: "center", marginBottom: 16 }}>
             {SLIDES.map((s, i) => (
-              <Dot key={s.key} active={i === activeIndex} color={slide.accent} />
+              <Dot key={s.key} active={i === activeIndex} color={slide.accent} borderColor={colors.border} />
             ))}
           </View>
 
@@ -212,23 +204,6 @@ export default function LaunchScreen() {
               {isLast ? "Get Started" : "Next"}
             </Text>
           </Pressable>
-
-          {/* Sign-in link — only on last slide, fades in below the button */}
-          {isLast && (
-            <MotiView
-              from={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ type: "timing", duration: 200, delay: 100 }}
-              style={{ marginTop: 16 }}
-            >
-              <Pressable onPress={handleLogin} hitSlop={8}>
-                <Text style={{ textAlign: "center", fontSize: 14, color: "#6B7280" }}>
-                  Already have an account?{" "}
-                  <Text style={{ color: slide.accent, fontWeight: "700" }}>Sign in</Text>
-                </Text>
-              </Pressable>
-            </MotiView>
-          )}
         </View>
       </View>
     </SafeAreaView>
