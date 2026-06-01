@@ -2,7 +2,7 @@ import { randomInt } from "node:crypto";
 import type { Context } from "hono";
 import { z } from "zod";
 import prisma from "@pass/db";
-import { PLAN_LIMITS, type PlanKey, currentMonthKey } from "../lib/planLimits";
+import { PLAN_LIMITS, AMBASSADOR_LIMIT, type PlanKey, currentMonthKey } from "../lib/planLimits";
 import { getReferralCode } from "../lib/referrals";
 
 const USER_SELECT = {
@@ -36,7 +36,11 @@ export async function getMe(c: Context): Promise<Response> {
     prisma.paperSession.count({ where: { userId, createdAt: { gte: monthStart } } }),
     prisma.project.count({ where: { userId, createdAt: { gte: monthStart } } }),
   ]);
-  const limits = PLAN_LIMITS[user.plan as PlanKey] ?? PLAN_LIMITS.FREE;
+  const baseLimits = PLAN_LIMITS[user.plan as PlanKey] ?? PLAN_LIMITS.FREE;
+  // Ambassadors get 1 000 of every quota type regardless of their plan tier.
+  const limits = user.isAmbassador
+    ? { papers: AMBASSADOR_LIMIT, projects: AMBASSADOR_LIMIT, aiMessages: AMBASSADOR_LIMIT, downloads: AMBASSADOR_LIMIT }
+    : baseLimits;
   const planUsage = {
     papers:   { used: monthPapers,   limit: limits.papers },
     projects: { used: monthProjects, limit: limits.projects },

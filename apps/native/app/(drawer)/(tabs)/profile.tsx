@@ -573,7 +573,7 @@ export default function ProfileScreen() {
                           </View>
                         );
                       })}
-                      {user?.plan === "FREE" && (
+                      {user?.plan === "FREE" && !user?.isAmbassador && (
                         <View style={{ backgroundColor: colors.warningBg, borderRadius: 10, padding: 12, flexDirection: "row", alignItems: "center", gap: 10 }}>
                           <Crown size={16} color={colors.warning} />
                           <Text style={{ flex: 1, fontSize: 12, color: colors.warning, fontWeight: "500", lineHeight: 18 }}>
@@ -810,8 +810,8 @@ export default function ProfileScreen() {
                   <ArrowRight size={16} color={colors.border} />
                 </Pressable>
 
-                {/* Upgrade — only FREE plan */}
-                {user?.plan === "FREE" && (
+                {/* Upgrade — only FREE non-ambassador plan */}
+                {user?.plan === "FREE" && !user?.isAmbassador && (
                   <Pressable
                     onPress={() => router.push({ pathname: "/checkout" as never, params: { plan: "STUDY" } as never })}
                     style={({ pressed }) => ({

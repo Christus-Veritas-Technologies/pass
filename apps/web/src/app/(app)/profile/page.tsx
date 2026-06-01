@@ -600,7 +600,7 @@ export default function ProfilePage() {
             ) : (
               <p className="text-xs text-muted-foreground">Usage data unavailable</p>
             )}
-            {user?.plan === "FREE" && (
+            {user?.plan === "FREE" && !user?.isAmbassador && (
               <div className="mt-2 rounded-lg bg-amber-50 border border-amber-100 px-4 py-3 flex items-center justify-between gap-4">
                 <p className="text-xs text-amber-800 leading-relaxed">
                   Upgrade to <strong>Study</strong> or <strong>Pass</strong> for more papers and projects each month.
