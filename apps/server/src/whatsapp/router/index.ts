@@ -114,6 +114,9 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
   // ── Global hard intents (always free, no AI, no quota check) ─────────────
 
   if (hard.kind === "help") {
+    // Reset mode so numbered menu selections work after "help" regardless of
+    // what flow the user was in (the most common hallucination trigger).
+    state = { ...state, mode: { kind: "idle" } };
     await sendHelp(msg);
     await saveState(whatsappId, state);
     return;
@@ -454,7 +457,10 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
 
   // ── Main menu number dispatcher (idle mode, no AI needed) ───────────────────
 
-  if (hard.kind === "number_select" && state.mode.kind === "idle" && hard.n !== undefined) {
+  // ai_chat mode has no mode-specific handler, so numbers fall straight to NL
+  // routing and confuse the AI. Treat it the same as idle for menu navigation.
+  const isMenuContext = state.mode.kind === "idle" || state.mode.kind === "ai_chat";
+  if (hard.kind === "number_select" && isMenuContext && hard.n !== undefined) {
     switch (hard.n) {
       case 1: {
         const { newState, paperIds } = await showPapers(msg, {}, 0, state);
