@@ -311,6 +311,7 @@ const S = StyleSheet.create({
     position: "absolute",
     bottom: 24,
     left: 64,
+    width: 233,
     fontFamily: "Helvetica",
     fontSize: 7.5,
     color: LIGHT_GREY,
@@ -406,6 +407,39 @@ function preprocessContent(raw: string): string {
     .replace(/​/g, "").replace(/﻿/g, "")
     .replace(/‑/g, "-").replace(/′/g, "'")
     .replace(/″/g, "''");
+
+  // Final pass: PDFKit's built-in fonts (Helvetica, Times-Roman) only support
+  // Latin-1 (U+0000–U+00FF). Any character outside that range produces a zero-
+  // or NaN-width glyph advance, which cascades into an out-of-range transform
+  // value and crashes pdfkit with "unsupported number: -2.5e+21".
+  // Apply a targeted replacement table for commonly-generated Unicode, then
+  // drop anything still outside Latin-1 rather than crash.
+  const EXTRA_MAP: Record<string, string> = {
+    "•": "-",    // bullet •
+    "‣": "-",    // triangular bullet ‣
+    "●": "-",    // black circle ●
+    "○": "o",    // white circle ○
+    "■": "-",    // black square ■
+    "✓": "v",    // check mark ✓
+    "✔": "v",    // heavy check mark ✔
+    "✗": "x",    // ballot x ✗
+    "✘": "x",    // heavy ballot x ✘
+    "★": "*",    // black star ★
+    "☆": "*",    // white star ☆
+    "·": "*",    // middle dot ·  (already Latin-1 but explicit)
+    "−": "-",    // minus sign −  (already handled above, belt-and-suspenders)
+    "‑": "-",    // non-breaking hyphen
+    "‐": "-",    // hyphen
+    "―": "-",    // horizontal bar ―
+    "─": "-",    // box drawing light horizontal ─
+    "­": "",     // soft hyphen (invisible)
+    "⁠": "",     // word joiner (invisible)
+    "​": "",     // zero-width space
+    "‌": "",     // zero-width non-joiner
+    "‍": "",     // zero-width joiner
+    "﻿": "",     // BOM / zero-width no-break space
+  };
+  s = s.replace(/[^\x00-\xFF]/g, (ch) => EXTRA_MAP[ch] ?? "");
 
   return s;
 }
