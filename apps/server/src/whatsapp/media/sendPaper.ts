@@ -13,7 +13,7 @@ import { MessageMedia } from "whatsapp-web.js";
 import type { Client, MessageSendOptions } from "whatsapp-web.js";
 import type { Resource } from "@pass/db";
 import prisma from "@pass/db";
-import { PLAN_LIMITS, currentMonthKey } from "../../lib/planLimits";
+import { PLAN_LIMITS, currentMonthKey, AMBASSADOR_LIMIT } from "../../lib/planLimits";
 import type { PlanKey } from "../../lib/planLimits";
 
 // import.meta.dir → apps/server/src/whatsapp/media
@@ -29,10 +29,10 @@ export type SendPaperResult =
  * Returns true if the send is allowed.
  */
 async function consumeDownloadQuota(userId: string): Promise<{ allowed: boolean; plan: string; limit: number }> {
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } });
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true, isAmbassador: true } });
   if (!user) return { allowed: false, plan: "FREE", limit: 10 };
 
-  const limit = PLAN_LIMITS[user.plan as PlanKey].downloads;
+  const limit = user.isAmbassador ? AMBASSADOR_LIMIT : PLAN_LIMITS[user.plan as PlanKey].downloads;
 
   if (limit === Infinity) return { allowed: true, plan: user.plan, limit: Infinity };
 

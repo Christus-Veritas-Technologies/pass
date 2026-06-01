@@ -15,7 +15,7 @@ import type { ConversationState } from "../types";
 import type { ProjectSlots } from "./projectBrief";
 import { projectAgent } from "../../mastra/agents/project.agent";
 import { checkAndIncrementAiMessage } from "../../lib/aiQuota";
-import { PLAN_LIMITS, currentMonthKey, type PlanKey } from "../../lib/planLimits";
+import { PLAN_LIMITS, currentMonthKey, type PlanKey, AMBASSADOR_LIMIT } from "../../lib/planLimits";
 import { renderProjectPdfAndUpload } from "../media/renderProjectPdf";
 import { sendProjectPdf } from "../media/sendProject";
 import {
@@ -223,17 +223,17 @@ export async function generateProject(
   // ── Project quota check ───────────────────────────────────────────────────
   const month = currentMonthKey();
   const [user, usage] = await Promise.all([
-    prisma.user.findUnique({ where: { id: userId }, select: { plan: true, bonusProjects: true } }),
+    prisma.user.findUnique({ where: { id: userId }, select: { plan: true, bonusProjects: true, isAmbassador: true } }),
     prisma.monthlyUsage.findUnique({ where: { userId_month: { userId, month } } }),
   ]);
   if (user) {
-    const limits = PLAN_LIMITS[user.plan as PlanKey];
+    const projectLimit = user.isAmbassador ? AMBASSADOR_LIMIT : PLAN_LIMITS[user.plan as PlanKey].projects;
     const projectsUsed = usage?.projectsUsed ?? 0;
-    if (projectsUsed >= limits.projects) {
-      if ((user.bonusProjects ?? 0) > 0) {
+    if (projectsUsed >= projectLimit) {
+      if (!user.isAmbassador && (user.bonusProjects ?? 0) > 0) {
         await prisma.user.update({ where: { id: userId }, data: { bonusProjects: { decrement: 1 } } });
       } else {
-        await msg.reply(projectsQuotaMessage(user.plan, limits.projects));
+        await msg.reply(projectsQuotaMessage(user.plan, projectLimit));
         return { ...state, mode: { kind: "idle" } };
       }
     } else {

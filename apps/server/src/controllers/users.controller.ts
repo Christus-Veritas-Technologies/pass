@@ -6,7 +6,7 @@ import { PLAN_LIMITS, type PlanKey, currentMonthKey } from "../lib/planLimits";
 import { getReferralCode } from "../lib/referrals";
 
 const USER_SELECT = {
-  id: true, email: true, name: true, grade: true, school: true, plan: true, avatarUrl: true,
+  id: true, email: true, name: true, grade: true, school: true, plan: true, avatarUrl: true, isAmbassador: true,
 } as const;
 
 export async function getMe(c: Context): Promise<Response> {

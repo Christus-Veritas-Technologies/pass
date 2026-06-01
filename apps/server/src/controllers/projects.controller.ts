@@ -11,7 +11,7 @@ import { generateProjectPdfBuffer } from "../lib/projectPdfDocument";
 import { generateProjectDocxBuffer } from "../lib/projectDocxDocument";
 import { sendNotification } from "../lib/notifications";
 import { isValidSubject, canonicalSubject } from "../lib/subjects";
-import { PLAN_LIMITS, currentMonthKey, type PlanKey } from "../lib/planLimits";
+import { PLAN_LIMITS, currentMonthKey, type PlanKey, AMBASSADOR_LIMIT } from "../lib/planLimits";
 
 const VALID_GRADES = ["Grade 7", "Form 4", "Form 6"] as const;
 
@@ -105,17 +105,17 @@ export async function generateProject(c: Context) {
   {
     const month = currentMonthKey();
     const [quotaUser, usage] = await Promise.all([
-      prisma.user.findUnique({ where: { id: userId }, select: { plan: true, bonusProjects: true } }),
+      prisma.user.findUnique({ where: { id: userId }, select: { plan: true, bonusProjects: true, isAmbassador: true } }),
       prisma.monthlyUsage.findUnique({ where: { userId_month: { userId, month } } }),
     ]);
     if (quotaUser) {
-      const limits = PLAN_LIMITS[quotaUser.plan as PlanKey];
+      const projectLimit = quotaUser.isAmbassador ? AMBASSADOR_LIMIT : PLAN_LIMITS[quotaUser.plan as PlanKey].projects;
       const projectsUsed = usage?.projectsUsed ?? 0;
-      if (projectsUsed >= limits.projects) {
-        if ((quotaUser.bonusProjects ?? 0) > 0) {
+      if (projectsUsed >= projectLimit) {
+        if (!quotaUser.isAmbassador && (quotaUser.bonusProjects ?? 0) > 0) {
           await prisma.user.update({ where: { id: userId }, data: { bonusProjects: { decrement: 1 } } });
         } else {
-          return c.json({ error: "Monthly project limit reached for your plan", limitReached: true, plan: quotaUser.plan, limit: limits.projects }, 402);
+          return c.json({ error: "Monthly project limit reached for your plan", limitReached: true, plan: quotaUser.plan, limit: projectLimit }, 402);
         }
       } else {
         await prisma.monthlyUsage.upsert({

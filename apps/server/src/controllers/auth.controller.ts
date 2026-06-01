@@ -60,8 +60,8 @@ async function createSession(userId: string) {
   return { accessToken, refreshToken, session };
 }
 
-function safeUser(user: { id: string; email: string; name: string; plan: string; grade: string | null; avatarUrl?: string | null }) {
-  return { id: user.id, email: user.email, name: user.name, plan: user.plan, grade: user.grade, avatarUrl: user.avatarUrl ?? null };
+function safeUser(user: { id: string; email: string; name: string; plan: string; grade: string | null; avatarUrl?: string | null; isAmbassador?: boolean }) {
+  return { id: user.id, email: user.email, name: user.name, plan: user.plan, grade: user.grade, avatarUrl: user.avatarUrl ?? null, isAmbassador: user.isAmbassador ?? false };
 }
 
 // ─── Email / password ────────────────────────────────────────────────────────

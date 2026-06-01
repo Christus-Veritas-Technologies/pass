@@ -10,7 +10,7 @@
  *   PASS  → unlimited
  */
 import prisma from "@pass/db";
-import { PLAN_LIMITS, currentMonthKey } from "./planLimits";
+import { PLAN_LIMITS, currentMonthKey, AMBASSADOR_LIMIT } from "./planLimits";
 
 export interface AiQuotaResult {
   allowed: boolean;
@@ -24,10 +24,10 @@ export interface AiQuotaResult {
  * user has already hit the cap so we never double-count.
  */
 export async function checkAndIncrementAiMessage(userId: string): Promise<AiQuotaResult> {
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } });
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true, isAmbassador: true } });
   if (!user) throw new Error(`User ${userId} not found`);
 
-  const limit = PLAN_LIMITS[user.plan].aiMessages;
+  const limit = user.isAmbassador ? AMBASSADOR_LIMIT : PLAN_LIMITS[user.plan].aiMessages;
 
   // Short-circuit for unlimited plans — no DB write needed
   if (limit === Infinity) {
@@ -54,10 +54,10 @@ export async function checkAndIncrementAiMessage(userId: string): Promise<AiQuot
 }
 
 export async function getAiMessageUsage(userId: string): Promise<AiQuotaResult> {
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } });
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true, isAmbassador: true } });
   if (!user) throw new Error(`User ${userId} not found`);
 
-  const limit = PLAN_LIMITS[user.plan].aiMessages;
+  const limit = user.isAmbassador ? AMBASSADOR_LIMIT : PLAN_LIMITS[user.plan].aiMessages;
   const month = currentMonthKey();
 
   const usage = await prisma.monthlyUsage.findUnique({
@@ -84,22 +84,20 @@ export interface FeatureQuotaResult {
 export async function checkPapersQuota(userId: string): Promise<FeatureQuotaResult> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { plan: true, bonusPapers: true },
+    select: { plan: true, bonusPapers: true, isAmbassador: true },
   });
   if (!user) return { allowed: false, used: 0, limit: 0, plan: "FREE" };
 
-  const limits = PLAN_LIMITS[user.plan as import("./planLimits").PlanKey];
+  const limit = user.isAmbassador ? AMBASSADOR_LIMIT : PLAN_LIMITS[user.plan as import("./planLimits").PlanKey].papers;
   const month = currentMonthKey();
-  const usage = await prisma.monthlyUsage.findUnique({
-    where: { userId_month: { userId, month } },
-  });
+  const usage = await prisma.monthlyUsage.findUnique({ where: { userId_month: { userId, month } } });
 
   const used = usage?.papersUsed ?? 0;
-  const hasBonusCredits = (user.bonusPapers ?? 0) > 0;
+  const hasBonusCredits = !user.isAmbassador && (user.bonusPapers ?? 0) > 0;
   return {
-    allowed: used < limits.papers || hasBonusCredits,
+    allowed: used < limit || hasBonusCredits,
     used,
-    limit: limits.papers,
+    limit,
     plan: user.plan,
   };
 }
@@ -107,22 +105,20 @@ export async function checkPapersQuota(userId: string): Promise<FeatureQuotaResu
 export async function checkProjectsQuota(userId: string): Promise<FeatureQuotaResult> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { plan: true, bonusProjects: true },
+    select: { plan: true, bonusProjects: true, isAmbassador: true },
   });
   if (!user) return { allowed: false, used: 0, limit: 0, plan: "FREE" };
 
-  const limits = PLAN_LIMITS[user.plan as import("./planLimits").PlanKey];
+  const limit = user.isAmbassador ? AMBASSADOR_LIMIT : PLAN_LIMITS[user.plan as import("./planLimits").PlanKey].projects;
   const month = currentMonthKey();
-  const usage = await prisma.monthlyUsage.findUnique({
-    where: { userId_month: { userId, month } },
-  });
+  const usage = await prisma.monthlyUsage.findUnique({ where: { userId_month: { userId, month } } });
 
   const used = usage?.projectsUsed ?? 0;
-  const hasBonusCredits = (user.bonusProjects ?? 0) > 0;
+  const hasBonusCredits = !user.isAmbassador && (user.bonusProjects ?? 0) > 0;
   return {
-    allowed: used < limits.projects || hasBonusCredits,
+    allowed: used < limit || hasBonusCredits,
     used,
-    limit: limits.projects,
+    limit,
     plan: user.plan,
   };
 }
