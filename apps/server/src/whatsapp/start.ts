@@ -5,7 +5,7 @@
  */
 
 import { execSync } from "node:child_process";
-import { existsSync, rmSync } from "node:fs";
+import { existsSync, rmSync, lstatSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import os from "node:os";
 import type { Hono } from "hono";
@@ -17,65 +17,69 @@ const MAX_INIT_RETRIES = 4;
 const RETRY_DELAY_MS   = 3_000;
 
 /**
- * On Windows, when bun hot-reloads it kills the JS process but leaves the
- * puppeteer-launched Chromium orphaned and still holding the lockfile open
- * (EBUSY). rmSync can't delete a file that an open process has locked.
- *
- * Fix: before touching the lockfile, find and kill any Chrome process whose
- * command line contains our specific session dir, wait a moment for the OS
- * to release the file handle, then delete it.
+ * Kill any orphaned Chrome/Chromium process that is using our session directory.
+ * Works on both Linux and Windows.
  */
 function killOrphanedChrome(sessionDir: string): void {
-  if (process.platform !== "win32") return;
-
-  // Normalise to forward slashes so the PowerShell -like pattern is simpler
-  const needle = sessionDir.replace(/\\/g, "/");
-  try {
-    execSync(
-      `powershell -NoProfile -Command "` +
-      `Get-CimInstance Win32_Process -Filter 'Name = \\"chrome.exe\\"' | ` +
-      `Where-Object { $_.CommandLine -like '*wwebjs_auth*' } | ` +
-      `ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"`,
-      { stdio: "ignore", timeout: 8_000 }
-    );
-    console.log(`[whatsapp] Killed orphaned Chrome processes for: ${needle}`);
-  } catch {
-    // No matching processes or powershell unavailable — safe to continue
+  if (process.platform === "win32") {
+    try {
+      execSync(
+        `powershell -NoProfile -Command "` +
+        `Get-CimInstance Win32_Process -Filter 'Name = \\"chrome.exe\\"' | ` +
+        `Where-Object { $_.CommandLine -like '*wwebjs_auth*' } | ` +
+        `ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"`,
+        { stdio: "ignore", timeout: 8_000 },
+      );
+    } catch { /* no matching processes */ }
+    return;
   }
+
+  // Linux / macOS: pkill by command-line pattern (SIGKILL so Chrome can't ignore it)
+  // Use the session dir as the needle so we only kill Chrome using OUR profile.
+  const needle = sessionDir.replace(/'/g, "");   // strip single quotes for shell safety
+  try {
+    execSync(`pkill -9 -f '${needle}' 2>/dev/null || true`, { stdio: "ignore", timeout: 5_000 });
+    console.log(`[whatsapp] Sent SIGKILL to Chrome processes matching: ${needle}`);
+  } catch { /* pkill returns non-zero when no match — that's fine */ }
 }
 
 async function clearPuppeteerLockfile(sessionDir: string): Promise<void> {
-  // LocalAuth stores sessions under <sessionDir>/session/
-  // The lockfile can appear at several paths depending on Chrome's profile layout.
+  // Chrome lock-file paths differ by OS and profile layout:
+  //   Linux:   SingletonLock  (symlink), SingletonSocket, SingletonCookie
+  //   Windows: lockfile       (regular file)
+  // We probe every known location and forcibly remove them so the next
+  // initialize() call can start a fresh browser without the "already running" error.
+  const base = join(sessionDir, "session");
   const candidates = [
-    join(sessionDir, "session", "lockfile"),
-    join(sessionDir, "session", "Default", "lockfile"),
+    // Linux Chrome singleton files
+    join(base, "SingletonLock"),
+    join(base, "SingletonSocket"),
+    join(base, "SingletonCookie"),
+    join(base, "Default", "SingletonLock"),
+    // Windows lockfile
+    join(base, "lockfile"),
+    join(base, "Default", "lockfile"),
+    // Legacy session-default layout
+    join(sessionDir, "session-default", "SingletonLock"),
     join(sessionDir, "session-default", "lockfile"),
-    join(sessionDir, "session-default", "Default", "lockfile"),
   ];
 
   for (const candidate of candidates) {
-    if (existsSync(candidate)) {
-      try {
-        rmSync(candidate, { force: true });
-        console.log(`[whatsapp] Removed stale lockfile: ${candidate}`);
-      } catch (e: unknown) {
-        const code = (e as NodeJS.ErrnoException).code;
-        if (code === "EBUSY") {
-          // File still locked — Chrome is still alive. Kill it, wait, retry once.
-          console.warn(`[whatsapp] Lockfile busy — killing orphaned Chrome and retrying…`);
-          killOrphanedChrome(sessionDir);
-          // Give the OS 1 s to release the file handle after the process dies
-          await sleep(1_000);
-          try {
-            rmSync(candidate, { force: true });
-            console.log(`[whatsapp] Removed stale lockfile (after kill): ${candidate}`);
-          } catch (e2) {
-            console.warn(`[whatsapp] Could not remove lockfile ${candidate}:`, e2);
-          }
-        } else {
-          console.warn(`[whatsapp] Could not remove lockfile ${candidate}:`, e);
-        }
+    // lstatSync (not existsSync) so we detect dangling symlinks too
+    let exists = false;
+    try { lstatSync(candidate); exists = true; } catch { /* not present */ }
+    if (!exists) continue;
+
+    try {
+      rmSync(candidate, { force: true });
+      console.log(`[whatsapp] Removed stale lock: ${candidate}`);
+    } catch (e: unknown) {
+      const code = (e as NodeJS.ErrnoException).code;
+      if (code === "EBUSY") {
+        console.warn(`[whatsapp] Lock busy — killing Chrome and retrying…`);
+        killOrphanedChrome(sessionDir);
+        await sleep(1_000);
+        try { rmSync(candidate, { force: true }); } catch { /* best effort */ }
       }
     }
   }
