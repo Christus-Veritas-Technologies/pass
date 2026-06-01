@@ -21,6 +21,7 @@ import { generateProject } from "../flows/projectGenerate";
 import { sendProjectPdf } from "../media/sendProject";
 import { sendPaperPdf } from "../media/sendPaper";
 import { handleAiChat } from "../flows/aiChat";
+import { handleMediaMessage } from "../flows/mediaAnalysis";
 import { startUpgrade, handleUpgradeReply } from "../flows/upgrade";
 import { routeWithNL } from "../flows/nlRouter";
 import { getAiMessageUsage, checkProjectsQuota } from "../../lib/aiQuota";
@@ -28,7 +29,6 @@ import {
   CANCEL_OK,
   LOGOUT_OK,
   WELCOME_UNLINKED,
-  MEDIA_ONLY,
   RATE_LIMIT,
   unlinkedFeatureNudge,
   projectsQuotaMessage,
@@ -84,14 +84,13 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
     msg.broadcast                         // Broadcast flag
   ) return;
 
-  if (msg.hasMedia) {
-    await msg.reply(MEDIA_ONLY);
-    return;
-  }
-
   const whatsappId = msg.from;
+  // When media is present the body is the caption (may be empty).
+  // We still need the text for hard-intent matching on text-only messages.
   const text = (msg.body ?? "").trim();
-  if (!text) return;
+
+  // Drop truly empty messages that have no media and no text
+  if (!msg.hasMedia && !text) return;
 
   let state = await loadState(whatsappId);
 
@@ -191,6 +190,14 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
     } else {
       await sendWelcomeUnlinked(msg);
     }
+    await saveState(whatsappId, state);
+    return;
+  }
+
+  // ── Media messages (images / PDFs) — handle before text routing ─────────────
+  if (msg.hasMedia) {
+    state = await handleMediaMessage(msg, userId, state);
+    state.lastMessageAt = new Date().toISOString();
     await saveState(whatsappId, state);
     return;
   }

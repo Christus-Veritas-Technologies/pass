@@ -294,26 +294,34 @@ const S = StyleSheet.create({
   },
 
   // ── Page footer ───────────────────────────────────────────────────────────
-  pageFooter: {
+  // NOTE: Do NOT use `right` on absolutely-positioned Views that also have
+  // borderTopWidth — Yoga overflows to ~-2.5e21 when resolving the clip path.
+  // Instead use an explicit width (A4 595 − 64 − 64 = 467 pt) and a separate
+  // backgroundColor View for the rule line.
+  footerLine: {
     position: "absolute",
-    bottom: 28,
+    bottom: 44,
     left: 64,
-    right: 64,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    borderTopWidth: 1,
-    borderTopColor: RULE_GREY,
-    paddingTop: 6,
+    width: 467,
+    height: 0.5,
+    backgroundColor: RULE_GREY,
   },
 
-  pageFooterLeft: {
+  footerLeft: {
+    position: "absolute",
+    bottom: 24,
+    left: 64,
     fontFamily: "Helvetica",
     fontSize: 7.5,
     color: LIGHT_GREY,
   },
 
-  pageFooterRight: {
+  footerRight: {
+    position: "absolute",
+    bottom: 24,
+    left: 64,
+    width: 467,
+    textAlign: "right",
     fontFamily: "Helvetica",
     fontSize: 7.5,
     color: LIGHT_GREY,
@@ -641,14 +649,14 @@ function BodyPages({ project, blocks }: { project: Project; blocks: Block[] }) {
 
       {blocks.map((block, i) => <BlockView key={i} block={block} />)}
 
-      {/* Page footer */}
-      <View style={S.pageFooter} fixed>
-        <Text style={S.pageFooterLeft}>pass.ac.zw</Text>
-        <Text
-          style={S.pageFooterRight}
-          render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
-        />
-      </View>
+      {/* Page footer — separate elements to avoid right+borderTopWidth Yoga overflow */}
+      <View style={S.footerLine} fixed />
+      <Text style={S.footerLeft} fixed>pass.ac.zw</Text>
+      <Text
+        style={S.footerRight}
+        fixed
+        render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
+      />
     </Page>
   );
 }
