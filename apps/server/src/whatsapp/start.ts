@@ -6,7 +6,8 @@
 
 import { execSync } from "node:child_process";
 import { existsSync, rmSync } from "node:fs";
-import { join } from "node:path";
+import { isAbsolute, join } from "node:path";
+import os from "node:os";
 import type { Hono } from "hono";
 import { createClient } from "./client";
 import { withChatLock } from "./middleware/mutex";
@@ -96,10 +97,11 @@ export async function startWhatsappBot(_app: Hono): Promise<void> {
     }
   });
 
-  // Resolve the session directory (mirrors the LocalAuth dataPath)
-  const sessionDir = process.env.WHATSAPP_SESSION_DIR
-    ? join(process.cwd(), process.env.WHATSAPP_SESSION_DIR)
-    : join(process.cwd(), ".wwebjs_auth");
+  // Mirror the dataPath resolution used in client.ts
+  const rawSessionDir = process.env.WHATSAPP_SESSION_DIR ?? "./.wwebjs_auth";
+  const sessionDir = isAbsolute(rawSessionDir)
+    ? rawSessionDir
+    : join(os.homedir(), ".wwebjs_auth");
 
   for (let attempt = 1; attempt <= MAX_INIT_RETRIES; attempt++) {
     await clearPuppeteerLockfile(sessionDir);

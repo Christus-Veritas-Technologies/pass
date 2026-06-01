@@ -4,6 +4,8 @@
  */
 
 import { existsSync } from "fs";
+import { isAbsolute, join } from "node:path";
+import os from "node:os";
 import { Client, LocalAuth } from "whatsapp-web.js";
 import qrcodeTerminal from "qrcode-terminal";
 import { env } from "@pass/env/server";
@@ -39,8 +41,16 @@ export function getClient(): Client {
 export function createClient(): Client {
   if (_client) return _client;
 
+  // Resolve relative session paths to the home directory so the session files
+  // land outside the project tree. This prevents bun --hot from detecting the
+  // LocalAuth JSON writes and restarting the server before "ready" fires.
+  const rawSessionDir = env.WHATSAPP_SESSION_DIR;
+  const dataPath = isAbsolute(rawSessionDir)
+    ? rawSessionDir
+    : join(os.homedir(), ".wwebjs_auth");
+
   _client = new Client({
-    authStrategy: new LocalAuth({ dataPath: env.WHATSAPP_SESSION_DIR }),
+    authStrategy: new LocalAuth({ dataPath }),
     puppeteer: {
       headless: true,
       executablePath: resolveChromePath(),
