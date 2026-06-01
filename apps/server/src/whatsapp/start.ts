@@ -34,13 +34,21 @@ function killOrphanedChrome(sessionDir: string): void {
     return;
   }
 
-  // Linux / macOS: pkill by command-line pattern (SIGKILL so Chrome can't ignore it)
-  // Use the session dir as the needle so we only kill Chrome using OUR profile.
-  const needle = sessionDir.replace(/'/g, "");   // strip single quotes for shell safety
+  // Linux / macOS: use pgrep to collect PIDs then kill -9 them directly.
+  // pkill is not available on all distros; pgrep + kill is more portable.
+  // We match on the session dir so we only kill Chrome using OUR profile.
+  const needle = sessionDir.replace(/'/g, ""); // strip single quotes for shell safety
   try {
-    execSync(`pkill -9 -f '${needle}' 2>/dev/null || true`, { stdio: "ignore", timeout: 5_000 });
-    console.log(`[whatsapp] Sent SIGKILL to Chrome processes matching: ${needle}`);
-  } catch { /* pkill returns non-zero when no match — that's fine */ }
+    // pgrep -f prints matching PIDs (one per line), xargs feeds them to kill.
+    // || true so the pipeline always exits 0 (pgrep exits 1 when nothing matches).
+    execSync(
+      `pids=$(pgrep -f '${needle}' 2>/dev/null); [ -n "$pids" ] && kill -9 $pids || true`,
+      { stdio: "ignore", timeout: 5_000, shell: "/bin/sh" },
+    );
+    // Fallback: also try pkill in case pgrep is unavailable
+    execSync(`pkill -9 -f '${needle}' 2>/dev/null; true`, { stdio: "ignore", timeout: 3_000 });
+    console.log(`[whatsapp] Sent SIGKILL to Chrome processes for: ${needle}`);
+  } catch { /* no matching processes or tools not available */ }
 }
 
 async function clearPuppeteerLockfile(sessionDir: string): Promise<void> {
@@ -108,12 +116,14 @@ export async function startWhatsappBot(_app: Hono): Promise<void> {
     : join(os.homedir(), ".wwebjs_auth");
 
   for (let attempt = 1; attempt <= MAX_INIT_RETRIES; attempt++) {
-    // Always kill any orphaned Chrome BEFORE clearing lock files.
-    // If we clear locks first, a still-running Chrome immediately recreates
-    // SingletonLock, and Puppeteer's check sees it and throws again.
+    // Kill any orphaned Chrome BEFORE clearing lock files.
+    // A running Chrome recreates SingletonLock the instant we delete it,
+    // so the kill must happen first.
     killOrphanedChrome(sessionDir);
-    // Give the OS a moment to fully release file handles after SIGKILL.
-    if (attempt > 1) await sleep(2_000);
+    // Always wait after SIGKILL — the kernel needs a moment to reap the
+    // process and release the profile directory handles before we delete
+    // the lock files (otherwise Chrome may not have released them yet).
+    await sleep(attempt === 1 ? 1_500 : 2_500);
     await clearPuppeteerLockfile(sessionDir);
 
     try {
