@@ -5,7 +5,7 @@
  */
 
 import { execSync } from "node:child_process";
-import { existsSync, rmSync, lstatSync, readlinkSync, mkdirSync, chmodSync } from "node:fs";
+import { rmSync, lstatSync, readlinkSync, mkdirSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import os from "node:os";
 import type { Hono } from "hono";
@@ -17,69 +17,60 @@ const MAX_INIT_RETRIES = 4;
 const RETRY_DELAY_MS   = 3_000;
 
 /**
- * Kill any orphaned Chrome/Chromium process that is using our session directory.
- * Works on both Linux and Windows.
+ * Kill every Chrome/Chromium process on this machine.
+ * On Linux: reads the SingletonLock to get the exact PID first, then
+ * falls back to pkill by name and pgrep -f as belt-and-suspenders.
+ * On Windows: stops chrome.exe via PowerShell.
  */
-function killOrphanedChrome(sessionDir: string): void {
+function killAllChrome(sessionDir: string): void {
   if (process.platform === "win32") {
     try {
       execSync(
-        `powershell -NoProfile -Command "` +
-        `Get-CimInstance Win32_Process -Filter 'Name = \\"chrome.exe\\"' | ` +
-        `Where-Object { $_.CommandLine -like '*wwebjs_auth*' } | ` +
-        `ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"`,
+        `powershell -NoProfile -Command "Get-Process chrome -ErrorAction SilentlyContinue | Stop-Process -Force"`,
         { stdio: "ignore", timeout: 8_000 },
       );
-    } catch { /* no matching processes */ }
+    } catch { /* no chrome running */ }
     return;
   }
 
-  // Linux / macOS — layered approach:
-  // 1. Read SingletonLock symlink → extract the exact Chrome PID → kill it.
-  //    This is the most targeted method and works even if Chrome renamed itself.
+  // 1. Read SingletonLock → targeted PID kill (most precise).
   const lockFile = join(sessionDir, "session", "SingletonLock");
   try {
-    const target = readlinkSync(lockFile);          // e.g. "hostname-12345"
+    const target = readlinkSync(lockFile); // e.g. "hostname-12345"
     const pid = parseInt(target.split("-").pop() ?? "", 10);
     if (pid > 0) {
       try { process.kill(pid, 9); } catch { /* already dead */ }
-      console.log(`[whatsapp] Killed Chrome PID ${pid} from SingletonLock`);
     }
-  } catch { /* lock doesn't exist or isn't a symlink */ }
+  } catch { /* no lock or not a symlink */ }
 
-  // 2. Kill every Chrome/Chromium process by binary name (catches any that
-  //    were started outside of our control or have stale PIDs).
-  const chromeNames = ["chrome", "google-chrome", "google-chrome-stable", "chromium", "chromium-browser"];
-  for (const name of chromeNames) {
-    try {
-      execSync(`pkill -9 -x ${name} 2>/dev/null; true`, { stdio: "ignore", timeout: 3_000 });
-    } catch { /* binary not installed or no match */ }
+  // 2. Kill by binary name.
+  for (const name of ["chrome", "google-chrome", "google-chrome-stable", "chromium", "chromium-browser"]) {
+    try { execSync(`pkill -9 -x ${name} 2>/dev/null; true`, { stdio: "ignore", timeout: 3_000 }); }
+    catch { /* not installed */ }
   }
 
-  // 3. Belt-and-suspenders: match any process with "chrom" in its full argv.
+  // 3. Kill anything with "chrom" in its argv (catches snap/flatpak variants).
   try {
     execSync(
-      `pids=$(pgrep -f 'chrom' 2>/dev/null); [ -n "$pids" ] && kill -9 $pids || true`,
+      `pids=$(pgrep -f 'chrom' 2>/dev/null); [ -n "$pids" ] && kill -9 $pids; true`,
       { stdio: "ignore", timeout: 5_000, shell: "/bin/sh" },
     );
-  } catch { /* pgrep not available */ }
-  console.log("[whatsapp] Sent SIGKILL to all Chrome/Chromium processes");
+  } catch { /* pgrep unavailable */ }
 }
 
 /**
- * Ensure the session directory exists and has world-readable/writable
- * permissions so Chrome can create its SingletonLock file.
- * "Permission denied (13)" on SingletonLock creation is the most common
- * failure mode — it means the directory exists but isn't writable.
+ * Create the session directory tree, then fix permissions recursively so
+ * Chrome can always read and write its profile files. Uses `chmod -R 755`
+ * because a prior crashed Chrome may have left subdirectories with mode 700
+ * owned by a different UID.
  */
 function ensureSessionDirPerms(sessionDir: string): void {
-  const dirs = [sessionDir, join(sessionDir, "session")];
-  for (const d of dirs) {
+  for (const d of [sessionDir, join(sessionDir, "session")]) {
+    try { mkdirSync(d, { recursive: true }); } catch { /* already exists */ }
+  }
+  if (process.platform !== "win32") {
     try {
-      mkdirSync(d, { recursive: true });
-    } catch { /* already exists */ }
-    try {
-      chmodSync(d, 0o755);
+      execSync(`chmod -R 755 "${sessionDir}"`, { stdio: "ignore", timeout: 5_000 });
     } catch { /* best effort */ }
   }
 }
@@ -118,7 +109,7 @@ async function clearPuppeteerLockfile(sessionDir: string): Promise<void> {
       const code = (e as NodeJS.ErrnoException).code;
       if (code === "EBUSY") {
         console.warn(`[whatsapp] Lock busy — killing Chrome and retrying…`);
-        killOrphanedChrome(sessionDir);
+        killAllChrome(sessionDir);
         await sleep(1_000);
         try { rmSync(candidate, { force: true }); } catch { /* best effort */ }
       }
@@ -137,10 +128,18 @@ export async function startWhatsappBot(_app: Hono): Promise<void> {
     ? rawSessionDir
     : join(os.homedir(), ".wwebjs_auth");
 
-  // Ensure the session directory exists and is writable before the first
-  // Chrome launch. Without this, Chrome fails with "Permission denied (13)"
-  // when trying to create its SingletonLock file.
+  // ── Startup cleanup ───────────────────────────────────────────────────────
+  // When PM2 reloads the server it kills the Node process but NOT Puppeteer's
+  // Chrome child process — Chrome becomes an orphan and keeps the profile
+  // directory locked. Kill it once at startup, wait for the kernel to release
+  // the socket, then clear stale lock files and fix any broken permissions
+  // before attempting the first initialize().
+  console.log("[whatsapp] Startup: cleaning up any orphaned Chrome…");
+  killAllChrome(sessionDir);
+  await sleep(3_000); // wait for kernel to release the profile socket
+  await clearPuppeteerLockfile(sessionDir);
   ensureSessionDirPerms(sessionDir);
+  // ─────────────────────────────────────────────────────────────────────────
 
   for (let attempt = 1; attempt <= MAX_INIT_RETRIES; attempt++) {
     // Destroy any stale client from a previous attempt so Puppeteer's
@@ -177,8 +176,8 @@ export async function startWhatsappBot(_app: Hono): Promise<void> {
           // error. Killing pre-emptively on every attempt was wrong: it
           // terminated a successfully-started Chrome before the "ready" event
           // fired, causing an infinite restart loop.
-          console.warn(`[whatsapp] Browser lock detected — killing orphaned Chrome and retrying in ${RETRY_DELAY_MS / 1000}s…`);
-          killOrphanedChrome(sessionDir);
+          console.warn(`[whatsapp] Browser lock on attempt ${attempt} — killing Chrome and retrying in ${RETRY_DELAY_MS / 1000}s…`);
+          killAllChrome(sessionDir);
           // SIGKILL is instant but the kernel needs time to release the profile
           // socket before a new Chrome can claim it.
           await sleep(attempt === 1 ? 2_000 : 4_000);
