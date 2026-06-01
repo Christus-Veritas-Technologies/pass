@@ -54,11 +54,22 @@ export function createClient(): Client {
     puppeteer: {
       headless: true,
       executablePath: resolveChromePath(),
+      // Dump Chrome stdout/stderr so we can see exactly what it prints
+      // before Puppeteer parses the logs (helps diagnose singleton errors).
+      dumpio: true,
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
         "--disable-gpu",
+        // Headless VPS: prevent the zygote helper that holds singleton locks
+        "--no-zygote",
+        // No first-run setup wizard that can interfere with startup
+        "--no-first-run",
+        // Disable crash reporter (reduces file/socket noise)
+        "--disable-breakpad",
+        // Disable extensions to reduce startup surface
+        "--disable-extensions",
       ],
     },
   });
