@@ -108,6 +108,12 @@ export async function startWhatsappBot(_app: Hono): Promise<void> {
     : join(os.homedir(), ".wwebjs_auth");
 
   for (let attempt = 1; attempt <= MAX_INIT_RETRIES; attempt++) {
+    // Always kill any orphaned Chrome BEFORE clearing lock files.
+    // If we clear locks first, a still-running Chrome immediately recreates
+    // SingletonLock, and Puppeteer's check sees it and throws again.
+    killOrphanedChrome(sessionDir);
+    // Give the OS a moment to fully release file handles after SIGKILL.
+    if (attempt > 1) await sleep(2_000);
     await clearPuppeteerLockfile(sessionDir);
 
     try {
@@ -116,11 +122,10 @@ export async function startWhatsappBot(_app: Hono): Promise<void> {
       return; // success
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      const isLockError = msg.includes("already running") || msg.includes("lockfile");
+      const isLockError = msg.includes("already running") || msg.includes("lockfile") || msg.includes("SingletonLock");
 
       if (isLockError && attempt < MAX_INIT_RETRIES) {
-        console.warn(`[whatsapp] Browser lock detected — killing orphaned Chrome and retrying in ${RETRY_DELAY_MS / 1000}s…`);
-        killOrphanedChrome(sessionDir);
+        console.warn(`[whatsapp] Browser lock on attempt ${attempt} — retrying in ${RETRY_DELAY_MS / 1000}s…`);
         await sleep(RETRY_DELAY_MS);
         continue;
       }
