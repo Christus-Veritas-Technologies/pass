@@ -162,13 +162,21 @@ const S = StyleSheet.create({
   },
 
   // ── Running header ────────────────────────────────────────────────────────
+  // NOTE: borderBottomWidth is intentionally ABSENT here. react-pdf converts
+  // `fixed` elements to absolute-positioned nodes when stamping them on each
+  // page; adding borderBottomWidth to that absolutely-positioned node triggers
+  // the same Yoga ~-2.5e21 overflow as right+borderTopWidth on the footer.
+  // The separator line is rendered as a separate backgroundColor View below.
   runningHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
-    borderBottomWidth: 1,
-    borderBottomColor: RULE_GREY,
     paddingBottom: 6,
+  },
+
+  runningHeaderLine: {
+    height: 1,
+    backgroundColor: RULE_GREY,
     marginBottom: 18,
   },
 
@@ -634,11 +642,11 @@ function CoverPage({ project }: { project: Project }) {
         <View style={S.coverTitleRule} />
 
         <Text style={S.coverTitle}>
-          {project.topic || `${project.subject} Heritage Project`}
+          {sanitizeMeta(project.topic || `${project.subject} Heritage Project`)}
         </Text>
 
         <Text style={S.coverSubtitle}>
-          HBC 5.0 — {project.subject}
+          HBC 5.0 — {sanitizeMeta(project.subject)}
         </Text>
 
         <View style={S.coverTableWrapper}>
@@ -667,18 +675,36 @@ function CoverPage({ project }: { project: Project }) {
 
 // ── Body pages ────────────────────────────────────────────────────────────────
 
+// Strip non-Latin-1 characters from metadata strings that are used directly
+// in the PDF (title, grade, names) without going through preprocessContent.
+// The same rule as in preprocessContent: PDFKit's built-in fonts only cover
+// Latin-1, and an unsupported glyph produces a bad transform coordinate.
+function sanitizeMeta(s: string): string {
+  return s
+    .replace(/[–—]/g, "-")
+    .replace(/['']/g, "'")
+    .replace(/[""]/g, '"')
+    .replace(/…/g, "...")
+    .replace(/[^\x00-\xFF]/g, "");
+}
+
 function BodyPages({ project, blocks }: { project: Project; blocks: Block[] }) {
   const raw        = project.topic || project.subject;
-  const shortTitle = raw.length > 60 ? raw.slice(0, 60) + "…" : raw;
+  // Use ASCII "..." — the Unicode ellipsis U+2026 is outside Latin-1 and
+  // would crash pdfkit when rendered in the running header.
+  const shortTitle = sanitizeMeta(raw.length > 60 ? raw.slice(0, 60) + "..." : raw);
+  const grade      = sanitizeMeta(project.grade ?? "");
 
   return (
     <Page size="A4" style={S.bodyPage} wrap>
-      {/* Running header */}
-      <View style={S.runningHeader} fixed>
-        <Text style={S.runningHeaderLeft}>{shortTitle}</Text>
-        <Text style={S.runningHeaderRight}>
-          {project.grade}
-        </Text>
+      {/* Running header — split into text row + separate rule line so
+          borderBottomWidth never sits on a fixed/absolute node (Yoga overflow) */}
+      <View fixed>
+        <View style={S.runningHeader}>
+          <Text style={S.runningHeaderLeft}>{shortTitle}</Text>
+          <Text style={S.runningHeaderRight}>{grade}</Text>
+        </View>
+        <View style={S.runningHeaderLine} />
       </View>
 
       {blocks.map((block, i) => <BlockView key={i} block={block} />)}
