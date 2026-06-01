@@ -54,8 +54,8 @@ temp
 .claude/worktrees/
 .claude/settings.local.json
 
-# bun.lock is committed so EAS --frozen-lockfile has a reference to verify against.
-# bun.lockb (binary format, older) is not used by this project.
+# Bun lockfiles — project uses pnpm; these are stale artifacts.
+bun.lock
 bun.lockb
 
 # Paper ingestion pipeline — local text-extraction cache and downloaded PDFs
