@@ -43,6 +43,7 @@ interface UserProfile {
   school: string | null;
   plan: string;
   avatarUrl?: string | null;
+  isAmbassador?: boolean;
 }
 
 interface Stats {
@@ -377,6 +378,12 @@ export default function ProfilePage() {
                 }}
               />
             </label>
+            {user?.isAmbassador && (
+              <div className="mb-1 flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 dark:bg-amber-900/30">
+                <span className="text-sm leading-none">🌟</span>
+                <span className="text-xs font-bold uppercase tracking-wide text-amber-700 dark:text-amber-400">Ambassador</span>
+              </div>
+            )}
             <Badge variant={PLAN_BADGE[user?.plan ?? "FREE"] ?? "default"} className="mb-1">
               {user?.plan !== "FREE" && <HugeiconsIcon icon={CrownIcon} className="mr-1 h-3 w-3" />}
               {PLAN_LABEL[user?.plan ?? "FREE"] ?? "Free plan"}

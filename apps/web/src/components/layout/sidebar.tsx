@@ -16,8 +16,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
 import { Separator } from "@pass/ui/components/separator";
 import { cn } from "@/lib/utils";
+import { getAccessToken } from "@/lib/auth";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: Home01Icon },
@@ -38,9 +40,25 @@ const THEME_OPTIONS = [
   { value: "system", icon: ComputerIcon, label: "System" },
 ] as const;
 
+function useIsAmbassador() {
+  const [isAmbassador, setIsAmbassador] = useState(false);
+  useEffect(() => {
+    const token = getAccessToken();
+    if (!token) return;
+    fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/users/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((d) => { if (d?.user?.isAmbassador) setIsAmbassador(true); })
+      .catch(() => {});
+  }, []);
+  return isAmbassador;
+}
+
 export function Sidebar({ onClose }: SidebarProps) {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
+  const isAmbassador = useIsAmbassador();
 
   return (
     <div className="flex h-full flex-col">
@@ -74,6 +92,17 @@ export function Sidebar({ onClose }: SidebarProps) {
           );
         })}
       </nav>
+
+      {/* Ambassador badge */}
+      {isAmbassador && (
+        <div className="mx-3 mb-2 flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 dark:bg-amber-900/20">
+          <span className="text-base leading-none">🌟</span>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">Ambassador</p>
+            <p className="text-[9px] text-amber-600/80 dark:text-amber-500/80">1 000 of everything</p>
+          </div>
+        </div>
+      )}
 
       {/* Theme toggle */}
       <div className="px-3 pb-4 pt-2">

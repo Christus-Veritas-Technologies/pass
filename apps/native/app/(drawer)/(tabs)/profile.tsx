@@ -42,6 +42,7 @@ interface UserProfile {
   school: string | null;
   plan: string;
   avatarUrl?: string | null;
+  isAmbassador?: boolean;
 }
 
 interface Stats {
@@ -461,12 +462,18 @@ export default function ProfileScreen() {
                 {user?.name ?? "—"}
               </Text>
               <Text style={{ fontSize: 13, color: colors.textTertiary, marginTop: 3 }}>{user?.email ?? ""}</Text>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
                 {user?.grade && <Badge variant="default">{user.grade}</Badge>}
                 <View style={{ backgroundColor: planStyle.bg, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, flexDirection: "row", alignItems: "center", gap: 4 }}>
                   {user?.plan !== "FREE" && <Crown size={11} color={planStyle.text} />}
                   <Text style={{ fontSize: 12, fontWeight: "600", color: planStyle.text }}>{PLAN_LABEL[user?.plan ?? "FREE"] ?? "Free"}</Text>
                 </View>
+                {user?.isAmbassador && (
+                  <View style={{ backgroundColor: "#FEF3C7", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, flexDirection: "row", alignItems: "center", gap: 4 }}>
+                    <Text style={{ fontSize: 12 }}>🌟</Text>
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: "#B45309" }}>Ambassador</Text>
+                  </View>
+                )}
               </View>
             </MotiView>
 
