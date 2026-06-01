@@ -14,6 +14,7 @@ import uploadRoutes from "./routes/upload.routes";
 import usersRoutes from "./routes/users.routes";
 import whatsappRoutes from "./routes/whatsapp.routes";
 import notificationsRoutes from "./routes/notifications.routes";
+import sysRoutes from "./routes/sys.routes";
 
 const app = new Hono();
 
@@ -85,6 +86,7 @@ app.route("/upload", uploadRoutes);
 app.route("/users", usersRoutes);
 app.route("/notifications", notificationsRoutes);
 app.route("/whatsapp", whatsappRoutes);
+app.route("/sys", sysRoutes);
 
 // ─── WhatsApp bot (opt-in via env flag) ──────────────────────────────────────
 if (env.WHATSAPP_ENABLED === "true") {
