@@ -71,6 +71,7 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
 
   const [pdfOpen, setPdfOpen] = useState(false);
   const [pdfPage, setPdfPage] = useState(1);
+  const [pdfLoadError, setPdfLoadError] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
@@ -78,6 +79,7 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
   const pdfUrl = paper?.fileUrl ? `${API}${paper.fileUrl}` : "";
   function openPdf(page = 1) {
     setPdfPage(page);
+    setPdfLoadError(false);
     setPdfOpen(true);
   }
 
@@ -586,11 +588,38 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
               <HugeiconsIcon icon={Cancel01Icon} className="h-5 w-5" />
             </button>
           </div>
-          <iframe
-            title="Original paper"
-            src={`${pdfUrl}#page=${pdfPage}`}
-            className="mx-auto h-full w-full max-w-4xl rounded-lg bg-white"
-          />
+          {pdfLoadError ? (
+            <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-center justify-center gap-3 rounded-lg bg-white/5 text-center">
+              <p className="text-sm font-semibold text-white">Could not load PDF</p>
+              <p className="max-w-sm text-xs text-white/60">
+                The paper file isn&apos;t available on the server. Try the Download PDF button instead.
+              </p>
+              <button
+                type="button"
+                onClick={handleDownload}
+                className="mt-1 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                Download PDF
+              </button>
+            </div>
+          ) : (
+            <object
+              data={`${pdfUrl}#page=${pdfPage}`}
+              type="application/pdf"
+              className="mx-auto h-full w-full max-w-4xl rounded-lg bg-white"
+              onError={() => setPdfLoadError(true)}
+            >
+              {/* Fallback for browsers that can't embed PDFs */}
+              <div className="flex h-full items-center justify-center">
+                <p className="text-sm text-gray-500">
+                  Your browser cannot display PDFs.{" "}
+                  <button type="button" onClick={handleDownload} className="text-primary underline">
+                    Download instead
+                  </button>
+                </p>
+              </div>
+            </object>
+          )}
         </div>
       )}
     </div>
