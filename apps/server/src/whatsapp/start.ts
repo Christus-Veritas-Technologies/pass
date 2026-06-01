@@ -5,7 +5,7 @@
  */
 
 import { execSync } from "node:child_process";
-import { existsSync, rmSync, lstatSync, readlinkSync } from "node:fs";
+import { existsSync, rmSync, lstatSync, readlinkSync, mkdirSync, chmodSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import os from "node:os";
 import type { Hono } from "hono";
@@ -64,6 +64,24 @@ function killOrphanedChrome(sessionDir: string): void {
     );
   } catch { /* pgrep not available */ }
   console.log("[whatsapp] Sent SIGKILL to all Chrome/Chromium processes");
+}
+
+/**
+ * Ensure the session directory exists and has world-readable/writable
+ * permissions so Chrome can create its SingletonLock file.
+ * "Permission denied (13)" on SingletonLock creation is the most common
+ * failure mode — it means the directory exists but isn't writable.
+ */
+function ensureSessionDirPerms(sessionDir: string): void {
+  const dirs = [sessionDir, join(sessionDir, "session")];
+  for (const d of dirs) {
+    try {
+      mkdirSync(d, { recursive: true });
+    } catch { /* already exists */ }
+    try {
+      chmodSync(d, 0o755);
+    } catch { /* best effort */ }
+  }
 }
 
 async function clearPuppeteerLockfile(sessionDir: string): Promise<void> {
@@ -145,6 +163,9 @@ export async function startWhatsappBot(_app: Hono): Promise<void> {
     // the Chrome profile socket so the next launch can claim it cleanly.
     await sleep(attempt === 1 ? 2_000 : 4_000);
     await clearPuppeteerLockfile(sessionDir);
+    // Ensure the session directory exists and is writable before Chrome starts.
+    // Without this, Chrome fails with "Permission denied (13)" on SingletonLock.
+    ensureSessionDirPerms(sessionDir);
 
     try {
       console.log(`[whatsapp] Initialising… (attempt ${attempt}/${MAX_INIT_RETRIES})`);
