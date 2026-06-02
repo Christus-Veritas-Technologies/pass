@@ -6,20 +6,32 @@ import { env } from "@pass/env/native";
 
 const API = env.EXPO_PUBLIC_SERVER_URL;
 
+const REQUEST_TIMEOUT_MS = 20_000; // 20 s — prevents indefinite hangs on bad/slow networks
+
 async function request<T>(path: string, init: RequestInit): Promise<T> {
-  const res = await fetch(`${API}${path}`, {
-    headers: { "Content-Type": "application/json" },
-    ...init,
-  });
-  // Guard against plain-text error responses (e.g. "Internal Server Error")
-  let json: Record<string, unknown>;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
-    json = await res.json();
-  } catch {
-    throw new Error(res.ok ? "Invalid server response" : `Server error (${res.status})`);
+    const res = await fetch(`${API}${path}`, {
+      headers: { "Content-Type": "application/json" },
+      ...init,
+      signal: controller.signal,
+    });
+    // Guard against plain-text error responses (e.g. "Internal Server Error")
+    let json: Record<string, unknown>;
+    try {
+      json = await res.json();
+    } catch {
+      throw new Error(res.ok ? "Invalid server response" : `Server error (${res.status})`);
+    }
+    if (!res.ok) throw new Error((json.error as string) ?? (json.message as string) ?? "Something went wrong");
+    return json as T;
+  } catch (err) {
+    if ((err as Error).name === "AbortError") throw new Error("Request timed out — check your connection and try again");
+    throw err;
+  } finally {
+    clearTimeout(timer);
   }
-  if (!res.ok) throw new Error((json.error as string) ?? (json.message as string) ?? "Something went wrong");
-  return json as T;
 }
 
 export interface AuthUser {
@@ -95,13 +107,16 @@ export function apiGoogleNative(idToken: string) {
 async function authedRequest<T>(path: string, init: RequestInit): Promise<T> {
   const accessToken = await SecureStore.getItemAsync("pass_access_token");
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   const res = await fetch(`${API}${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     },
-  });
+    signal: controller.signal,
+  }).finally(() => clearTimeout(timer));
 
   if (res.ok) return res.json() as Promise<T>;
 
