@@ -15,7 +15,8 @@ import type { Resource } from "@pass/db";
 import type { ConversationState } from "../types";
 import { gradeAnswer, effectiveGuide } from "../../lib/grading";
 import { explainAgent } from "../../mastra/agents/explain.agent";
-import { checkAndIncrementAiMessage } from "../../lib/aiQuota";
+import { withRetry } from "../../mastra/retry";
+import { checkAndIncrementAiMessage, getAiMessageUsage } from "../../lib/aiQuota";
 import { PLAN_LIMITS, currentMonthKey, type PlanKey } from "../../lib/planLimits";
 import { sendPaperPdf } from "../media/sendPaper";
 import { recalculateScore } from "./scoring";
@@ -257,19 +258,21 @@ export async function gradeStudentAnswer(
   userAnswer: string,
   userId: string,
   state: ConversationState,
-): Promise<ConversationState> {
-  if (state.mode.kind !== "paper_study") return state;
+): Promise<{ state: ConversationState; offTopic: boolean }> {
+  if (state.mode.kind !== "paper_study") return { state, offTopic: false };
   const s = state.mode;
 
   const chat = await msg.getChat();
   await chat.sendStateTyping();
 
-  const quota = await checkAndIncrementAiMessage(userId);
-  if (!quota.allowed) {
+  // Read-only wall: block if the student has no AI messages left. We only CHARGE
+  // (increment) once we've confirmed the message is a real answer attempt, below.
+  const wall = await getAiMessageUsage(userId);
+  if (!wall.allowed) {
     await chat.clearState();
     const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } });
-    await msg.reply(aiQuotaMessage(user?.plan ?? "FREE", quota.limit));
-    return { ...state, mode: { ...s, awaitingAnswer: false } };
+    await msg.reply(aiQuotaMessage(user?.plan ?? "FREE", wall.limit));
+    return { state: { ...state, mode: { ...s, awaitingAnswer: false } }, offTopic: false };
   }
 
   const question = await prisma.paperQuestion.findUnique({
@@ -279,11 +282,22 @@ export async function gradeStudentAnswer(
   if (!question) {
     await chat.clearState();
     await msg.reply("Something went wrong loading the question. Try *next* to skip.");
-    return state;
+    return { state, offTopic: false };
   }
 
   try {
     const evaluation = await gradeAnswer(question, userAnswer);
+
+    // Not an answer — it's a command or a request to do something else. Don't
+    // record a fail, don't charge an AI message; let the router route the intent.
+    // awaitingAnswer stays true so the user can still simply type their answer.
+    if (!evaluation.isAnswerAttempt) {
+      await chat.clearState();
+      return { state, offTopic: true };
+    }
+
+    // Genuine answer — now charge one AI message.
+    const quota = await checkAndIncrementAiMessage(userId);
 
     await prisma.questionAttempt.upsert({
       where: { sessionId_questionNumber: { sessionId: s.sessionId, questionNumber: s.questionNumber } },
@@ -321,23 +335,26 @@ export async function gradeStudentAnswer(
     await msg.reply(reply);
 
     return {
-      ...state,
-      mode: {
-        ...s,
-        awaitingAnswer: false,
-        lastEvaluation: {
-          score: evaluation.score,
-          maxScore: evaluation.maxScore,
-          feedback: evaluation.feedback,
-          isCorrect: evaluation.isCorrect,
+      state: {
+        ...state,
+        mode: {
+          ...s,
+          awaitingAnswer: false,
+          lastEvaluation: {
+            score: evaluation.score,
+            maxScore: evaluation.maxScore,
+            feedback: evaluation.feedback,
+            isCorrect: evaluation.isCorrect,
+          },
         },
       },
+      offTopic: false,
     };
   } catch (err) {
     console.error("[whatsapp] gradeStudentAnswer error:", err);
     await chat.clearState();
     await msg.reply(AI_ERROR);
-    return state;
+    return { state, offTopic: false };
   }
 }
 
@@ -378,8 +395,9 @@ export async function explainQuestion(
   const guide = effectiveGuide(question);
 
   try {
-    const result = await explainAgent.generate(
-      `Explain Question ${qn} to me.\n\n` +
+    const result = await withRetry(() =>
+      explainAgent.generate(
+        `Explain Question ${qn} to me.\n\n` +
         `Question: ${question.text}\n\n` +
         (attempt?.userAnswer ? `My answer was: ${attempt.userAnswer}\n\n` : "") +
         `Marking rubric:\n${guide}\n\n` +
@@ -388,6 +406,7 @@ export async function explainQuestion(
         `2. The key concept\n` +
         `3. One exam tip\n\n` +
         `Write in plain text only (no markdown). End with "Reply *next* when ready."`,
+      ),
     );
 
     const text = (result.text ?? "").trim();

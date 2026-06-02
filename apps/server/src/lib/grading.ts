@@ -9,6 +9,7 @@
 import prisma from "@pass/db";
 import type { PaperSession, PaperQuestion, Resource } from "@pass/db";
 import { gradingAgent, evaluationSchema, type Evaluation } from "../mastra/agents/grading.agent";
+import { withRetry } from "../mastra/retry";
 
 export { evaluationSchema };
 export type { Evaluation };
@@ -66,8 +67,8 @@ ${userAnswer || "(no answer provided)"}
 
 maxScore must equal ${question.marks}.`;
 
-  const result = await gradingAgent.generate(prompt, {
-    structuredOutput: { schema: evaluationSchema },
-  });
+  const result = await withRetry(() =>
+    gradingAgent.generate(prompt, { structuredOutput: { schema: evaluationSchema } }),
+  );
   return evaluationSchema.parse(result.object);
 }

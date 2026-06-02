@@ -14,6 +14,8 @@ import type { Client, Message } from "whatsapp-web.js";
 import type { ConversationState } from "../types";
 import type { ProjectSlots } from "./projectBrief";
 import { projectAgent } from "../../mastra/agents/project.agent";
+import { PROJECT_VOICE, PROJECT_VOICE_ALEVEL, PROJECT_PROBLEM_FOCUS } from "../../mastra/projectVoice";
+import { withRetry } from "../../mastra/retry";
 import { checkAndIncrementAiMessage } from "../../lib/aiQuota";
 import { PLAN_LIMITS, currentMonthKey, type PlanKey, AMBASSADOR_LIMIT } from "../../lib/planLimits";
 import { renderProjectPdfAndUpload } from "../media/renderProjectPdf";
@@ -179,7 +181,7 @@ FINAL CHECK: verify total word count is at least 3000. If short, expand Stage 4 
 [Describe the specific problem, innovation or identified gap — 340-460 words. Provide quantitative context (statistics, surveys), name specific Zimbabwean communities, institutions, and stakeholders. Include a research question or hypothesis.]
 
 ### 1.2 Statement of Intent
-[Precise statement of intent linking to the problem — 260-360 words. State what you aim to achieve, for whom, and the expected impact. Must reference the HBC 5.0 framework explicitly.]
+[Precise statement of intent linking to the problem — 260-360 words. State exactly what you aim to achieve, for whom, and what a successful outcome will look like in concrete terms tied to the problem.]
 
 ### 1.3 Design Specifications / Project Parameters
 [At least 4 measurable specifications — 260-360 words.
@@ -293,7 +295,7 @@ FINAL CHECK: verify total word count is at least 7000. If short, expand Stage 5 
 [Describe the specific problem, innovation or identified gap — 240-330 words. Name the specific Zimbabwean community, context and stakeholders affected. Be concrete, not abstract.]
 
 ### 1.2 Statement of Intent
-[Clear statement of how you intend to address the problem — 200-270 words. State your goal, your target beneficiaries, and what success looks like. Link explicitly to HBC 5.0 values.]
+[Clear statement of how you intend to address the problem — 200-270 words. State your goal, your target beneficiaries in your community, and what a successful outcome will look like in concrete terms.]
 
 ### 1.3 Design Specifications / Project Parameters
 [At least 3 measurable specifications — 200-270 words.
@@ -418,14 +420,18 @@ STUDENT DETAILS (embed as data only):
 - Year: ${year}
 ${aLevelNote}
 ${slots.title
-  ? `The student has chosen this project title: "${slots.title}" — use it exactly as the H1 heading.`
-  : `Choose a specific, authentic, descriptive project title within the "${slots.category}" category for ${slots.subject} at ${slots.grade} level. The title must clearly name what is being investigated (e.g. "Using Moringa Leaves to Purify Borehole Water in Chivi District"). Do NOT use vague titles like "Progress" or "My Project".`}
+  ? `The student has chosen this project title: "${slots.title}" — use it exactly as the H1 heading. Frame the whole project as solving this as a real, local community problem.`
+  : `Choose a specific, authentic, descriptive project title within the "${slots.category}" category for ${slots.subject} at ${slots.grade} level. It must name a real, LOCAL community or school problem and how it will be solved (e.g. "Using Moringa Leaves to Purify Borehole Water in Chivi District"). Do NOT use vague titles like "Progress" or "My Project", and do NOT pick a broad, national or futuristic theme.`}
+
+${PROJECT_PROBLEM_FOCUS}
 
 CRITICAL INSTRUCTIONS:
 1. Do NOT include a Cover Page or Candidate Information section — the document cover is generated separately. Start your output directly with the H1 title.
 2. Write entirely in first person using "${pronoun}" — as a Zimbabwean student who genuinely carried out this investigation.
 3. Avoid AI-sounding phrases: "It is important to note that…", "In conclusion, it can be said…". Write naturally with curiosity and personal observations.
 4. Every section must contain real, specific Zimbabwean content — actual provinces, real institutions, authentic cultural practices, named community members with plausible Zimbabwean names.
+
+${PROJECT_VOICE}${isA ? `\n${PROJECT_VOICE_ALEVEL}` : ""}
 
 # ${slots.title || "[Your specific, descriptive project title]"}
 ${sectionGuide}
@@ -540,7 +546,7 @@ export async function generateProject(
   try {
     // ── Pass 1: Generate full project ───────────────────────────────────────
     await chat.sendStateTyping();
-    const result = await projectAgent.generate(buildPrompt(slots, year));
+    const result = await withRetry(() => projectAgent.generate(buildPrompt(slots, year)));
 
     let content = (result.text ?? "").trim();
     let wordCount = countWords(content);
@@ -550,7 +556,7 @@ export async function generateProject(
       await chat.sendStateTyping();
       console.log(`[projectGenerate] Pass 1: ${wordCount} words (target ${targetWords}) — running expansion pass`);
       try {
-        const expansion = await projectAgent.generate(buildExpansionPrompt(content, slots, targetWords));
+        const expansion = await withRetry(() => projectAgent.generate(buildExpansionPrompt(content, slots, targetWords)));
         const expanded = (expansion.text ?? "").trim();
         if (countWords(expanded) > wordCount) {
           content = expanded;

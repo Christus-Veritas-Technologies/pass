@@ -13,6 +13,7 @@ import type { ConversationState } from "../types";
 import { RequestContext } from "@mastra/core/di";
 import { passAgent, USER_ID_CTX_KEY } from "../../mastra";
 import { checkAndIncrementAiMessage } from "../../lib/aiQuota";
+import { withRetry } from "../../mastra/retry";
 import { aiQuotaMessage, aiUsageFooter, AI_ERROR } from "../utils/messages";
 
 const OFF_LIMITS_REPLY =
@@ -36,13 +37,15 @@ export async function handleAiChat(
   }
 
   try {
-    const result = await passAgent.generate(question, {
-      // Per-student conversation memory (multi-turn context).
-      memory: { resource: userId, thread: msg.from },
-      // Trusted user id for account/usage tools — never model-supplied.
-      requestContext: new RequestContext([[USER_ID_CTX_KEY, userId]]),
-      maxSteps: 4,
-    });
+    const result = await withRetry(() =>
+      passAgent.generate(question, {
+        // Per-student conversation memory (multi-turn context).
+        memory: { resource: userId, thread: msg.from },
+        // Trusted user id for account/usage tools — never model-supplied.
+        requestContext: new RequestContext([[USER_ID_CTX_KEY, userId]]),
+        maxSteps: 4,
+      }),
+    );
 
     await chat.clearState();
 
