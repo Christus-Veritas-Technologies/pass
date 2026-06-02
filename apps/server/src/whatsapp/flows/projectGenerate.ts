@@ -24,6 +24,7 @@ import {
   aiQuotaMessage,
   aiUsageFooter,
   AI_ERROR,
+  WHAT_NEXT,
 } from "../utils/messages";
 
 // ── Grade helpers ─────────────────────────────────────────────────────────────
@@ -591,6 +592,10 @@ export async function generateProject(
 
     const footer = aiUsageFooter(quota.used, quota.limit, user?.plan ?? "FREE") ?? "";
     if (footer) await client.sendMessage(whatsappId, footer);
+
+    // Clear context: user has their project — show the main menu so the next
+    // message starts fresh rather than being interpreted as project follow-up.
+    await client.sendMessage(whatsappId, WHAT_NEXT);
   } catch (err) {
     console.error("[whatsapp] generateProject error:", err);
     await chat.clearState();

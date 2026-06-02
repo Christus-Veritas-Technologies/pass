@@ -28,6 +28,7 @@ import {
   AI_ERROR,
   PAPER_FILE_MISSING,
   aiUsageFooter,
+  WHAT_NEXT,
 } from "../utils/messages";
 import { mdToWhatsApp } from "../utils/format";
 
@@ -425,6 +426,8 @@ async function finalisePaper(msg: Message, state: ConversationState): Promise<Co
   const score = recalculateScore(questions, attempts);
 
   await msg.reply(completionMessage({ title: s.paperTitle, ...score }));
+  // Clear context so the next message isn't mistaken for a study-session reply.
+  await msg.reply(WHAT_NEXT);
 
   return { ...state, mode: { kind: "idle" } };
 }

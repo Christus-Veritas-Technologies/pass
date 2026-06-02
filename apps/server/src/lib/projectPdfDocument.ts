@@ -379,50 +379,90 @@ function ensureRoom(doc: PDFDoc, needed: number) {
   if ((doc.y as number) + needed > BODY_BOT) doc.addPage();
 }
 
+/** Measure how tall a cell's text will be at the given column width and font size. */
+function cellHeight(doc: PDFDoc, text: string, colInnerW: number, fontSize: number): number {
+  doc.font("Times-Roman").fontSize(fontSize);
+  const h = doc.heightOfString(text, { width: colInnerW }) as number;
+  return Math.max(fontSize + 8, h); // minimum one line + top/bottom padding
+}
+
 function renderTable(
   doc: PDFDoc,
   headers: string[],
   rows: string[][],
 ) {
-  const numCols   = Math.max(1, headers.length);
-  const colW      = CW / numCols;
-  const H_ROW_H   = 22;
-  const D_ROW_H   = 20;
+  const numCols    = Math.max(1, headers.length);
+  const colW       = CW / numCols;
+  const CELL_PAD_X = 6;   // horizontal padding inside each cell
+  const CELL_PAD_Y = 5;   // vertical padding (top + bottom)
+  const FONT_HDR   = 9;
+  const FONT_BODY  = 9.5;
+  const innerW     = colW - CELL_PAD_X * 2;
 
-  ensureRoom(doc, H_ROW_H + (rows.length > 0 ? D_ROW_H : 0));
+  // ── Header row height ───────────────────────────────────────────────────────
+  doc.font("Helvetica-Bold").fontSize(FONT_HDR);
+  const H_ROW_H = headers.reduce((max, h) => {
+    const th = doc.heightOfString(sanitizeMeta(h), { width: innerW }) as number;
+    return Math.max(max, Math.max(FONT_HDR + 6, th) + CELL_PAD_Y * 2);
+  }, FONT_HDR + CELL_PAD_Y * 2 + 4);
 
+  ensureRoom(doc, H_ROW_H + 20);
   const startY = doc.y as number;
 
-  // Header row
+  // Draw header
   fillRect(doc, ML, startY, CW, H_ROW_H, BG_SUBTLE);
-  hRule(doc, ML, startY + H_ROW_H, CW, ACCENT, 1.5);
   strokeRect(doc, ML, startY, CW, H_ROW_H);
+  hRule(doc, ML, startY + H_ROW_H, CW, ACCENT, 1.5);
 
   for (let c = 0; c < numCols; c++) {
-    doc.font("Helvetica-Bold").fontSize(9).fillColor(BLACK)
-      .text(sanitizeMeta(headers[c] ?? ""), ML + c * colW + 6, startY + 7, { width: colW - 12, lineBreak: false });
+    const cx = ML + c * colW + CELL_PAD_X;
+    doc.font("Helvetica-Bold").fontSize(FONT_HDR).fillColor(BLACK)
+      .text(sanitizeMeta(headers[c] ?? ""), cx, startY + CELL_PAD_Y, {
+        width: innerW,
+        lineBreak: true,
+      });
   }
 
   let y = startY + H_ROW_H;
 
+  // ── Data rows ───────────────────────────────────────────────────────────────
   for (let r = 0; r < rows.length; r++) {
-    if ((y as number) + D_ROW_H > BODY_BOT) {
-      doc.addPage(); // pageAdded event draws header + resets doc.y
+    const row = rows[r] ?? [];
+
+    // Calculate the actual height this row needs (tallest cell wins)
+    const rowH = row.reduce((max, cell) => {
+      const h = cellHeight(doc, sanitizeMeta(cell), innerW, FONT_BODY);
+      return Math.max(max, h + CELL_PAD_Y * 2);
+    }, FONT_BODY + CELL_PAD_Y * 2 + 2);
+
+    if (y + rowH > BODY_BOT) {
+      doc.addPage(); // pageAdded event draws running header + resets doc.y
       y = doc.y as number;
     }
-    const row = rows[r] ?? [];
-    if (r % 2 !== 0) fillRect(doc, ML, y, CW, D_ROW_H, "#fcfcfd");
+
+    // Alternating row background
+    if (r % 2 !== 0) fillRect(doc, ML, y, CW, rowH, "#fcfcfd");
+    strokeRect(doc, ML, y, CW, rowH);
     hRule(doc, ML, y, CW, RULE_GREY);
-    strokeRect(doc, ML, y, CW, D_ROW_H);
 
     for (let c = 0; c < numCols; c++) {
-      doc.font("Times-Roman").fontSize(9.5).fillColor(BODY_GREY)
-        .text(sanitizeMeta(row[c] ?? ""), ML + c * colW + 6, y + 6, { width: colW - 12, lineBreak: false });
+      const cx = ML + c * colW + CELL_PAD_X;
+      // Vertical divider between columns
+      if (c > 0) {
+        doc.save().strokeColor(RULE_GREY).lineWidth(0.5)
+          .moveTo(ML + c * colW, y).lineTo(ML + c * colW, y + rowH).stroke().restore();
+      }
+      doc.font("Times-Roman").fontSize(FONT_BODY).fillColor(BODY_GREY)
+        .text(sanitizeMeta(row[c] ?? ""), cx, y + CELL_PAD_Y, {
+          width: innerW,
+          lineBreak: true,
+        });
     }
-    y += D_ROW_H;
+
+    y += rowH;
   }
 
-  doc.y = y + 4;
+  doc.y = y + 8;
 }
 
 function renderBlocks(doc: PDFDoc, blocks: Block[]) {

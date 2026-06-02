@@ -30,6 +30,7 @@ import {
   LOGOUT_OK,
   WELCOME_UNLINKED,
   RATE_LIMIT,
+  WHAT_NEXT,
   unlinkedFeatureNudge,
   projectsQuotaMessage,
   aiQuotaMessage,
@@ -124,6 +125,8 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
 
   if (hard.kind === "cancel") {
     state = { ...state, mode: { kind: "idle" } };
+    // Show the menu immediately so the user knows what they can do next
+    // without having to type "help".
     await msg.reply(CANCEL_OK);
     await saveState(whatsappId, state);
     return;
@@ -356,6 +359,10 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
         await msg.reply(downloadsQuotaMessage(result.plan, result.limit));
       } else if (result === "no_file") {
         await msg.reply(`📄 The PDF for this paper isn't available for download, but you can study it question-by-question.\n\nReply *${hard.n}* to start studying it.`);
+      } else {
+        // Successful download — clear context so the next message is fresh.
+        state = { ...state, mode: { kind: "idle" } };
+        await msg.reply(WHAT_NEXT);
       }
       await saveState(whatsappId, state);
       return;
@@ -424,7 +431,9 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
       } else if (result === "no_file") {
         await msg.reply(`📄 The PDF for this paper isn't available for download. You can study it instead — reply *1* to start.`);
       } else {
+        // Successful download — clear context so the next message starts fresh.
         state = { ...state, mode: { kind: "idle" } };
+        await msg.reply(WHAT_NEXT);
       }
       await saveState(whatsappId, state);
       return;
