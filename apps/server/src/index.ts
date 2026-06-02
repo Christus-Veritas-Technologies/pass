@@ -29,7 +29,9 @@ const WEB_ORIGINS = new Set([
   "http://localhost:8081",
 ]);
 
-app.use(logger());
+// Use process.stdout.write so logs appear immediately when Bun's stdout is
+// piped to PM2 (non-TTY). console.log is buffered in that context.
+app.use(logger((str) => process.stdout.write(str + "\n")));
 app.use(
   "/*",
   cors({
