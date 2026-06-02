@@ -21,6 +21,7 @@
     "@pass/pricing": "workspace:*",
     "@react-pdf/renderer": "^4.5.1",
     "@types/react": "^19.2.15",
+    "pdfkit": "^0.15.1",
     "@types/web-push": "^3.6.4",
     "docx": "^9.7.1",
     "dotenv": "^17.2.2",
@@ -41,6 +42,7 @@
     "@types/bun": "^1.3.4",
     "@types/nodemailer": "^6.4.17",
     "@types/qrcode-terminal": "^0.12.2",
+    "@types/pdfkit": "^0.13.9",
     "tsdown": "^0.21.9",
     "typescript": "^6"
   }
