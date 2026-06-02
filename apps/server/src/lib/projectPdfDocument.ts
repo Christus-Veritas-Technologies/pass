@@ -303,7 +303,7 @@ function renderCoverPage(doc: PDFDoc, project: Project) {
   // Institution
   doc.font("Helvetica").fontSize(8.5).fillColor(MID_GREY)
     .text("Zimbabwe School Examinations Council", ML, y, { width: CW, align: "center" })
-    .text("Heritage-Based Curriculum Project",   ML, y + 13, { width: CW, align: "center" });
+    .text("Heritage-Based Curriculum (HBC) 5.0 — School Based Project", ML, y + 13, { width: CW, align: "center" });
   y += 46;
 
   hRule(doc, ML, y, CW, RULE_GREY);
@@ -313,12 +313,24 @@ function renderCoverPage(doc: PDFDoc, project: Project) {
   const title = sanitizeMeta(project.topic || `${project.subject} Heritage Project`);
   doc.font("Helvetica-Bold").fontSize(22).fillColor(BLACK)
     .text(title, ML, y, { width: CW, align: "center", lineBreak: true });
-  y = (doc.y as number) + 12;
+  y = (doc.y as number) + 10;
 
-  // Subtitle
+  // Subject + grade badge
   doc.font("Helvetica").fontSize(11).fillColor(MID_GREY)
-    .text(`HBC 5.0 — ${sanitizeMeta(project.subject)}`, ML, y, { width: CW, align: "center" });
-  y = (doc.y as number) + 40;
+    .text(`${sanitizeMeta(project.subject)} — ${sanitizeMeta(project.grade ?? "")}`, ML, y, { width: CW, align: "center" });
+  y = (doc.y as number) + 6;
+
+  // Stage summary bar
+  const stages = ["Problem ID", "Investigation", "Generation", "Development", "Presentation", "Evaluation"];
+  const stageW = CW / stages.length;
+  stages.forEach((s, i) => {
+    fillRect(doc, ML + i * stageW, y, stageW - 1, 18, i % 2 === 0 ? ACCENT : ACCENT_SOFT);
+    doc.font("Helvetica").fontSize(6.5).fillColor("#ffffff")
+      .text(`Stage ${i + 1}`, ML + i * stageW + 2, y + 2, { width: stageW - 4, align: "center", lineBreak: false });
+    doc.font("Helvetica").fontSize(5.5).fillColor("#ffffff")
+      .text(s, ML + i * stageW + 2, y + 10, { width: stageW - 4, align: "center", lineBreak: false });
+  });
+  y += 30;
 
   // Student info table
   const year = String(new Date(project.createdAt).getFullYear());
@@ -422,13 +434,23 @@ function renderBlocks(doc: PDFDoc, blocks: Block[]) {
     }
 
     if (block.type === "h1") {
-      ensureRoom(doc, 32);
+      ensureRoom(doc, 36);
       const y = doc.y as number;
       const topGap = y > BODY_TOP + 8 ? 14 : 0;
-      doc.font("Helvetica-Bold").fontSize(14).fillColor(BLACK)
-        .text(sanitizeMeta(block.text), ML, y + topGap, { width: CW, lineBreak: true });
-      hRule(doc, ML, doc.y as number, CW, ACCENT, 2);
-      doc.y = (doc.y as number) + 8;
+      const h1Y = y + topGap;
+      // Stage headings get a navy background banner for visual prominence
+      const isStage = /^stage\s+\d+/i.test(block.text);
+      if (isStage) {
+        fillRect(doc, ML, h1Y, CW, 22, ACCENT);
+        doc.font("Helvetica-Bold").fontSize(13).fillColor("#ffffff")
+          .text(sanitizeMeta(block.text), ML + 8, h1Y + 5, { width: CW - 16, lineBreak: false });
+        doc.y = h1Y + 28;
+      } else {
+        doc.font("Helvetica-Bold").fontSize(14).fillColor(BLACK)
+          .text(sanitizeMeta(block.text), ML, h1Y, { width: CW, lineBreak: true });
+        hRule(doc, ML, doc.y as number, CW, ACCENT, 2);
+        doc.y = (doc.y as number) + 8;
+      }
       continue;
     }
 

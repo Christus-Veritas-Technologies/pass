@@ -54,92 +54,350 @@ function buildPrompt(slots: ProjectSlots, year: number): string {
     ? `\nA-LEVEL DEPTH REQUIREMENT: This is Advanced Level. Write with university-entrance academic depth. Include quantitative observations, cite named Zimbabwean institutions or researchers where realistic, and demonstrate analytical and evaluative thinking beyond simple description.\n`
     : "";
 
+  // ── Official ZIMSEC HBC 6-stage structure ──────────────────────────────────
+  // Derived from the ZIMSEC learner guide and A-Level marking guide.
+  // All three levels use the same 6 stages; depth and word counts scale.
+
   const sectionGuide = isG7
     ? `
-## 1. Introduction
-[Background and context — 380-490 words. Explain what the heritage topic is, its significance in Zimbabwe, and the aim of this project. Name specific communities, provinces, and cultural practices.]
+## Stage 1: Problem Identification
 
-## 2. Literature Review / Background Information
-[Review existing knowledge — 510-660 words. Reference textbooks, community knowledge, historical context. Include a table of key historical dates or milestones with a header row.]
+### 1.1 Problem Description
+[Describe the specific issue, need, or heritage gap being addressed — 200-270 words. Name the community, province and cultural context. Be concrete and specific to Zimbabwe.]
 
-## 3. Methodology
-[How you collected your data: interviews with named community elders, field visits to specific locations, library research — 320-430 words. Be realistic for a Zimbabwean Grade 7 student. Include a table of data sources used.]
+### 1.2 Statement of Intent
+[A clear statement of how you intend to address the problem — 160-220 words. Explain your goal and what a successful solution will look like.]
 
-## 4. Findings and Data Presentation
-[Present your findings in depth — 920-1230 words. This is the main body. Use at least TWO tables with header rows to present comparative data. Use sub-headings (###) for each distinct finding area.]
+### 1.3 Design Specifications
+[State at least 3 requirements your final solution must satisfy — 160-220 words. Present as a table:
+| Specification | Justification |
+|---|---|
+]
 
-## 5. Discussion and Analysis
-[Analyse what your findings mean. Relate back to the heritage curriculum — 390-510 words.]
+## Stage 2: Investigation of Related Ideas
 
-## 6. Recommendations
-[4-6 practical, specific recommendations — 270-380 words. Each recommendation should be a full paragraph, not a single sentence.]
+[Introduce this investigation in 60-80 words. Explain why you are examining existing ideas before creating your own.]
 
-## 7. Conclusion
-[Tie everything together — 220-300 words.]
+### Related Idea 1: [Descriptive name]
+[Describe the existing idea — 130-180 words. How does it work? Where is it used in Zimbabwe?]
+**Strengths:** [2 specific strengths, explained — 80-110 words]
+**Weaknesses:** [2 specific weaknesses, explained — 80-110 words]
 
-## 8. References
-[6-8 realistic references: textbooks with author and year, interviews with named community members (full name and village), ZIMSEC documents, government publications]
+### Related Idea 2: [Descriptive name]
+[Same structure]
 
-FINAL CHECK — before writing References: verify your total word count is at least 3000 words. If not, expand sections 4 (Findings) and 2 (Literature Review).`
+### Related Idea 3: [Descriptive name]
+[Same structure]
+
+### Summary Comparison
+[Table comparing all three ideas:
+| Idea | Key Strength | Key Weakness | Suitable for Our Context? |
+|---|---|---|---|
+]
+
+## Stage 3: Generation of Ideas / Possible Solutions
+
+[Introduce your own original ideas in 60-80 words.]
+
+### Possible Solution 1: [Descriptive name]
+[Describe your original idea — 130-180 words]
+**Advantages:** [2 specific advantages]
+**Disadvantages:** [2 specific disadvantages]
+
+### Possible Solution 2: [Descriptive name]
+[Same structure]
+
+### Possible Solution 3: [Descriptive name]
+[Same structure]
+
+### Comparison Table
+| Solution | Core Feature | Ease of Implementation | Expected Impact |
+|---|---|---|---|
+
+## Stage 4: Development / Refinement of Chosen Idea
+
+### 4.1 Chosen Solution
+[State which solution you chose — 60-80 words.]
+
+### 4.2 Justification of Choice
+[Give at least 2 reasons, each a full paragraph — 180-250 words. Link back to Stage 1 design specifications.]
+
+### 4.3 Refinements and Developments
+[Describe 3 specific improvements made to the chosen solution — 320-430 words total.]
+**Refinement 1:** [Name and description]
+**Refinement 2:** [Name and description]
+**Refinement 3:** [Name and description]
+
+### 4.4 Background Research
+[Supporting research from textbooks, community elders, local sources — 380-520 words. Include:
+| Source | Key Finding | Relevance to This Project |
+|---|---|---|
+]
+
+### 4.5 Implementation Plan
+[Materials needed and steps followed — 220-300 words. Include:
+| Material/Resource | Purpose | Source |
+|---|---|---|
+]
+
+## Stage 5: Presentation of Final Solution
+
+### 5.1 The Final Solution
+[Full description of the completed solution — 280-380 words. State how it meets each specification from Stage 1.]
+
+### 5.2 Data and Findings
+[Present your observations and results — 420-560 words. Use at least TWO tables with header rows. Use ### sub-headings for each finding area.]
+
+### 5.3 Quality and Standards
+[How your solution meets school and community standards — 160-220 words]
+
+## Stage 6: Evaluation and Recommendations
+
+### 6.1 Relevance to Statement of Intent
+[Evaluate how well the solution matches what you set out to do in Stage 1 — 160-220 words]
+
+### 6.2 Challenges Encountered
+[Describe specific challenges and how you dealt with them — 160-210 words. Include:
+| Challenge | How It Was Addressed |
+|---|---|
+]
+
+### 6.3 Recommendations
+[4 specific, practical recommendations for improvement or future work — 220-290 words. Each as a full paragraph.]
+
+## References
+[6-8 references: textbooks with author and year, named community elders (full name, village), ZIMSEC documents]
+
+FINAL CHECK: verify total word count is at least 3000. If short, expand Stage 4 and Stage 5.`
+
     : isA
     ? `
-## 1. Introduction
-[Background, rationale, objectives and significance — 750-960 words. Ground it firmly in Zimbabwean heritage context and the HBC 5.0 framework. Include a precise research question or hypothesis.]
+## Stage 1: Problem Identification
 
-## 2. Literature Review
-[Critical review of existing research, academic sources, and community knowledge — 960-1230 words. Must include at least TWO data tables summarising key concepts, comparisons, or historical trends.]
+### 1.1 Problem Description
+[Describe the specific problem, innovation or identified gap — 340-460 words. Provide quantitative context (statistics, surveys), name specific Zimbabwean communities, institutions, and stakeholders. Include a research question or hypothesis.]
 
-## 3. Theoretical Framework
-[Identify and critically discuss theories or frameworks underpinning the study. Link to HBC 5.0 principles and relevant academic literature — 460-610 words.]
+### 1.2 Statement of Intent
+[Precise statement of intent linking to the problem — 260-360 words. State what you aim to achieve, for whom, and the expected impact. Must reference the HBC 5.0 framework explicitly.]
 
-## 4. Methodology
-[Research design, data collection tools, sampling strategy, ethical considerations — 620-820 words. Include a table summarising data sources and a table of research instruments used.]
+### 1.3 Design Specifications / Project Parameters
+[At least 4 measurable specifications — 260-360 words.
+| Specification | Measurable Criterion | Justification |
+|---|---|---|
+]
 
-## 5. Data Presentation and Analysis
-[Richly detailed findings — 1850-2450 words. This is the core of the project. Use at least FOUR tables (comparative data, survey results, resource inventories, experimental results). Use sub-sections with ### headings for each major finding area. Include quantitative observations where relevant.]
+## Stage 2: Investigation of Related Ideas
 
-## 6. Discussion
-[Critical discussion of what the findings mean for Zimbabwe — 820-1060 words. Compare with secondary sources from the literature review. Demonstrate analytical depth.]
+[Critical introduction to the investigation — 100-140 words. Justify the selection of these three areas.]
 
-## 7. Recommendations and Conclusion
-[Evidence-based recommendations (at least 6, each as a full paragraph). Concluding remarks tying back to Heritage-Based Education goals — 770-980 words.]
+### Related Idea 1: [Descriptive name]
+[Academic-depth evidence of this existing approach — 220-300 words. Cite named Zimbabwean researchers or institutions where realistic.]
+**Strengths/Advantages:** [3 specific, analytically explained strengths — 140-190 words]
+**Weaknesses/Limitations:** [3 specific, analytically explained weaknesses — 140-190 words]
 
-## 8. Appendices (optional)
-[Additional supporting data, interview questionnaires, observation checklists if relevant]
+### Related Idea 2: [Descriptive name]
+[Same depth structure]
 
-## 9. References
+### Related Idea 3: [Descriptive name]
+[Same depth structure]
+
+### Critical Comparative Analysis
+[Analytical comparison of all three ideas — 200-280 words. Include:
+| Idea | Effectiveness | Resource Requirements | Zimbabwean Applicability | Overall Rating |
+|---|---|---|---|---|
+Conclude with which elements will inform Stage 3.]
+
+## Stage 3: Generation of Ideas / Possible Solutions
+
+[Academic introduction to your original solutions — 100-130 words. Explain how Stage 2 informed these ideas.]
+
+### Possible Solution 1: [Descriptive name]
+[Detailed description — 220-300 words. Include how this idea emerged from your Stage 2 analysis.]
+**Advantages:** [3 analytically explained advantages]
+**Disadvantages:** [3 analytically explained disadvantages]
+
+### Possible Solution 2: [Descriptive name]
+[Same depth]
+
+### Possible Solution 3: [Descriptive name]
+[Same depth]
+
+### Comparative Evaluation
+| Solution | Technical Feasibility | Resource Cost | Innovation Level | Alignment with Specifications |
+|---|---|---|---|---|
+
+## Stage 4: Development / Refinement of Chosen Idea
+
+### 4.1 Indication of Choice
+[Clearly state the chosen solution — 80-110 words.]
+
+### 4.2 Justification of Choice
+[At least 3 detailed reasons — 300-420 words. Reference each design specification from Stage 1 and explain how this solution best satisfies them. Cite relevant research.]
+
+### 4.3 Refinements and Developments
+[Three substantive developments/refinements — 600-820 words total, each as a clearly labelled sub-section. For each: initial state, what was changed, why, evidence of improvement.]
+**Development 1:** [Name]
+**Development 2:** [Name]
+**Development 3:** [Name]
+[Include a Before vs After comparison table:
+| Aspect | Initial Design | Refined Design | Improvement Achieved |
+|---|---|---|---|
+]
+
+### 4.4 Literature Review and Theoretical Framework
+[Critical review of academic sources and community knowledge — 860-1100 words. Include at least TWO data tables summarising key research findings. Reference named Zimbabwean institutions or researchers. Identify the theoretical framework underpinning your approach.]
+
+### 4.5 Methodology
+[Research design, data collection instruments, sampling strategy, ethical considerations — 540-720 words. Include:
+| Research Instrument | Target Respondents | Data Collected |
+|---|---|---|
+| Materials/Resources | Source | Quantity/Details |
+|---|---|---|
+]
+
+## Stage 5: Presentation of Final Solution
+
+### 5.1 Description of Final Solution
+[Comprehensive description — 420-580 words. State how it meets each specification from Stage 1. Describe it to a standard that allows replication.]
+
+### 5.2 Data Presentation and Analysis
+[Rich findings with quantitative observations — 1400-1860 words. Use at least FOUR tables. Use ### sub-headings for each major finding area. Demonstrate analytical and evaluative thinking.]
+
+### 5.3 Quality, Standards and Impact
+[How the solution meets learning-area and international standards — 360-480 words. Address sustainability and community impact in Zimbabwe.]
+
+## Stage 6: Evaluation and Recommendations
+
+### 6.1 Relevance to Statement of Intent
+[Critical self-evaluation — 280-380 words. Assess what was achieved versus intended. Use evidence from Stage 5 data.]
+
+### 6.2 Challenges Encountered
+[Analytical discussion of significant challenges — 240-320 words.
+| Challenge | Impact on Project | Strategy Employed | Outcome |
+|---|---|---|---|
+]
+
+### 6.3 Recommendations
+[At least 6 evidence-based recommendations, each a full paragraph — 480-640 words. Address policy, practice, and further research.]
+
+## References
 [10-14 APA-formatted references: academic journals, textbooks, ZIMSEC publications, named community interviews, government documents]
 
-FINAL CHECK — before writing References: verify your total word count is at least 7000 words. If not, expand sections 5 (Data Presentation) and 2 (Literature Review).`
+FINAL CHECK: verify total word count is at least 7000. If short, expand Stage 5 (Data) and Stage 4 (Literature Review).`
+
     : `
-## 1. Introduction
-[Background, rationale, objectives and significance — 510-690 words. Ground it firmly in Zimbabwean heritage context and the Heritage-Based Curriculum 5.0 framework.]
+## Stage 1: Problem Identification
 
-## 2. Literature Review
-[Critical review of existing research, academic sources, and community knowledge — 660-890 words. Must include at least TWO data tables summarising key concepts or comparisons with header rows.]
+### 1.1 Problem Description
+[Describe the specific problem, innovation or identified gap — 240-330 words. Name the specific Zimbabwean community, context and stakeholders affected. Be concrete, not abstract.]
 
-## 3. Theoretical Framework
-[Identify theories or frameworks underpinning the study. Link to HBC 5.0 principles — 320-450 words.]
+### 1.2 Statement of Intent
+[Clear statement of how you intend to address the problem — 200-270 words. State your goal, your target beneficiaries, and what success looks like. Link explicitly to HBC 5.0 values.]
 
-## 4. Methodology
-[Research design, data collection tools, sampling, ethical considerations — 460-610 words. Include a table summarising data sources used.]
+### 1.3 Design Specifications / Project Parameters
+[At least 3 measurable specifications — 200-270 words.
+| Specification | Measurable Criterion | Justification |
+|---|---|---|
+]
 
-## 5. Data Presentation and Analysis
-[Richly detailed findings — 1230-1640 words. This is the core of the project. Use at least THREE tables (comparative data, survey results, resource inventories). Use sub-sections with ### headings for each major finding area.]
+## Stage 2: Investigation of Related Ideas
 
-## 6. Discussion
-[Critical discussion of what the findings mean for Zimbabwe — 570-760 words. Compare with secondary sources from the literature review.]
+[Introduction — 80-100 words. Explain how you conducted this investigation and why these three ideas were selected.]
 
-## 7. Recommendations and Conclusion
-[Specific, evidence-based recommendations (at least 5, each as a full paragraph). Concluding remarks tying back to Heritage-Based Education goals — 510-690 words.]
+### Related Idea 1: [Descriptive name]
+[Evidence of this existing idea — 180-250 words. Describe it with specific Zimbabwean references where applicable.]
+**Strengths/Advantages:** [2-3 specific strengths, analytically explained — 120-160 words]
+**Weaknesses/Limitations:** [2-3 specific weaknesses, analytically explained — 120-160 words]
 
-## 8. Appendices (optional)
-[Additional supporting data, interview questionnaires, observation checklists if relevant]
+### Related Idea 2: [Descriptive name]
+[Same structure]
 
-## 9. References
-[8-12 APA-formatted references: academic journals, textbooks, ZIMSEC publications, named community interviews, government documents]
+### Related Idea 3: [Descriptive name]
+[Same structure]
 
-FINAL CHECK — before writing References: verify your total word count is at least 4500 words. If not, expand sections 5 (Data Presentation) and 2 (Literature Review).`;
+### Comparative Summary
+[Analytical comparison — 150-200 words.
+| Idea | Key Strength | Key Weakness | Applicability to This Project |
+|---|---|---|---|
+]
+
+## Stage 3: Generation of Ideas / Possible Solutions
+
+[Introduction — 80-100 words. Explain how Stage 2 research informed your original ideas.]
+
+### Possible Solution 1: [Descriptive name]
+[Detailed description — 180-250 words]
+**Advantages:** [2-3 advantages, each explained]
+**Disadvantages:** [2-3 disadvantages, each explained]
+
+### Possible Solution 2: [Descriptive name]
+[Same structure]
+
+### Possible Solution 3: [Descriptive name]
+[Same structure]
+
+### Solution Comparison Table
+| Solution | Core Innovation | Feasibility | Resource Requirements | Expected Impact |
+|---|---|---|---|---|
+
+## Stage 4: Development / Refinement of Chosen Idea
+
+### 4.1 Chosen Solution
+[State which solution was chosen — 70-90 words]
+
+### 4.2 Justification of Choice
+[At least 2 full-paragraph reasons — 240-320 words. Reference the Stage 1 design specifications and Stage 2/3 findings to support your choice.]
+
+### 4.3 Refinements and Developments
+[Three specific improvements made to the solution — 440-600 words total. Label each clearly.]
+**Development 1:** [Name and description]
+**Development 2:** [Name and description]
+**Development 3:** [Name and description]
+[Include:
+| Aspect | Initial Design | After Refinement | Reason for Change |
+|---|---|---|---|
+]
+
+### 4.4 Background Research (Literature Review)
+[Supporting research — 540-720 words. Include at least TWO tables of research findings. Reference Zimbabwean institutions, textbooks, community knowledge, and government sources.]
+
+### 4.5 Methodology
+[Data collection, materials, steps, ethical considerations — 380-510 words.
+| Research Instrument | Purpose | Respondents/Source |
+|---|---|---|
+| Materials/Resources | Source | Quantity |
+|---|---|---|
+]
+
+## Stage 5: Presentation of Final Solution
+
+### 5.1 Final Solution Description
+[Full description — 320-430 words. Demonstrate how it satisfies each specification from Stage 1.]
+
+### 5.2 Data Presentation and Analysis
+[Findings with analysis — 860-1150 words. Use at least THREE tables with header rows. Use ### sub-headings for each distinct finding area.]
+
+### 5.3 Quality and Standards
+[How the solution meets national and community standards — 240-320 words]
+
+## Stage 6: Evaluation and Recommendations
+
+### 6.1 Relevance to Statement of Intent
+[Self-evaluate against what you set out to do in Stage 1 — 210-280 words. Use evidence from Stage 5.]
+
+### 6.2 Challenges Encountered
+[Describe at least 3 specific challenges — 190-250 words.
+| Challenge | Impact | How Addressed |
+|---|---|---|
+]
+
+### 6.3 Recommendations
+[At least 4 specific, evidence-based recommendations, each a full paragraph — 320-420 words]
+
+## References
+[8-12 APA-formatted references: textbooks, ZIMSEC publications, named community interviews, government documents]
+
+FINAL CHECK: verify total word count is at least 4500. If short, expand Stage 5 (Data) and Stage 4 (Literature Review).`;
 
   const outlineSection = slots.outline?.trim()
     ? `\n\nSTUDENT-PROVIDED OUTLINE — FOLLOW THIS STRICTLY. Your output MUST cover every point below in the same order. Do not add sections not mentioned in the outline. Do not omit any point.\n---\n${slots.outline.trim()}\n---\n`
