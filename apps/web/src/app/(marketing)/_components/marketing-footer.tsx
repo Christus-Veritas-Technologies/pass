@@ -32,7 +32,7 @@ const COLUMNS: Array<{ heading: string; links: Array<{ label: string; href: stri
   {
     heading: "Get the app",
     links: [
-      { label: "Android (APK)", href: "https://expo.dev/artifacts/eas/oneZDFT7Tqw5UzNDiQdjkk.apk", external: true },
+      { label: "Android (APK)", href: "https://expo.dev/artifacts/eas/gSiNyUF3gUaecEi589943u.apk", external: true },
       { label: "iOS (coming)", href: "/about" },
       { label: "Web", href: "/login" },
     ],

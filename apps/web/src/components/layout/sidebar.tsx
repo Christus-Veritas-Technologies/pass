@@ -108,7 +108,7 @@ export function Sidebar({ onClose }: SidebarProps) {
       {/* Download app */}
       <div className="px-3 pb-2">
         <a
-          href="https://expo.dev/artifacts/eas/oneZDFT7Tqw5UzNDiQdjkk.apk"
+          href="https://expo.dev/artifacts/eas/gSiNyUF3gUaecEi589943u.apk"
           download
           className="flex w-full items-center gap-2.5 rounded-lg border border-border bg-muted/50 px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
         >
