@@ -5,7 +5,9 @@
 
 import type { ConversationMode } from "../types";
 
-const GREETINGS = /^(hi|hello|hey|hesi|mhoro|salibonani|howzit|sawubona)\b/i;
+// hi+o? catches "hi", "hii", "hio" (common typo) without matching "history"/"hint".
+// hello+ / hey+ catch repeated chars. heya/hiya/yo catch casual openers.
+const GREETINGS = /^(hi+o?|helo+|hello+|hey+|heya|hiya|yo+|sup|hesi|mhoro|salibonani|howzit|sawubona)\b/i;
 const HELP      = /^(help|menu|what can you do|commands)\b/i;
 // "cancel/exit/quit" are unambiguous enough to match as a prefix. The softer
 // leave synonyms (stop/back/leave/menu/…) must be the WHOLE message, so an exam
