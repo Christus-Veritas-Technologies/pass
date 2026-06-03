@@ -8,22 +8,25 @@
 
 import type { Message, Client } from "whatsapp-web.js";
 import prisma from "@pass/db";
+import type { ConversationState } from "../types";
 import { loadState, saveState, unlinkUser } from "../state/repo";
 import { getLinkedUser } from "../middleware/ensureLinked";
 import { matchHardIntent } from "./hardIntents";
 import { sendWelcomeUnlinked, sendHelp, sendUsageCard } from "../flows/welcome";
 import { startLinking, tryConsumeCode } from "../flows/linking";
 import { startSignup, handleSignupReply, startSignin, handleSigninReply } from "../flows/auth";
-import { showPapers, setPaperListCache, getPaperFromCache } from "../flows/paperBrowse";
+import { showPapers, startPaperBrowse, handlePaperBrowseSetup, setPaperListCache, getPaperFromCache } from "../flows/paperBrowse";
 import { startPaper, poseNextQuestion, gradeStudentAnswer, explainQuestion } from "../flows/paperStudy";
-import { startProjectBrief, handleProjectBriefReply } from "../flows/projectBrief";
+import { startProjectBrief, handleProjectBriefReply, repromptProjectBrief } from "../flows/projectBrief";
 import { generateProject } from "../flows/projectGenerate";
+import { sendSampleProject } from "../flows/sendSampleProject";
 import { sendProjectPdf } from "../media/sendProject";
 import { sendPaperPdf } from "../media/sendPaper";
 import { handleAiChat } from "../flows/aiChat";
 import { handleMediaMessage } from "../flows/mediaAnalysis";
 import { startUpgrade, handleUpgradeReply } from "../flows/upgrade";
-import { routeWithNL } from "../flows/nlRouter";
+import { routeWithNL, type NlAction } from "../flows/nlRouter";
+import { detectFlowSwitch } from "./interrupt";
 import { getAiMessageUsage, checkProjectsQuota } from "../../lib/aiQuota";
 import {
   CANCEL_OK,
@@ -35,6 +38,10 @@ import {
   projectsQuotaMessage,
   aiQuotaMessage,
   downloadsQuotaMessage,
+  PROJECT_NO_SAMPLE,
+  FLOW_SWITCH_NOTE,
+  STUDY_SWITCH_NOTE,
+  studyEscapeMenu,
 } from "../utils/messages";
 
 const RATE_WINDOW_MS   = 60_000;
@@ -71,6 +78,64 @@ function detectUnlinkedFeatureHint(text: string): UnlinkedFeatureHint | null {
     return "ai_chat";
 
   return null;
+}
+
+/**
+ * Perform a routed NL action. Used by the idle fallthrough AND by mid-flow
+ * interrupts (so "I'd rather do X" mid-flow behaves exactly like asking for X
+ * from idle). Returns the new conversation state; the caller persists it.
+ */
+async function dispatchNlAction(
+  client: Client,
+  msg: Message,
+  whatsappId: string,
+  userId: string,
+  action: NlAction,
+  state: ConversationState,
+): Promise<ConversationState> {
+  switch (action.kind) {
+    case "study_paper": {
+      // If the NL router extracted subject + grade, go straight to the list.
+      // Otherwise start the interactive grade→subject setup (or subject-only step).
+      const { newState, paperIds } = await startPaperBrowse(msg, state, {
+        subject: action.subject,
+        grade: action.grade,
+      });
+      setPaperListCache(whatsappId, paperIds);
+      return newState;
+    }
+    case "generate_project": {
+      const pqc = await checkProjectsQuota(userId);
+      if (!pqc.allowed) {
+        await msg.reply(projectsQuotaMessage(pqc.plan, pqc.limit));
+        return state;
+      }
+      return await startProjectBrief(msg, state, action);
+    }
+    case "sample_project": {
+      const sent = await sendSampleProject(client, whatsappId, { subject: action.subject, grade: action.grade });
+      await msg.reply(sent ? WHAT_NEXT : PROJECT_NO_SAMPLE);
+      return state;
+    }
+    case "show_usage": {
+      await sendUsageCard(msg, userId);
+      return state;
+    }
+    case "upgrade_plan": {
+      return await startUpgrade(msg, state);
+    }
+    case "answer_question":
+    default: {
+      const quota = await getAiMessageUsage(userId);
+      if (!quota.allowed) {
+        const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } });
+        await msg.reply(aiQuotaMessage(user?.plan ?? "FREE", quota.limit));
+        return state;
+      }
+      const question = action.kind === "answer_question" ? action.question : (msg.body ?? "");
+      return await handleAiChat(msg, question, userId, state);
+    }
+  }
 }
 
 export async function handleMessage(client: Client, msg: Message): Promise<void> {
@@ -137,6 +202,25 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
     await unlinkUser(whatsappId);
     await msg.reply(LOGOUT_OK);
     await msg.reply(WELCOME_UNLINKED);
+    return;
+  }
+
+  // ── Sample project: works for everyone (no account / no AI / no quota) ──────
+  // A sample is a past project with the student's identity stripped — a good
+  // way to show value, even before signup. It never counts as a generation.
+  if (hard.kind === "sample") {
+    if (state.mode.kind === "project_brief") {
+      // Mid-brief: match the subject/grade collected so far, then resume the brief.
+      const { subject, grade } = state.mode.collected;
+      const sent = await sendSampleProject(client, whatsappId, { subject, grade });
+      if (!sent) await msg.reply(PROJECT_NO_SAMPLE);
+      state = await repromptProjectBrief(msg, state);
+      await saveState(whatsappId, state);
+      return;
+    }
+    const sent = await sendSampleProject(client, whatsappId);
+    await msg.reply(sent ? WHAT_NEXT : PROJECT_NO_SAMPLE);
+    await saveState(whatsappId, state);
     return;
   }
 
@@ -209,10 +293,8 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
     return;
   }
 
-  // ── Linked path: read AI quota (used only at NL dispatch, not as a global wall) ──
-  // Each feature enforces its own quota at call-time. This read is only used to
-  // gate answer_question / ai_chat calls further down — never as a blanket block.
-  const quota = await getAiMessageUsage(userId);
+  // Each feature enforces its own AI-message quota at call-time (see
+  // dispatchNlAction and gradeStudentAnswer) — there is no blanket wall here.
 
   if (hard.kind === "greeting") {
     state = { ...state, mode: { kind: "idle" } };
@@ -282,6 +364,36 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
     return;
   }
 
+  // ── Global mid-flow interrupt ─────────────────────────────────────────────
+  // If the user clearly wants a different feature partway through a flow, cancel
+  // the flow and switch — no need to type "cancel". paper_study is handled in its
+  // own block below (the grader decides whether a message is an answer). Raw-data
+  // steps (project outline, passwords) honour only anchored keyword switches.
+  {
+    const m = state.mode;
+    const isInterruptibleFlow =
+      m.kind === "signing_up" || m.kind === "signing_in" || m.kind === "upgrading" ||
+      m.kind === "browsing_papers" || m.kind === "paper_browse_setup" ||
+      m.kind === "paper_action_choice" || m.kind === "project_brief" ||
+      // While awaiting an answer the grader decides (answers can look command-ish);
+      // between questions a clear switch is handled here.
+      (m.kind === "paper_study" && !m.awaitingAnswer);
+    if (isInterruptibleFlow) {
+      const isRawDataStep =
+        (m.kind === "project_brief" && m.awaiting === "outline") ||
+        (m.kind === "signing_up" && m.step === "password") ||
+        (m.kind === "signing_in" && m.step === "password");
+      const switchAction = await detectFlowSwitch(text, m, hard, !isRawDataStep);
+      if (switchAction) {
+        state = { ...state, mode: { kind: "idle" } };
+        await msg.reply(FLOW_SWITCH_NOTE);
+        state = await dispatchNlAction(client, msg, whatsappId, userId, switchAction, state);
+        await saveState(whatsappId, state);
+        return;
+      }
+    }
+  }
+
   // ── Mode-specific routing ─────────────────────────────────────────────────
 
   // A user can complete signup/signin and become "linked" while the state machine
@@ -328,13 +440,37 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
     }
 
     if (s.awaitingAnswer) {
-      state = await gradeStudentAnswer(msg, text, userId, state);
+      const { state: graded, offTopic } = await gradeStudentAnswer(msg, text, userId, state);
+      if (offTopic) {
+        // The message wasn't an answer. Figure out what they actually want.
+        const action = await routeWithNL(text);
+        if (action.kind !== "answer_question") {
+          // Clear, concrete intent → leave the paper and switch.
+          await msg.reply(STUDY_SWITCH_NOTE);
+          const next = await dispatchNlAction(client, msg, whatsappId, userId, action, { ...graded, mode: { kind: "idle" } });
+          await saveState(whatsappId, next);
+          return;
+        }
+        // Ambiguous → offer a clear exit, but keep them in the paper.
+        await msg.reply(studyEscapeMenu(s.questionNumber));
+        await saveState(whatsappId, graded);
+        return;
+      }
+      state = graded;
       await saveState(whatsappId, state);
       return;
     }
 
     await msg.reply(`Reply with your answer, *next* to move on, *explain* for help, or *cancel* to exit.`);
     await saveState(whatsappId, state);
+    return;
+  }
+
+  // paper_browse_setup: interactive grade → subject picker
+  if (state.mode.kind === "paper_browse_setup") {
+    const { newState, paperIds } = await handlePaperBrowseSetup(msg, text, state);
+    setPaperListCache(whatsappId, paperIds);
+    await saveState(whatsappId, newState);
     return;
   }
 
@@ -458,7 +594,7 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
   }
 
   if (hard.kind === "papers") {
-    const { newState, paperIds } = await showPapers(msg, {}, 0, state);
+    const { newState, paperIds } = await startPaperBrowse(msg, state);
     setPaperListCache(whatsappId, paperIds);
     await saveState(whatsappId, newState);
     return;
@@ -472,7 +608,7 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
   if (hard.kind === "number_select" && isMenuContext && hard.n !== undefined) {
     switch (hard.n) {
       case 1: {
-        const { newState, paperIds } = await showPapers(msg, {}, 0, state);
+        const { newState, paperIds } = await startPaperBrowse(msg, state);
         setPaperListCache(whatsappId, paperIds);
         await saveState(whatsappId, newState);
         return;
@@ -493,7 +629,7 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
         return;
       }
       case 6: {
-        const { newState: ns, paperIds: ids } = await showPapers(msg, {}, 0, state);
+        const { newState: ns, paperIds: ids } = await startPaperBrowse(msg, state);
         setPaperListCache(whatsappId, ids);
         await saveState(whatsappId, ns);
         return;
@@ -509,53 +645,6 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
   // them exactly which resource is exhausted and how to unblock it.
 
   const action = await routeWithNL(text);
-
-  if (action.kind === "study_paper") {
-    // Papers-quota pre-check: prevents sending the user through the browse flow
-    // only to hit a wall when they try to start a session.
-    // Note: browsing is always free — the quota only blocks starting a session.
-    // We show the list anyway; the wall is enforced when they select a paper.
-    const { newState, paperIds } = await showPapers(msg, action, 0, state);
-    setPaperListCache(whatsappId, paperIds);
-    await saveState(whatsappId, newState);
-    return;
-  }
-
-  if (action.kind === "generate_project") {
-    // Project-quota pre-check: short-circuits before slot collection begins so
-    // the user isn't walked through the entire brief only to hit a wall at the end.
-    const pqc = await checkProjectsQuota(userId);
-    if (!pqc.allowed) {
-      await msg.reply(projectsQuotaMessage(pqc.plan, pqc.limit));
-      await saveState(whatsappId, state);
-      return;
-    }
-    state = await startProjectBrief(msg, state, action);
-    await saveState(whatsappId, state);
-    return;
-  }
-
-  if (action.kind === "show_usage") {
-    await sendUsageCard(msg, userId);
-    await saveState(whatsappId, state);
-    return;
-  }
-
-  if (action.kind === "upgrade_plan") {
-    state = await startUpgrade(msg, state);
-    await saveState(whatsappId, state);
-    return;
-  }
-
-  // answer_question — gate only this path on AI message quota
-  if (!quota.allowed) {
-    const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } });
-    await msg.reply(aiQuotaMessage(user?.plan ?? "FREE", quota.limit));
-    await saveState(whatsappId, state);
-    return;
-  }
-
-  const question = action.kind === "answer_question" ? action.question : text;
-  state = await handleAiChat(msg, question, userId, state);
+  state = await dispatchNlAction(client, msg, whatsappId, userId, action, state);
   await saveState(whatsappId, state);
 }

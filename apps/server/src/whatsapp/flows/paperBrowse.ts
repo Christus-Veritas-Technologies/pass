@@ -1,18 +1,179 @@
 /**
  * Paper browsing flow.
- * Lists available past papers with optional subject/grade/year filtering.
- * Students reply with a number to select a paper.
  *
- * Numbering is always 1–N relative to the *current page*, not cumulative.
- * This keeps cache lookup simple (index = n - 1) and avoids the off-by-page
- * bug where page-2 cumulative numbers exceeded the cache length.
+ * Entry flow (interactive, used when user says "papers" with no hints):
+ *   startPaperBrowse() → grade picker
+ *     → user picks grade → subject picker (subjects we actually have)
+ *       → user picks subject → showPapers()
+ *
+ * Shortcut (used by NL router when subject/grade hints are present):
+ *   showPapers(filter) directly — skips the setup steps.
+ *
+ * Numbering within the paper list is always 1–N per page so cache lookup
+ * stays simple (index = n - 1).
  */
 
 import type { Message } from "whatsapp-web.js";
 import prisma from "@pass/db";
 import type { PaperFilter, ConversationState } from "../types";
+import {
+  paperBrowseAskGrade,
+  paperBrowseAskSubject,
+  paperBrowseNoSubjects,
+  paperBrowseNoGradeMatch,
+  paperBrowseNoSubjectMatch,
+} from "../utils/messages";
 
 const PAGE_SIZE = 10;
+
+// ── DB helpers ────────────────────────────────────────────────────────────────
+
+async function getAvailableGrades(): Promise<string[]> {
+  const rows = await prisma.resource.findMany({
+    where: { type: "PAST_PAPER" },
+    select: { grade: true },
+    distinct: ["grade"],
+    orderBy: { grade: "asc" },
+  });
+  return rows.map((r) => r.grade).filter(Boolean);
+}
+
+async function getAvailableSubjects(grade: string): Promise<string[]> {
+  const rows = await prisma.resource.findMany({
+    where: { type: "PAST_PAPER", grade },
+    select: { subject: true },
+    distinct: ["subject"],
+    orderBy: { subject: "asc" },
+  });
+  return rows.map((r) => r.subject).filter(Boolean);
+}
+
+// ── Grade/subject fuzzy match ────────────────────────────────────────────────
+
+/** Case-insensitive match of user input against a list of DB values. */
+function matchItem(input: string, list: string[]): string | undefined {
+  const t = input.trim().toLowerCase();
+  // Exact match first
+  const exact = list.find((item) => item.toLowerCase() === t);
+  if (exact) return exact;
+  // Contains match (e.g. "maths" matches "Mathematics")
+  return list.find((item) => item.toLowerCase().includes(t) || t.includes(item.toLowerCase()));
+}
+
+// ── Interactive setup entry point ─────────────────────────────────────────────
+
+/**
+ * Start the grade→subject→papers setup flow.
+ *
+ * If `hints.grade` is provided, skip straight to the subject step.
+ * If `hints.subject` is provided (regardless of grade), skip the setup
+ * entirely and show the filtered paper list.
+ */
+export async function startPaperBrowse(
+  msg: Message,
+  state: ConversationState,
+  hints?: { subject?: string; grade?: string },
+): Promise<{ newState: ConversationState; paperIds: string[] }> {
+  // Subject hint supplied → jump directly to the paper list
+  if (hints?.subject) {
+    return showPapers(msg, { subject: hints.subject, grade: hints.grade }, 0, state);
+  }
+
+  // Grade hint supplied → skip the grade step, go to subject picker
+  if (hints?.grade) {
+    const subjects = await getAvailableSubjects(hints.grade);
+    if (subjects.length === 0) {
+      await msg.reply(paperBrowseNoSubjects(hints.grade));
+      return { newState: { ...state, mode: { kind: "idle" } }, paperIds: [] };
+    }
+    await msg.reply(paperBrowseAskSubject(hints.grade, subjects));
+    return {
+      newState: {
+        ...state,
+        mode: { kind: "paper_browse_setup", step: "subject", grades: [], selectedGrade: hints.grade, subjects },
+      },
+      paperIds: [],
+    };
+  }
+
+  // No hints → show grade picker
+  const grades = await getAvailableGrades();
+  if (grades.length === 0) {
+    await msg.reply("No papers are available right now. Please try again later.");
+    return { newState: { ...state, mode: { kind: "idle" } }, paperIds: [] };
+  }
+  await msg.reply(paperBrowseAskGrade(grades));
+  return {
+    newState: { ...state, mode: { kind: "paper_browse_setup", step: "grade", grades } },
+    paperIds: [],
+  };
+}
+
+/**
+ * Handle a user reply during the grade/subject setup steps.
+ * Returns the new state and (once setup is complete) the first page's paper IDs.
+ */
+export async function handlePaperBrowseSetup(
+  msg: Message,
+  text: string,
+  state: ConversationState,
+): Promise<{ newState: ConversationState; paperIds: string[] }> {
+  if (state.mode.kind !== "paper_browse_setup") return { newState: state, paperIds: [] };
+  const m = state.mode;
+
+  if (m.step === "grade") {
+    // Try number select first
+    const n = parseInt(text.trim(), 10);
+    const chosen = (!isNaN(n) && n >= 1 && n <= m.grades.length)
+      ? m.grades[n - 1]!
+      : matchItem(text, m.grades);
+
+    if (!chosen) {
+      await msg.reply(paperBrowseNoGradeMatch(text.trim()));
+      return { newState: state, paperIds: [] };
+    }
+
+    const subjects = await getAvailableSubjects(chosen);
+    if (subjects.length === 0) {
+      await msg.reply(paperBrowseNoSubjects(chosen));
+      return { newState: { ...state, mode: { kind: "idle" } }, paperIds: [] };
+    }
+
+    await msg.reply(paperBrowseAskSubject(chosen, subjects));
+    return {
+      newState: {
+        ...state,
+        mode: { kind: "paper_browse_setup", step: "subject", grades: m.grades, selectedGrade: chosen, subjects },
+      },
+      paperIds: [],
+    };
+  }
+
+  // step === "subject"
+  const subjects = m.subjects ?? [];
+  const grade = m.selectedGrade ?? "";
+
+  // "back" → return to grade picker
+  if (/^back\s*$/i.test(text.trim())) {
+    await msg.reply(paperBrowseAskGrade(m.grades));
+    return {
+      newState: { ...state, mode: { kind: "paper_browse_setup", step: "grade", grades: m.grades } },
+      paperIds: [],
+    };
+  }
+
+  const n = parseInt(text.trim(), 10);
+  const chosen = (!isNaN(n) && n >= 1 && n <= subjects.length)
+    ? subjects[n - 1]!
+    : matchItem(text, subjects);
+
+  if (!chosen) {
+    await msg.reply(paperBrowseNoSubjectMatch(text.trim(), grade));
+    return { newState: state, paperIds: [] };
+  }
+
+  return showPapers(msg, { grade, subject: chosen }, 0, { ...state, mode: { kind: "idle" } });
+}
 
 function buildPaperList(
   papers: Array<{ id: string; title: string; grade: string; year: number; questionCount: number }>,

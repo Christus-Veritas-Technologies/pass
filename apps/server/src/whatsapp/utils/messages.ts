@@ -57,6 +57,30 @@ export const LINK_INSTRUCTIONS = `Great. Open Pass on the web or in the app, go 
 *Settings → Connect WhatsApp* and you'll see a 6-digit code.
 Send that code here.`;
 
+// ─── Paper browse setup messages ─────────────────────────────────────────────
+
+export function paperBrowseAskGrade(grades: string[]): string {
+  const list = grades.map((g, i) => `*${i + 1}.* ${g}`).join("\n");
+  return `📚 *What level are you looking for?*\n\n${list}\n\nReply a number or type the level.`;
+}
+
+export function paperBrowseAskSubject(grade: string, subjects: string[]): string {
+  const list = subjects.map((s, i) => `*${i + 1}.* ${s}`).join("\n");
+  return `📚 *${grade} papers — what subject?*\n\n${list}\n\nReply a number or type the subject.\nReply *back* to change level.`;
+}
+
+export function paperBrowseNoSubjects(grade: string): string {
+  return `We don't have any ${grade} papers yet 😕\n\nReply *papers* to browse other levels.`;
+}
+
+export function paperBrowseNoGradeMatch(input: string): string {
+  return `I don't recognise "${input}" as a level. Please reply with a number from the list, or type the level name (e.g. O-Level, A-Level, Grade 7).`;
+}
+
+export function paperBrowseNoSubjectMatch(input: string, grade: string): string {
+  return `I don't see "${input}" in the ${grade} subjects list. Please reply with a number from the list, or type the subject name.`;
+}
+
 export const LINK_CODE_WRONG = `That code is wrong or expired — generate a new one in
 *Settings → Connect WhatsApp* and send it here.`;
 
@@ -360,6 +384,19 @@ export function projectFallbackMessage(projectId: string): string {
 _(Could not attach the PDF right now, but the full text is in your Pass account.)_`;
 }
 
+/** Caption sent with a sample (example) project. Identity is already stripped. */
+export function projectSampleCaption(subject: string, topic: string, pages: number): string {
+  return `📄 *Sample project* — here's what a finished ${subject} project looks like.
+
+*${topic}*
+${pages}-page formal report. Student details have been removed.
+
+This is just an example. Reply *project* whenever you're ready to make your own. ✍️`;
+}
+
+/** Shown when no past project is available to use as a sample. */
+export const PROJECT_NO_SAMPLE = `I don't have a sample to show right now — but I can put together a fresh project for you. Reply *project* to start. ✍️`;
+
 // ─── Quota exhausted (hard limit — no further AI calls) ──────────────────────
 
 export const AI_QUOTA_EXHAUSTED = `🤖 You've used all your AI replies this month.
@@ -375,6 +412,17 @@ export const MEDIA_ONLY       = `I can only read text for now — could you type
 export const RATE_LIMIT       = `You're going faster than I can think 😅 — give me a moment.`;
 export const PAPER_FILE_MISSING = `📄 _The PDF for this paper isn't uploaded yet — but you can still study it question by question below._`;
 export const CANCEL_OK        = `Got it — cancelled ✅\n\n${HELP_MESSAGE}`;
+
+/** Shown when we auto-cancel the current flow because the user clearly wants something else. */
+export const FLOW_SWITCH_NOTE = `👍 No problem — switching you over. Anything you'd started is saved.`;
+
+/** Study-specific note when leaving a paper to do something else. */
+export const STUDY_SWITCH_NOTE = `👍 Leaving this paper — your answers so far are saved. Switching you over…`;
+
+/** Escape menu when a mid-study message isn't an answer but isn't a clear other intent either. */
+export function studyEscapeMenu(questionNumber: number): string {
+  return `That didn't look like an answer to *Q${questionNumber}*. Reply *next* to skip, *cancel* to leave this paper, or send your answer to keep going.`;
+}
 export const WHAT_NEXT        = `✅ All done! What would you like to do next?\n\n${HELP_MESSAGE}`;
 export const LOGOUT_OK        = `You've been logged out 👋 Your WhatsApp number is now unlinked from your Pass account.\n\nReply *signin* to log back in, or *signup* to create a new account.`;
 export const UNCLEAR          = `I'm not sure what you mean. Try _"study a paper"_, _"generate a project"_, or just ask me a question.`;

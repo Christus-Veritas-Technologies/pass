@@ -15,6 +15,16 @@ export type ConversationMode =
   | { kind: "idle" }
   | { kind: "linking"; awaiting: "code" }
   | {
+      kind: "paper_browse_setup";
+      step: "grade" | "subject";
+      /** Grade values queried from the DB (shown as numbered menu). */
+      grades: string[];
+      /** Populated once the user has chosen a grade. */
+      selectedGrade?: string;
+      /** Subject values for selectedGrade (populated at subject step). */
+      subjects?: string[];
+    }
+  | {
       kind: "browsing_papers";
       filter: PaperFilter;
       page: number;
