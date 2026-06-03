@@ -276,6 +276,19 @@ export async function handleProjectBriefReply(
   return { state: await promptNextSlot(msg, newState, mergedWithAuto) };
 }
 
+/**
+ * Re-send the prompt for the slot the brief is currently waiting on.
+ * Used after an interruption mid-brief (e.g. the user asked for a sample) so the
+ * conversation resumes exactly where it left off. State is unchanged.
+ */
+export async function repromptProjectBrief(
+  msg: Message,
+  state: ConversationState,
+): Promise<ConversationState> {
+  if (state.mode.kind !== "project_brief") return state;
+  return promptNextSlot(msg, state, state.mode.collected);
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function isComplete(c: Collected): c is ProjectSlots {
