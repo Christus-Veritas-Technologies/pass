@@ -12,7 +12,7 @@ export const WELCOME_UNLINKED = `Hi! I'm *Pass* 📚 — your ZIMSEC study buddy
 I can help you:
   • study A-Level and O-Level past exam papers, question by question
   • get AI explanations for any exam question or concept
-  • generate a full ZIMSEC project report as a PDF
+  • generate a full ZIMSEC school project as a PDF
   • upgrade your plan to unlock more papers and AI replies
 
 To get started:
@@ -36,7 +36,7 @@ Reply *signup* to create one — it only takes 2 minutes and it's free.
 Or reply *signin* if you already have an account.`;
 
     case "project":
-      return `📝 You need a free *Pass* account to generate ZIMSEC HBC projects.
+      return `📝 You need a free *Pass* account to generate ZIMSEC projects.
 
 Reply *signup* to create one, or *signin* to log into your existing account.`;
 
@@ -103,7 +103,7 @@ Or just ask me anything.${ambassadorSuffix}`;
 export const HELP_MESSAGE = `*Pass — quick guide* 📚
 
 1️⃣  *Study a past paper* — attempt questions one by one with AI feedback
-2️⃣  *Generate an HBC project* — full ZIMSEC project report as PDF
+2️⃣  *Generate a project* — full ZIMSEC school project as a PDF
 3️⃣  *Ask a question* — AI explanations for any ZIMSEC topic
 4️⃣  *Usage & limits* — see your plan and what's left this month
 5️⃣  *Upgrade plan* — unlock more papers and AI replies
@@ -298,7 +298,7 @@ Or pick another paper: reply *papers*.`;
 
 // ─── Project (HBC) ───────────────────────────────────────────────────────────
 
-export const PROJECT_ASK_NAME = `Let's create your ZIMSEC Heritage-Based Curriculum project! 📚
+export const PROJECT_ASK_NAME = `Let's get your project set up! 📚
 
 *What is your full name?* (as it appears on your exam registration)`;
 
@@ -359,7 +359,7 @@ export function projectConfirmMessage(slots: {
   subject: string;
   category: string;
 }): string {
-  return `*Generating your HBC project…*
+  return `*Generating your project…*
 
 📋 *${slots.studentName}*${slots.schoolName ? `\nSchool: ${slots.schoolName}` : ""}
 Centre: ${slots.centreNumber} · Candidate: ${slots.candidateNumber}
@@ -370,12 +370,12 @@ Category: ${slots.category}
 }
 
 export function projectDoneMessage(subject: string, topic: string, pages: number): string {
-  return `✅ *Project complete!*
+  return `✅ *Your project is ready!*
 
 *${topic}*
-${subject} · ${pages}-page formal HBC report
+${subject} · ${pages} pages
 
-Includes: cover page, introduction, methodology, data presentation & analysis, recommendations & conclusion, and references. Review before submitting.`;
+Your full ZIMSEC school project is attached. Review it before you hand it in.`;
 }
 
 export function projectFallbackMessage(projectId: string): string {

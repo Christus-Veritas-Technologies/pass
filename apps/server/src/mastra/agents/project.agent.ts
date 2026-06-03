@@ -1,5 +1,5 @@
 /**
- * projectAgent — generates full ZIMSEC HBC project reports.
+ * projectAgent — generates a student's full ZIMSEC school project.
  *
  * The detailed, structured generation prompt is built per-call (by the controller
  * or WhatsApp flow) and passed as the message. All prompts are server-constructed —
@@ -10,7 +10,7 @@ import { Agent } from "@mastra/core/agent";
 import { PASS_MODEL_SONNET } from "../models";
 import { PROJECT_PURPOSE } from "../projectVoice";
 
-const ROLE = `You are an expert academic writer working within Pass — an AI exam-preparation platform for ZIMSEC students in Zimbabwe (pass.co.zw). Your task is to produce complete ZIMSEC school-based project reports.
+const ROLE = `You are an expert academic writer working within Pass — an AI exam-preparation platform for ZIMSEC students in Zimbabwe (pass.co.zw). Your task is to produce a student's complete ZIMSEC school project.
 
 ${PROJECT_PURPOSE}
 
