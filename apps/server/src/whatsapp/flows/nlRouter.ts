@@ -11,6 +11,7 @@ import { routerAgent, routeSchema, type RouteResult } from "../../mastra/agents/
 export type NlAction =
   | { kind: "study_paper"; subject?: string; grade?: string; year?: number }
   | { kind: "generate_project"; subject?: string; grade?: string }
+  | { kind: "sample_project"; subject?: string; grade?: string }
   | { kind: "answer_question"; question: string }
   | { kind: "show_usage" }
   | { kind: "upgrade_plan" };
@@ -33,6 +34,8 @@ export async function routeWithNL(message: string): Promise<NlAction> {
         return { kind: "study_paper", subject, grade, year };
       case "generate_project":
         return { kind: "generate_project", subject, grade };
+      case "sample_project":
+        return { kind: "sample_project", subject, grade };
       case "show_usage":
         return { kind: "show_usage" };
       case "upgrade_plan":

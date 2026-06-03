@@ -7,7 +7,10 @@ import type { ConversationMode } from "../types";
 
 const GREETINGS = /^(hi|hello|hey|hesi|mhoro|salibonani|howzit|sawubona)\b/i;
 const HELP      = /^(help|menu|what can you do|commands)\b/i;
-const CANCEL    = /^(cancel|exit|stop|quit|back)\b/i;
+// "cancel/exit/quit" are unambiguous enough to match as a prefix. The softer
+// leave synonyms (stop/back/leave/menu/…) must be the WHOLE message, so an exam
+// answer like "Stop the reaction by adding water" is never read as a cancel.
+const CANCEL    = /^((cancel|exit|quit)\b|(stop|back|go\s*back|leave|menu|main\s*menu|start\s*over|restart|never\s*mind|nvm|forget\s*it|i\s*give\s*up|i'?m\s*done)\s*[.!]*$)/i;
 const LINK      = /^link(\s+my\s+account)?\s*$/i;
 const USAGE     = /^(usage|plan|limits?|quota)\s*$/i;
 // "upgrade", "upgrade plan", "upgrade my plan", "upgrade subscription"
@@ -27,6 +30,17 @@ const SIGNUP    = /^(sign\s*up|register|create\s+account|new\s+account)\s*$/i;
 const SIGNIN    = /^(sign\s*in|login|log\s*in|my\s+account)\s*$/i;
 // PDF / download request — "pdf", "send pdf", "download", "send my project", "resend"
 const SEND_PDF  = /^(pdf|send\s*pdf|download(\s+(pdf|project))?|send\s*(my\s*)?(last\s*)?project|resend(\s*pdf)?)\s*$/i;
+// Sample / example project — matches a message whose whole point is "show me a
+// sample/example project", in either word order ("sample project" / "project
+// sample") and with common request prefixes ("give me a…", "can I see a…", "I
+// want a…"). Anchored to ^…$ so long pastes (outlines containing "for example")
+// do NOT match — only short, request-shaped messages do.
+const SAMPLE    = /^\s*(?:(?:can|could|may|will)\s+i\s+|i(?:'?d|\s+would)?\s+(?:like|want|need)\s+(?:to\s+)?|please\s+|let\s+me\s+|give\s+(?:me\s+)?|show\s+(?:me\s+)?|send\s+(?:me\s+)?|get\s+(?:me\s+)?|see\s+|view\s+)*(?:(?:a|an|the|my|some)\s+)*(?:(?:sample|example)s?(?:\s+(?:of\s+(?:a|an)\s+)?(?:hbc\s+|heritage\s+)?projects?)?|(?:hbc\s+|heritage\s+)?projects?\s+(?:sample|example)s?)\s*$/i;
+// Modes where a bare "sample"/"example" safely means "show me a sample project".
+// Excludes signup/signin/linking/study/upgrade, where it could be the user's input.
+const SAMPLE_SAFE_MODES = new Set<ConversationMode["kind"]>([
+  "idle", "ai_chat", "project_brief", "browsing_papers", "paper_action_choice",
+]);
 // Session history
 const HISTORY   = /^(history|past\s*sessions?|my\s*sessions?|results?)\s*$/i;
 // Logout / unlink account
@@ -43,6 +57,7 @@ export interface HardIntentResult {
     | "usage"
     | "upgrade"
     | "project"
+    | "sample"
     | "papers"
     | "more"
     | "start"
@@ -79,6 +94,11 @@ export function matchHardIntent(text: string, mode: ConversationMode): HardInten
   if (LINK.test(t))                               return { kind: "link" };
   if (USAGE.test(t))                              return { kind: "usage" };
   if (UPGRADE.test(t))                            return { kind: "upgrade" };
+  // SAMPLE must be tested before PROJECT so "sample project" isn't read as "project".
+  // Only in browsing/idle modes — never during signup, study, linking or upgrade,
+  // where "sample"/"example" could be the user's actual input.
+  if (SAMPLE.test(t) && SAMPLE_SAFE_MODES.has(mode.kind))
+                                                  return { kind: "sample" };
   if (PROJECT.test(t))                            return { kind: "project" };
   if (PAPERS.test(t))                             return { kind: "papers" };
   if (SIGNUP.test(t))                             return { kind: "signup" };

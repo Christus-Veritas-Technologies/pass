@@ -2,6 +2,9 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
+    // App is bundled by Metro/Expo — tsc is type-check only. noEmit stops a bare
+    // `tsc` run here from dropping a .js next to every source file.
+    "noEmit": true,
     "paths": {
       "@/*": ["./*"]
     }

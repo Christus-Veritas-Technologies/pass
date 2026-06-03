@@ -100,7 +100,7 @@ export function MarketingNav() {
 
             {/* Download APK */}
             <a
-              href="https://expo.dev/artifacts/eas/kXitBg45EqzcvYpwirz3Go.apk"
+              href="https://expo.dev/artifacts/eas/oneZDFT7Tqw5UzNDiQdjkk.apk"
               download
               className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-sm font-medium text-foreground/80 transition-colors hover:bg-muted hover:text-foreground"
             >
@@ -236,7 +236,7 @@ export function MarketingNav() {
                   </>
                 )}
                 <a
-                  href="https://expo.dev/artifacts/eas/kXitBg45EqzcvYpwirz3Go.apk"
+                  href="https://expo.dev/artifacts/eas/oneZDFT7Tqw5UzNDiQdjkk.apk"
                   download
                   onClick={() => setOpen(false)}
                   className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-border text-sm font-medium text-foreground/80 transition-colors hover:bg-muted"

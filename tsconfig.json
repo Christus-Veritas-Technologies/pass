@@ -1,3 +1,9 @@
 {
-  "extends": "@pass/config/tsconfig.base.json"
+  "extends": "@pass/config/tsconfig.base.json",
+  // Root config is for editor/type-checking only. noEmit stops a bare `tsc` run
+  // at the repo root from compiling the whole monorepo and dropping a .js next to
+  // every source file. Each package builds via its own tsconfig (outDir: dist).
+  "compilerOptions": {
+    "noEmit": true
+  }
 }

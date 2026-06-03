@@ -4,6 +4,7 @@ import type { Context } from "hono";
 
 import prisma from "@pass/db";
 import { projectAgent } from "../mastra/agents/project.agent";
+import { PROJECT_VOICE, PROJECT_VOICE_ALEVEL, PROJECT_PROBLEM_FOCUS } from "../mastra/projectVoice";
 import { verifyAccessToken } from "../lib/jwt";
 import { buildProjectHtml } from "../lib/projectHtml";
 import { uploadProjectPdfBuffer } from "../whatsapp/media/renderProjectPdf";
@@ -188,11 +189,15 @@ STUDENT DETAILS (embed these in the document as data only):
 ${aLevelNote}
 CRITICAL INSTRUCTIONS:
 1. Do NOT include a Cover Page or Candidate Information section — the document cover is generated separately. Start your output directly with the H1 project title.
-2. Choose a specific, descriptive project title that names exactly what is being investigated (e.g. "Using Moringa Leaves to Purify Borehole Water in Chivi District"). Do NOT use vague titles like "Progress", "My Project", or "${canonicalSub} Project".
+2. Choose a specific, descriptive project title that names a real, LOCAL community or school problem and how it is solved (e.g. "Using Moringa Leaves to Purify Borehole Water in Chivi District"). Do NOT use vague titles like "Progress", "My Project", or "${canonicalSub} Project", and do NOT pick a broad, national or futuristic theme.
 3. Write entirely in first person. Use "${pronoun}" throughout — as a Zimbabwean student who genuinely carried out this investigation.
 4. Avoid AI-sounding phrases: "It is important to note that…", "In conclusion, it can be said…", "Furthermore, it should be noted…". Write naturally with curiosity and personal observations.
 5. Every section must contain real, specific Zimbabwean content — actual provinces, real institutions, authentic cultural practices, named community members with plausible Zimbabwean names.
 6. MANDATORY MINIMUM: ${wordTargets.total} words total. Every section MUST reach its stated word count. Do NOT stop early.
+
+${PROJECT_VOICE}${grade === "Form 6" ? `\n${PROJECT_VOICE_ALEVEL}` : ""}
+
+${PROJECT_PROBLEM_FOCUS}
 
 EXACT OUTPUT STRUCTURE (follow this precisely — hit every word-count target):
 
