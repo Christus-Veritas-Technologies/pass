@@ -1,5 +1,6 @@
 import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
+import * as Linking from "expo-linking";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 import { env } from "@pass/env/native";
@@ -81,11 +82,14 @@ export async function signInWithGoogle(): Promise<{ user: AuthUser; isNew: boole
     throw new Error("Google sign-in was cancelled");
   }
 
-  const url = new URL(result.url);
-  const accessToken = url.searchParams.get("accessToken");
-  const refreshToken = url.searchParams.get("refreshToken");
-  const isNew = url.searchParams.get("isNew") === "1";
-  const error = url.searchParams.get("error");
+  // Use Linking.parse for reliable custom-scheme query-param extraction on Android.
+  // new URL("pass://…") can mis-parse on some Hermes builds.
+  const parsed = Linking.parse(result.url);
+  const qp = parsed.queryParams ?? {};
+  const accessToken = typeof qp.accessToken === "string" ? qp.accessToken : null;
+  const refreshToken = typeof qp.refreshToken === "string" ? qp.refreshToken : null;
+  const isNew = qp.isNew === "1";
+  const error = typeof qp.error === "string" ? qp.error : undefined;
 
   if (error) throw new Error("Google sign-in failed");
   if (!accessToken || !refreshToken) throw new Error("Invalid OAuth response");
