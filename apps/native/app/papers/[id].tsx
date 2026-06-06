@@ -1,4 +1,4 @@
-import { ArrowLeft, CheckCircle, DownloadSimple, File, Image, Sparkle } from "@vuduc0801/react-native-phosphor-icons";
+import { ArrowLeft, CheckCircle, DownloadSimple, File, Image, Sparkle, X } from "@vuduc0801/react-native-phosphor-icons";
 import * as SecureStore from "expo-secure-store";
 import RNBlobUtil from "react-native-blob-util";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -6,6 +6,7 @@ import { Toast, useToast } from "@/components/ui/toast";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Modal,
   Pressable,
   ScrollView,
   Text,
@@ -131,6 +132,8 @@ function RenderMarkdown({ text, color = "#1E293B" }: { text: string; color?: str
 }
 const API = env.EXPO_PUBLIC_SERVER_URL;
 
+interface SubPart { label: string; text: string; marks: number; }
+
 interface Question {
   id: string;
   questionNumber: number;
@@ -142,6 +145,7 @@ interface Question {
   hasDiagram?: boolean;
   diagramNote?: string | null;
   guideSource?: "AI_GENERATED" | "OFFICIAL";
+  subParts?: SubPart[] | null;
 }
 
 interface Paper {
@@ -189,9 +193,18 @@ export default function PaperSessionScreen() {
   const [downloading, setDownloading] = useState(false);
   const { toastState, show: showToast } = useToast();
 
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const rafRef = useRef<number | undefined>(undefined);
   const [startError, setStartError] = useState<string | null>(null);
+
+  // Cancel any pending scroll RAF when the component unmounts (prevents memory leak)
+  useEffect(() => () => {
+    if (rafRef.current !== undefined) cancelAnimationFrame(rafRef.current);
+  }, []);
+
+  // Close the feedback modal when the student moves to a different question
+  useEffect(() => { setFeedbackOpen(false); }, [currentIndex]);
 
   const pdfUri = paper?.fileUrl ? `${API}${paper.fileUrl}` : "";
   function openPdf(page = 1) {
@@ -571,6 +584,24 @@ export default function PaperSessionScreen() {
               </View>
               <FormattedQuestionText text={currentQ.text} />
 
+              {/* Sub-parts */}
+              {currentQ.subParts && currentQ.subParts.length > 0 && (
+                <View style={{ marginTop: 10, borderTopWidth: 1, borderTopColor: "#F3F4F6", paddingTop: 10, gap: 6 }}>
+                  {currentQ.subParts.map((sp) => (
+                    <View key={sp.label} style={{ backgroundColor: "#F9FAFB", borderRadius: 8, padding: 10, flexDirection: "row", gap: 8 }}>
+                      <Text style={{ fontSize: 12, fontWeight: "700", color: BRAND, minWidth: 24 }}>{sp.label}</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 12, color: "#6B7280", marginBottom: 2 }}>({sp.marks} mark{sp.marks !== 1 ? "s" : ""})</Text>
+                        <Text style={{ fontSize: 13, color: "#111827" }}>{sp.text}</Text>
+                      </View>
+                    </View>
+                  ))}
+                  <Text style={{ fontSize: 11, color: "#9CA3AF", fontStyle: "italic", marginTop: 2 }}>
+                    Answer all parts below — label each one (e.g. start with {currentQ.subParts[0]?.label}:).
+                  </Text>
+                </View>
+              )}
+
               {/* Diagram-dependent question — link to the original PDF page */}
               {currentQ.hasDiagram && (
                 <Pressable
@@ -646,33 +677,78 @@ export default function PaperSessionScreen() {
               </Button>
             )}
 
-            {/* AI response */}
+            {/* Feedback available — show a button; full response opens in a modal */}
             {(aiResponses[currentQ.questionNumber] || streaming) && (
-              <View style={{ backgroundColor: "#EEF2FF", borderRadius: 12, borderWidth: 1, borderColor: `${BRAND}30`, padding: 16 }}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                  <Sparkle size={15} color={BRAND} />
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <Pressable
+                  onPress={() => setFeedbackOpen(true)}
+                  disabled={streaming}
+                  style={({ pressed }) => ({
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 8,
+                    backgroundColor: pressed ? "#E0E7FF" : "#EEF2FF",
+                    borderRadius: 10,
+                    paddingHorizontal: 14,
+                    paddingVertical: 10,
+                    opacity: streaming ? 0.6 : 1,
+                  })}
+                >
+                  {streaming
+                    ? <ActivityIndicator size="small" color={BRAND} />
+                    : <Sparkle size={15} color={BRAND} />}
                   <Text style={{ fontSize: 13, fontWeight: "600", color: BRAND }}>
-                    AI {mode === "GUIDE" ? "Feedback" : "Solution"}
+                    {streaming ? "Getting feedback…" : `Show ${mode === "GUIDE" ? "Feedback" : "Solution"}`}
                   </Text>
-                  {streaming && <ActivityIndicator size="small" color={BRAND} style={{ marginLeft: 4 }} />}
-                  {mode === "GUIDE" && !streaming && (
-                    <Text
-                      style={{
-                        marginLeft: "auto",
-                        fontSize: 10,
-                        fontWeight: "600",
-                        color: currentQ.guideSource === "OFFICIAL" ? "#16A34A" : "#9CA3AF",
-                      }}
-                    >
-                      {currentQ.guideSource === "OFFICIAL"
-                        ? "Official marking scheme"
-                        : "AI-estimated marking"}
-                    </Text>
-                  )}
-                </View>
-                <RenderMarkdown text={aiResponses[currentQ.questionNumber] ?? ""} color="#1E293B" />
+                </Pressable>
+                {mode === "GUIDE" && !streaming && (
+                  <Text style={{ fontSize: 10, fontWeight: "600", color: currentQ.guideSource === "OFFICIAL" ? "#16A34A" : "#9CA3AF" }}>
+                    {currentQ.guideSource === "OFFICIAL" ? "Official scheme" : "AI-estimated"}
+                  </Text>
+                )}
               </View>
             )}
+
+            {/* Feedback modal */}
+            <Modal
+              visible={feedbackOpen && !!aiResponses[currentQ.questionNumber]}
+              animationType="slide"
+              presentationStyle="pageSheet"
+              onRequestClose={() => setFeedbackOpen(false)}
+            >
+              <View style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
+                {/* Modal header */}
+                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 20, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: "#F3F4F6" }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <Sparkle size={16} color={BRAND} />
+                    <Text style={{ fontSize: 15, fontWeight: "700", color: "#111827" }}>
+                      {mode === "GUIDE" ? "AI Feedback" : "Worked Solution"} — Q{currentQ.questionNumber}
+                    </Text>
+                  </View>
+                  <Pressable onPress={() => setFeedbackOpen(false)} hitSlop={8}
+                    style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, padding: 4 })}>
+                    <X size={20} color="#6B7280" />
+                  </Pressable>
+                </View>
+                {/* Scrollable feedback content */}
+                <ScrollView
+                  style={{ flex: 1 }}
+                  contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
+                  showsVerticalScrollIndicator={false}
+                >
+                  <RenderMarkdown text={aiResponses[currentQ.questionNumber] ?? ""} color="#1E293B" />
+                </ScrollView>
+                {/* Footer button */}
+                <View style={{ padding: 16, borderTopWidth: 1, borderTopColor: "#F3F4F6" }}>
+                  <Pressable
+                    onPress={() => setFeedbackOpen(false)}
+                    style={({ pressed }) => ({ backgroundColor: pressed ? "#4338CA" : BRAND, borderRadius: 12, paddingVertical: 14, alignItems: "center" })}
+                  >
+                    <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFFFFF" }}>Got it</Text>
+                  </Pressable>
+                </View>
+              </View>
+            </Modal>
 
             {/* Previous / Next navigation */}
             {completed.has(currentQ.questionNumber) && (

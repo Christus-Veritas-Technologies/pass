@@ -168,26 +168,50 @@ export async function submitAnswer(c: Context) {
   // GUIDE → cheap Haiku feedback agent; FREE → Sonnet explanation agent.
   const agent = sessionMode === "GUIDE" ? feedbackAgent : explainAgent;
   if (sessionMode === "GUIDE") {
-    // Grading feedback — cheap, runs on Haiku, informed by the real rubric.
-    prompt = `You are a warm, encouraging ZIMSEC tutor marking a Zimbabwean student's answer.
+    // Determine if the student is asking a question rather than answering
+    const isAskingQuestion = /^\s*(what|why|how|can you|explain|who|when|where|is it|does|do you|could you|please explain|i don'?t understand|what does|what is|what are)/i.test(userAnswer ?? "") || (userAnswer ?? "").trim().endsWith("?");
+
+    if (isAskingQuestion) {
+      // Treat as a clarification request — explain the concept simply
+      prompt = `A Zimbabwean student is studying for ZIMSEC and has asked a question about this exam question instead of answering it. Help them understand.
+
+Exam question: ${questionText}${diagramHint}
+${guide ? `\nCorrect answer / key points:\n${guide}\n` : ""}
+Student's question: ${userAnswer}
+
+Answer their question as simply as possible — explain like you're talking to a smart 10-year-old. Use plain words, short sentences, and real-life analogies if they help. Use markdown: **bold** key words, bullet lists for multiple points. End with "Now try answering the question yourself! 💪"`;
+    } else {
+      // Grading feedback — cheap, runs on Haiku, informed by the real rubric.
+      prompt = `Mark a Zimbabwean student's ZIMSEC exam answer. Be encouraging and explain simply.
 
 Question: ${questionText}${diagramHint}
 ${guide ? `\nMarking rubric / accepted points:\n${guide}\n` : ""}
-The student answered: ${userAnswer || "(no answer provided)"}
+Student's answer: ${userAnswer || "(no answer provided)"}
 
-Give encouraging feedback in 2–4 sentences. Mark against the rubric: if the answer is correct or mostly correct, congratulate them and note any missing points. If it is wrong or incomplete, gently explain the key points they missed and why — never be harsh.
+Give feedback that a 10-year-old could understand:
+- If correct or mostly correct: celebrate, then mention any points they missed.
+- If wrong or incomplete: explain what they should have said, using simple words and an analogy from everyday Zimbabwean life if possible.
+- End with a one-line exam tip.
 
-Write in plain text only. Use a blank line to separate paragraphs. If you need to list points, start each item on its own line with "* " (asterisk followed by a space). Do not use any markdown — no # headings, no **bold**, no *italic*, no - bullets.`;
+Use markdown: **bold** key terms, bullet lists where helpful. Keep it encouraging — mistakes are normal.`;
+    }
   } else {
     // Full worked solution — teaching, runs on Sonnet for quality.
-    prompt = `You are a knowledgeable ZIMSEC tutor helping a Zimbabwean student understand a past-paper question.
+    prompt = `Explain a ZIMSEC past-paper question to a Zimbabwean student as a friendly teacher.
 
 Question:
 ${questionText}${diagramHint}
-${guide ? `\nMarking rubric (source of truth):\n${guide}\n` : ""}
-Write a clear, well-structured solution suitable for a Form 4 or Form 6 student. Keep the language simple and the explanation thorough.
+${guide ? `\nCorrect answer / marking rubric:\n${guide}\n` : ""}
 
-Write in plain text only. Use blank lines to separate sections or paragraphs. If you need a list, start each item on its own line with "* " (asterisk followed by a space). Do not use any markdown — no # headings, no **bold**, no *italic*, no - bullets.`;
+Explain it so a smart 10-year-old could understand:
+1. Start with the simplest version of the answer.
+2. Explain the underlying concept from scratch — assume they've never heard of it.
+3. Use everyday words first, then the technical term (and immediately explain it).
+4. Use a real-life analogy from Zimbabwe if it helps.
+5. Walk through a step-by-step solution.
+6. End with a one-line exam tip.
+
+Use markdown freely: ## headings for sections, **bold** for key terms, numbered or bullet lists for steps. The goal is that the student not only gets the answer but actually understands WHY.`;
   }
 
   // AI message quota check

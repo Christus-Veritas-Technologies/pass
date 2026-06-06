@@ -25,6 +25,8 @@ import { MarkdownContent } from "@/lib/render-markdown";
 
 const API = process.env.NEXT_PUBLIC_SERVER_URL;
 
+interface SubPart { label: string; text: string; marks: number; }
+
 interface Question {
   id: string;
   questionNumber: number;
@@ -36,6 +38,7 @@ interface Question {
   hasDiagram?: boolean;
   diagramNote?: string | null;
   guideSource?: "AI_GENERATED" | "OFFICIAL";
+  subParts?: SubPart[] | null;
 }
 
 interface Paper {
@@ -69,6 +72,7 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
   const [completed, setCompleted] = useState<Set<number>>(new Set());
   const [sessionComplete, setSessionComplete] = useState(false);
 
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [pdfOpen, setPdfOpen] = useState(false);
   const [pdfPage, setPdfPage] = useState(1);
   const [pdfLoadError, setPdfLoadError] = useState(false);
@@ -225,6 +229,11 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
     }).catch(console.error);
     setSessionComplete(true);
   }
+
+  // Close feedback dialog whenever the student moves to a different question
+  // (prevents the "memory leak" of seeing Q1's feedback while on Q2)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setFeedbackOpen(false); }, [currentIndex]);
 
   const currentQ = questions[currentIndex];
   const answeredCount = completed.size;
@@ -443,6 +452,20 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
                 </div>
                 <FormattedQuestionText text={currentQ.text} />
 
+                {/* Sub-parts — rendered as labelled sections below the stem */}
+                {currentQ.subParts && currentQ.subParts.length > 0 && (
+                  <div className="mt-3 space-y-2 border-t border-border pt-3">
+                    {currentQ.subParts.map((sp) => (
+                      <div key={sp.label} className="rounded-lg bg-muted/40 px-3 py-2">
+                        <span className="text-xs font-bold text-primary mr-2">{sp.label}</span>
+                        <span className="text-xs text-muted-foreground mr-2">({sp.marks} mark{sp.marks !== 1 ? "s" : ""})</span>
+                        <span className="text-sm">{sp.text}</span>
+                      </div>
+                    ))}
+                    <p className="text-xs text-muted-foreground italic">Answer all parts in the box below — label each part (e.g. start with <strong>{currentQ.subParts[0]?.label}</strong>:).</p>
+                  </div>
+                )}
+
                 {/* Diagram-dependent question — link to the original PDF page */}
                 {currentQ.hasDiagram && (
                   <button
@@ -497,37 +520,67 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
               </Button>
             )}
 
-            {/* AI response */}
+            {/* Feedback available — show a button; full response opens in a dialog */}
             {(aiResponses[currentQ.questionNumber] || streaming) && (
-              <Card className="rounded-xl border-primary/20 bg-primary/5">
-                <CardContent className="py-4">
-                  <div className="flex items-center gap-2 mb-3 text-primary">
-                    <HugeiconsIcon icon={SparklesIcon} className="h-4 w-4" />
-                    <span className="text-xs font-semibold">AI {mode === "GUIDE" ? "Feedback" : "Solution"}</span>
-                    {mode === "GUIDE" && (
-                      <span
-                        className={cn(
-                          "ml-auto text-[10px] font-medium",
-                          currentQ.guideSource === "OFFICIAL"
-                            ? "text-emerald-600"
-                            : "text-muted-foreground",
-                        )}
-                      >
-                        {currentQ.guideSource === "OFFICIAL"
-                          ? "Official marking scheme"
-                          : "AI-estimated marking"}
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setFeedbackOpen(true)}
+                  className="rounded-xl gap-2"
+                  disabled={streaming}
+                >
+                  <HugeiconsIcon icon={SparklesIcon} className="h-4 w-4 text-primary" />
+                  {streaming ? "Getting feedback…" : `Show ${mode === "GUIDE" ? "Feedback" : "Solution"}`}
+                </Button>
+                {mode === "GUIDE" && !streaming && (
+                  <span className={cn(
+                    "text-[10px] font-medium",
+                    currentQ.guideSource === "OFFICIAL" ? "text-emerald-600" : "text-muted-foreground",
+                  )}>
+                    {currentQ.guideSource === "OFFICIAL" ? "Official scheme" : "AI-estimated"}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Feedback dialog — full-screen scrollable overlay */}
+            {feedbackOpen && aiResponses[currentQ.questionNumber] && (
+              <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+                onClick={() => setFeedbackOpen(false)}
+              >
+                <div
+                  className="w-full max-w-2xl max-h-[85vh] flex flex-col rounded-2xl bg-background shadow-2xl border border-border overflow-hidden"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* Dialog header */}
+                  <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+                    <div className="flex items-center gap-2 text-primary">
+                      <HugeiconsIcon icon={SparklesIcon} className="h-4 w-4" />
+                      <span className="text-sm font-semibold">
+                        {mode === "GUIDE" ? "AI Feedback" : "Worked Solution"} — Q{currentQ.questionNumber}
                       </span>
-                    )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setFeedbackOpen(false)}
+                      className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition-colors"
+                    >
+                      <HugeiconsIcon icon={Cancel01Icon} className="h-4 w-4" />
+                    </button>
                   </div>
-                  <div
-                    ref={aiBoxRef}
-                    className="max-h-72 overflow-y-auto"
-                  >
+                  {/* Scrollable content */}
+                  <div className="flex-1 overflow-y-auto px-5 py-4">
                     <MarkdownContent text={aiResponses[currentQ.questionNumber] ?? ""} />
-                    {streaming && <span className="ml-1 inline-block h-4 w-0.5 animate-pulse bg-primary" />}
                   </div>
-                </CardContent>
-              </Card>
+                  {/* Footer */}
+                  <div className="border-t border-border px-5 py-3">
+                    <Button size="sm" className="rounded-xl" onClick={() => setFeedbackOpen(false)}>
+                      Got it
+                    </Button>
+                  </div>
+                </div>
+              </div>
             )}
 
             {/* Next question / complete */}
