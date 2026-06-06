@@ -18,6 +18,7 @@ import { env } from "@pass/env/native";
 import { Button } from "@/components/ui/button";
 import { PdfViewerModal } from "@/components/pdf-viewer";
 import { FormattedQuestionText } from "@/lib/format-question";
+import { UpgradeModal } from "@/components/upgrade-modal";
 
 const BRAND = "#4F46E5";
 
@@ -198,6 +199,14 @@ export default function PaperSessionScreen() {
   const rafRef = useRef<number | undefined>(undefined);
   const [startError, setStartError] = useState<string | null>(null);
 
+  // Upgrade modal — shown when the server returns 402 for any quota-gated action
+  const [upgradeVisible, setUpgradeVisible] = useState(false);
+  const [upgradeMeta, setUpgradeMeta] = useState<{ feature: "papers" | "projects" | "downloads" | "aiMessages"; plan: string }>({ feature: "papers", plan: "FREE" });
+  function showUpgrade(feature: typeof upgradeMeta["feature"], plan: string) {
+    setUpgradeMeta({ feature, plan: plan ?? "FREE" });
+    setUpgradeVisible(true);
+  }
+
   // Cancel any pending scroll RAF when the component unmounts (prevents memory leak)
   useEffect(() => () => {
     if (rafRef.current !== undefined) cancelAnimationFrame(rafRef.current);
@@ -239,6 +248,7 @@ export default function PaperSessionScreen() {
         body: JSON.stringify({ mode }),
       });
       const data = await res.json();
+      if (res.status === 402) { showUpgrade("papers", (data as { plan?: string }).plan ?? "FREE"); return; }
       if (!res.ok) throw new Error(data.error ?? "Failed to start session");
       setSessionId(data.session?.id ?? null);
       setStarted(true);
@@ -275,6 +285,11 @@ export default function PaperSessionScreen() {
         body: JSON.stringify(body),
       });
 
+      if (res.status === 402) {
+        const d = await res.json().catch(() => ({}));
+        showUpgrade("aiMessages", (d as { plan?: string }).plan ?? "FREE");
+        return;
+      }
       if (!res.body) throw new Error("No response body");
 
       const reader = res.body.getReader();
@@ -348,11 +363,13 @@ export default function PaperSessionScreen() {
       if (status !== 200) {
         const text = await Promise.resolve(response.text());
         await RNBlobUtil.fs.unlink(filePath).catch(() => {});
-        let errObj: { error?: string; limitReached?: boolean } = {};
+        let errObj: { error?: string; limitReached?: boolean; plan?: string } = {};
         try { errObj = JSON.parse(text as string); } catch { /* */ }
-        showToast("error", errObj.limitReached
-          ? "Download limit reached — upgrade your plan for more."
-          : (errObj.error ?? `Download failed (${status}).`));
+        if (status === 402 || errObj.limitReached) {
+          showUpgrade("downloads", errObj.plan ?? "FREE");
+        } else {
+          showToast("error", errObj.error ?? `Download failed (${status}).`);
+        }
         return;
       }
 
@@ -410,6 +427,12 @@ export default function PaperSessionScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#FFFFFF" }} edges={["top"]}>
       <Toast visible={toastState.visible} variant={toastState.variant} message={toastState.message} />
+      <UpgradeModal
+        visible={upgradeVisible}
+        onClose={() => setUpgradeVisible(false)}
+        feature={upgradeMeta.feature}
+        plan={upgradeMeta.plan}
+      />
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12, gap: 12, borderBottomWidth: 1, borderBottomColor: "#F3F4F6" }}>
         <Pressable onPress={() => router.back()} hitSlop={8}>

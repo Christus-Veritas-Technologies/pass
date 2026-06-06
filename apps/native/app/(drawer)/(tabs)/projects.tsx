@@ -23,6 +23,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { useAppTheme } from "@/lib/theme-context";
 import { env } from "@pass/env/native";
+import { UpgradeModal } from "@/components/upgrade-modal";
 
 const API = env.EXPO_PUBLIC_SERVER_URL;
 
@@ -124,6 +125,10 @@ export default function ProjectsScreen() {
   const [genDone, setGenDone] = useState(false);
   const [genError, setGenError] = useState("");
   const abortRef = useRef<AbortController | null>(null);
+
+  // Upgrade modal
+  const [upgradeVisible, setUpgradeVisible] = useState(false);
+  const [upgradePlan, setUpgradePlan] = useState("FREE");
 
   async function getToken() {
     try { return await SecureStore.getItemAsync("pass_access_token"); } catch { return null; }
@@ -232,6 +237,12 @@ export default function ProjectsScreen() {
         signal: abort.signal,
       });
 
+      if (res.status === 402) {
+        const d = await res.json().catch(() => ({}));
+        setUpgradePlan((d as { plan?: string }).plan ?? "FREE");
+        setUpgradeVisible(true);
+        return;
+      }
       if (!res.ok) throw new Error("Generation failed");
 
       const reader = res.body?.getReader();
@@ -403,6 +414,12 @@ export default function ProjectsScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.cardSubtle }} edges={["top"]}>
       <Toast visible={toastState.visible} variant={toastState.variant} message={toastState.message} />
+      <UpgradeModal
+        visible={upgradeVisible}
+        onClose={() => setUpgradeVisible(false)}
+        feature="projects"
+        plan={upgradePlan}
+      />
       {/* Header */}
       <View style={{ backgroundColor: colors.card, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16 }}>
         <Text style={{ fontSize: 22, fontWeight: "700", color: colors.text, letterSpacing: -0.5 }}>Projects</Text>
