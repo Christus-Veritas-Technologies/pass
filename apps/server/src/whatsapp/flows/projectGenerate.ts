@@ -546,7 +546,13 @@ export async function generateProject(
   try {
     // ── Pass 1: Generate full project ───────────────────────────────────────
     await chat.sendStateTyping();
-    const result = await withRetry(() => projectAgent.generate(buildPrompt(slots, year)));
+    // Project generation can take 2–5 min for long A-Level projects.
+    // Pass an explicit 10-min abort signal to override any shorter default
+    // inside Mastra / the AI SDK, which causes DOMException { TimeoutError }.
+    const PROJECT_TIMEOUT = AbortSignal.timeout(10 * 60 * 1000);
+    const result = await withRetry(() =>
+      projectAgent.generate(buildPrompt(slots, year), { abortSignal: PROJECT_TIMEOUT }),
+    );
 
     let content = (result.text ?? "").trim();
     let wordCount = countWords(content);
@@ -556,7 +562,11 @@ export async function generateProject(
       await chat.sendStateTyping();
       console.log(`[projectGenerate] Pass 1: ${wordCount} words (target ${targetWords}) — running expansion pass`);
       try {
-        const expansion = await withRetry(() => projectAgent.generate(buildExpansionPrompt(content, slots, targetWords)));
+        const expansion = await withRetry(() =>
+          projectAgent.generate(buildExpansionPrompt(content, slots, targetWords), {
+            abortSignal: AbortSignal.timeout(10 * 60 * 1000),
+          }),
+        );
         const expanded = (expansion.text ?? "").trim();
         if (countWords(expanded) > wordCount) {
           content = expanded;

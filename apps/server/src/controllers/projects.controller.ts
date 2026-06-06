@@ -288,7 +288,9 @@ ${specialCharRules}`;
 
       await stream.writeSSE({ data: projectId, event: "project_id" });
 
-      const result = await projectAgent.stream(prompt);
+      const result = await projectAgent.stream(prompt, {
+        abortSignal: AbortSignal.timeout(10 * 60 * 1000), // 10 min
+      });
 
       for await (const chunk of result.textStream) {
         accumulatedContent += chunk;

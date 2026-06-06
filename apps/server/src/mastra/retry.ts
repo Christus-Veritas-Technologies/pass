@@ -7,9 +7,13 @@
  * less often.
  */
 
-const TRANSIENT_RE = /overload|rate.?limit|too.many.request|timeout|socket|network|ECONNRESET|ENOTFOUND|529|529/i;
+const TRANSIENT_RE = /overload|rate.?limit|too.many.request|socket|network|ECONNRESET|ENOTFOUND/i;
 
 function isTransient(err: unknown): boolean {
+  // Never retry on a true timeout — the caller supplied an explicit AbortSignal
+  // and it fired; retrying with the same (already-fired) signal will fail instantly.
+  const name = (err as { name?: string }).name;
+  if (name === "TimeoutError" || name === "AbortError") return false;
   const msg = err instanceof Error ? err.message : String(err);
   const status = (err as { status?: number }).status;
   return TRANSIENT_RE.test(msg) || status === 529 || status === 429 || status === 503;
