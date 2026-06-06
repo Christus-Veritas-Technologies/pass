@@ -17,7 +17,7 @@ import { gradeAnswer, effectiveGuide } from "../../lib/grading";
 import { explainAgent } from "../../mastra/agents/explain.agent";
 import { withRetry } from "../../mastra/retry";
 import { checkAndIncrementAiMessage, getAiMessageUsage } from "../../lib/aiQuota";
-import { PLAN_LIMITS, currentMonthKey, type PlanKey } from "../../lib/planLimits";
+import { PLAN_LIMITS, currentMonthKey, type PlanKey, AMBASSADOR_LIMIT } from "../../lib/planLimits";
 import { sendPaperPdf } from "../media/sendPaper";
 import { recalculateScore } from "./scoring";
 import {
@@ -45,24 +45,24 @@ export async function startPaper(
   const chat = await msg.getChat();
   const whatsappId = chat.id._serialized;
 
-  // Enforce monthly paper quota (bonus credits extend the limit)
+  // Enforce monthly paper quota (bonus credits extend the limit; ambassadors get 1 000/mo)
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { plan: true, bonusPapers: true },
+    select: { plan: true, bonusPapers: true, isAmbassador: true },
   });
   if (user) {
-    const limits = PLAN_LIMITS[user.plan as PlanKey];
+    const limit = user.isAmbassador ? AMBASSADOR_LIMIT : PLAN_LIMITS[user.plan as PlanKey].papers;
     const month = currentMonthKey();
     const usage = await prisma.monthlyUsage.findUnique({
       where: { userId_month: { userId, month } },
     });
     const papersUsed = usage?.papersUsed ?? 0;
-    if (papersUsed >= limits.papers) {
-      if ((user.bonusPapers ?? 0) > 0) {
+    if (papersUsed >= limit) {
+      if (!user.isAmbassador && (user.bonusPapers ?? 0) > 0) {
         // Consume one bonus credit
         await prisma.user.update({ where: { id: userId }, data: { bonusPapers: { decrement: 1 } } });
       } else {
-        await msg.reply(papersQuotaMessage(user.plan, limits.papers));
+        await msg.reply(papersQuotaMessage(user.plan, limit));
         return { ...state, mode: { kind: "idle" } };
       }
     } else {
