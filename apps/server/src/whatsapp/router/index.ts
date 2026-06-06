@@ -15,7 +15,7 @@ import { matchHardIntent } from "./hardIntents";
 import { sendWelcomeUnlinked, sendHelp, sendUsageCard } from "../flows/welcome";
 import { startLinking, tryConsumeCode } from "../flows/linking";
 import { startSignup, handleSignupReply, startSignin, handleSigninReply } from "../flows/auth";
-import { showPapers, startPaperBrowse, handlePaperBrowseSetup, setPaperListCache, getPaperFromCache } from "../flows/paperBrowse";
+import { showPapers, startPaperBrowse, handlePaperBrowseSetup, setPaperListCache, getPaperFromCache, matchItem, getAvailableGrades, getAvailableSubjects } from "../flows/paperBrowse";
 import { startPaper, poseNextQuestion, gradeStudentAnswer, explainQuestion } from "../flows/paperStudy";
 import { startProjectBrief, handleProjectBriefReply, repromptProjectBrief } from "../flows/projectBrief";
 import { generateProject } from "../flows/projectGenerate";
@@ -576,6 +576,49 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
     }
 
     await msg.reply("Reply *1* to study this paper or *2* to download the PDF.");
+    await saveState(whatsappId, state);
+    return;
+  }
+
+  // ── browsing_papers free-text fallback ────────────────────────────────────
+  // When the user types something that isn't a number/command while browsing
+  // (e.g. "A level", "Biology", "Form 4"), try to interpret it as a
+  // grade/subject filter. This prevents the text falling to the AI, which has
+  // no paper-browsing context and produces confusing responses.
+  if (state.mode.kind === "browsing_papers") {
+    const currentFilter = state.mode.filter;
+    // Try as a grade (e.g. "A level", "form 6", "O-Level")
+    const grades = await getAvailableGrades();
+    const matchedGrade = matchItem(text, grades);
+    if (matchedGrade) {
+      const { newState, paperIds } = await startPaperBrowse(msg, state, {
+        subject: currentFilter.subject, // keep existing subject filter
+        grade: matchedGrade,
+      });
+      setPaperListCache(whatsappId, paperIds);
+      await saveState(whatsappId, newState);
+      return;
+    }
+    // Try as a subject (e.g. "maths", "biology")
+    const subjects = currentFilter.grade
+      ? await getAvailableSubjects(currentFilter.grade)
+      : [];
+    const matchedSubject = matchItem(text, subjects);
+    if (matchedSubject) {
+      const { newState, paperIds } = await showPapers(
+        msg,
+        { ...currentFilter, subject: matchedSubject },
+        0,
+        state,
+      );
+      setPaperListCache(whatsappId, paperIds);
+      await saveState(whatsappId, newState);
+      return;
+    }
+    // Not a grade or subject — offer a clear guide
+    await msg.reply(
+      `Reply a *number* to study a paper, *download N* for the PDF, or *more* for the next page.\n\nTo filter, tell me the level or subject (e.g. _"A level"_, _"Biology"_).`,
+    );
     await saveState(whatsappId, state);
     return;
   }

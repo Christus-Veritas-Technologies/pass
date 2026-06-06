@@ -28,7 +28,7 @@ const PAGE_SIZE = 10;
 
 // ── DB helpers ────────────────────────────────────────────────────────────────
 
-async function getAvailableGrades(): Promise<string[]> {
+export async function getAvailableGrades(): Promise<string[]> {
   const rows = await prisma.resource.findMany({
     where: { type: "PAST_PAPER" },
     select: { grade: true },
@@ -38,7 +38,7 @@ async function getAvailableGrades(): Promise<string[]> {
   return rows.map((r) => r.grade).filter(Boolean);
 }
 
-async function getAvailableSubjects(grade: string): Promise<string[]> {
+export async function getAvailableSubjects(grade: string): Promise<string[]> {
   const rows = await prisma.resource.findMany({
     where: { type: "PAST_PAPER", grade },
     select: { subject: true },
@@ -51,7 +51,7 @@ async function getAvailableSubjects(grade: string): Promise<string[]> {
 // ── Grade/subject fuzzy match ────────────────────────────────────────────────
 
 /** Case-insensitive match of user input against a list of DB values. */
-function matchItem(input: string, list: string[]): string | undefined {
+export function matchItem(input: string, list: string[]): string | undefined {
   const t = input.trim().toLowerCase();
   // Exact match first
   const exact = list.find((item) => item.toLowerCase() === t);
