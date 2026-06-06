@@ -21,13 +21,30 @@ import { FormattedQuestionText } from "@/lib/format-question";
 const BRAND = "#4F46E5";
 
 /**
- * Renders AI plain-text responses with:
- *   * bullet support  ("* item" lines → bullet points)
- *   blank-line paragraph breaks
- *   numbered lists    ("1. item" lines)
- * The AI no longer emits markdown headings or bold/italic, but we keep
- * basic inline handling as a safety net.
+ * Renders AI markdown responses in React Native.
+ *
+ * Supports: # / ## / ### headings, **bold**, *italic*,
+ *   - / * / • bullet lists, 1. numbered lists, blank-line paragraph breaks.
+ * Matches the web MarkdownContent component's feature set.
  */
+function InlineText({ text, color = "#1E293B", baseSize = 13 }: { text: string; color?: string; baseSize?: number }) {
+  // Split on **bold**, *italic*, `code` spans
+  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*\n]+\*|`[^`]+`)/g);
+  return (
+    <Text>
+      {parts.map((part, i) => {
+        if (part.startsWith("**") && part.endsWith("**"))
+          return <Text key={i} style={{ fontWeight: "700", fontSize: baseSize, color }}>{part.slice(2, -2)}</Text>;
+        if (part.startsWith("*") && part.endsWith("*") && part.length > 2)
+          return <Text key={i} style={{ fontStyle: "italic", fontSize: baseSize, color }}>{part.slice(1, -1)}</Text>;
+        if (part.startsWith("`") && part.endsWith("`"))
+          return <Text key={i} style={{ fontFamily: "monospace", fontSize: baseSize - 1, color: BRAND, backgroundColor: "#EEF2FF" }}>{part.slice(1, -1)}</Text>;
+        return <Text key={i} style={{ fontSize: baseSize, color }}>{part}</Text>;
+      })}
+    </Text>
+  );
+}
+
 function RenderMarkdown({ text, color = "#1E293B" }: { text: string; color?: string }) {
   const elements: React.ReactNode[] = [];
   let bulletBuffer: string[] = [];
@@ -40,7 +57,7 @@ function RenderMarkdown({ text, color = "#1E293B" }: { text: string; color?: str
       elements.push(
         <View key={key++} style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, marginBottom: 5 }}>
           <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: BRAND, marginTop: 8, flexShrink: 0 }} />
-          <Text style={{ flex: 1, fontSize: 13, color, lineHeight: 21 }}>{item}</Text>
+          <InlineText text={item} color={color} />
         </View>,
       );
     });
@@ -53,7 +70,7 @@ function RenderMarkdown({ text, color = "#1E293B" }: { text: string; color?: str
       elements.push(
         <View key={key++} style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, marginBottom: 5 }}>
           <Text style={{ fontSize: 13, color: BRAND, fontWeight: "600", minWidth: 18 }}>{idx + 1}.</Text>
-          <Text style={{ flex: 1, fontSize: 13, color, lineHeight: 21 }}>{item}</Text>
+          <InlineText text={item} color={color} />
         </View>,
       );
     });
@@ -61,29 +78,51 @@ function RenderMarkdown({ text, color = "#1E293B" }: { text: string; color?: str
   }
 
   for (const line of text.split("\n")) {
-    // ── * bullet (AI plain-text format) ──────────────────────────────────────
-    if (/^\*\s+/.test(line)) {
+    // ── Headings ────────────────────────────────────────────────────────────
+    if (/^#{3,}\s+/.test(line)) {
+      flushBullets(); flushNumbered();
+      elements.push(
+        <Text key={key++} style={{ fontSize: 13, fontWeight: "700", color, marginTop: 10, marginBottom: 3 }}>
+          {line.replace(/^#{3,}\s+/, "")}
+        </Text>,
+      );
+    } else if (line.startsWith("## ")) {
+      flushBullets(); flushNumbered();
+      elements.push(
+        <Text key={key++} style={{ fontSize: 15, fontWeight: "700", color, marginTop: 12, marginBottom: 4 }}>
+          {line.slice(3)}
+        </Text>,
+      );
+    } else if (line.startsWith("# ")) {
+      flushBullets(); flushNumbered();
+      elements.push(
+        <Text key={key++} style={{ fontSize: 16, fontWeight: "700", color, marginTop: 14, marginBottom: 4 }}>
+          {line.slice(2)}
+        </Text>,
+      );
+    // ── * bullet ──────────────────────────────────────────────────────────
+    } else if (/^\*\s+/.test(line)) {
       flushNumbered();
       bulletBuffer.push(line.replace(/^\*\s+/, ""));
-    // ── - or • bullet ─────────────────────────────────────────────────────────
+    // ── - or • bullet ──────────────────────────────────────────────────────
     } else if (/^[-•]\s+/.test(line)) {
       flushNumbered();
       bulletBuffer.push(line.replace(/^[-•]\s+/, ""));
-    // ── Numbered list ─────────────────────────────────────────────────────────
+    // ── Numbered list ───────────────────────────────────────────────────────
     } else if (/^\d+\.\s+/.test(line)) {
       flushBullets();
       numberedBuffer.push(line.replace(/^\d+\.\s+/, ""));
-    // ── Blank line → paragraph break ─────────────────────────────────────────
+    // ── Blank line → paragraph break ───────────────────────────────────────
     } else if (line.trim() === "") {
       flushBullets(); flushNumbered();
       elements.push(<View key={key++} style={{ height: 8 }} />);
-    // ── Plain text paragraph ──────────────────────────────────────────────────
+    // ── Plain text paragraph ────────────────────────────────────────────────
     } else {
       flushBullets(); flushNumbered();
       elements.push(
-        <Text key={key++} style={{ fontSize: 13, color, lineHeight: 21, marginBottom: 2 }}>
-          {line}
-        </Text>,
+        <View key={key++} style={{ marginBottom: 2 }}>
+          <InlineText text={line} color={color} />
+        </View>,
       );
     }
   }
