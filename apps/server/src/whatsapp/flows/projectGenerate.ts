@@ -473,6 +473,27 @@ Return the COMPLETE expanded project (not just the additions):
 ${preview}`;
 }
 
+// ── Stream helper ─────────────────────────────────────────────────────────────
+
+/**
+ * Drain a Mastra agent stream into a plain string.
+ *
+ * Using stream() instead of generate() ensures AbortSignal propagation works
+ * correctly through Mastra 1.37.1's execution pipeline: generate() internally
+ * hits a `shouldThrowError:false` code-path for single-model agents that
+ * swallows the AbortSignal and resolves with empty text rather than throwing.
+ */
+async function collectStream(
+  streamPromise: ReturnType<typeof projectAgent.stream>,
+): Promise<string> {
+  const result = await streamPromise;
+  let text = "";
+  for await (const chunk of result.textStream) {
+    text += chunk;
+  }
+  return text;
+}
+
 // ── Main generator ────────────────────────────────────────────────────────────
 
 export async function generateProject(
@@ -545,16 +566,17 @@ export async function generateProject(
 
   try {
     // ── Pass 1: Generate full project ───────────────────────────────────────
+    // Use stream() rather than generate() so the abort signal propagates
+    // reliably through Mastra 1.37.1's execution pipeline.  generate() hits
+    // a shouldThrowError:false code-path for single-model agents that
+    // silently swallows the AbortSignal and resolves with empty text instead
+    // of throwing — causing a spurious TimeoutError later.
     await chat.sendStateTyping();
-    // Project generation can take 2–5 min for long A-Level projects.
-    // Pass an explicit 10-min abort signal to override any shorter default
-    // inside Mastra / the AI SDK, which causes DOMException { TimeoutError }.
-    const PROJECT_TIMEOUT = AbortSignal.timeout(10 * 60 * 1000);
-    const result = await withRetry(() =>
-      projectAgent.generate(buildPrompt(slots, year), { abortSignal: PROJECT_TIMEOUT }),
-    );
-
-    let content = (result.text ?? "").trim();
+    const pass1Signal = AbortSignal.timeout(15 * 60 * 1000); // 15 min
+    let content = await withRetry(() => collectStream(
+      projectAgent.stream(buildPrompt(slots, year), { abortSignal: pass1Signal }),
+    ));
+    content = content.trim();
     let wordCount = countWords(content);
 
     // ── Pass 2: Quality check — expand if too short ─────────────────────────
@@ -562,12 +584,10 @@ export async function generateProject(
       await chat.sendStateTyping();
       console.log(`[projectGenerate] Pass 1: ${wordCount} words (target ${targetWords}) — running expansion pass`);
       try {
-        const expansion = await withRetry(() =>
-          projectAgent.generate(buildExpansionPrompt(content, slots, targetWords), {
-            abortSignal: AbortSignal.timeout(10 * 60 * 1000),
-          }),
-        );
-        const expanded = (expansion.text ?? "").trim();
+        const pass2Signal = AbortSignal.timeout(15 * 60 * 1000);
+        const expanded = (await withRetry(() => collectStream(
+          projectAgent.stream(buildExpansionPrompt(content, slots, targetWords), { abortSignal: pass2Signal }),
+        ))).trim();
         if (countWords(expanded) > wordCount) {
           content = expanded;
           wordCount = countWords(content);
