@@ -23,7 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@pass/ui/components/table";
-import { clearTokens, getAccessToken } from "@/lib/auth";
+import { authedFetch, getAccessToken } from "@/lib/auth";
 
 const API = process.env.NEXT_PUBLIC_SERVER_URL;
 const PAGE_SIZE = 10;
@@ -150,18 +150,8 @@ export default function StudyPage() {
   const [page, setPage] = useState(1);
 
   useEffect(() => {
-    const token = getAccessToken();
-    fetch(`${API}/study/stats`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    })
-      .then((r) => {
-        if (r.status === 401) {
-          clearTokens();
-          router.replace("/login");
-          return null;
-        }
-        return r.json();
-      })
+    authedFetch(`${API}/study/stats`, { token: getAccessToken() ?? undefined })
+      .then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (d) setData(d?.sessions !== undefined ? d : null); })
       .catch(() => {})
       .finally(() => setLoading(false));

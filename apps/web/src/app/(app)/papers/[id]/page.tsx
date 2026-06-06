@@ -19,7 +19,7 @@ import { Card, CardContent } from "@pass/ui/components/card";
 import { Progress } from "@pass/ui/components/progress";
 import { Skeleton } from "@pass/ui/components/skeleton";
 import { cn } from "@/lib/utils";
-import { clearTokens, getAccessToken } from "@/lib/auth";
+import { authedFetch, getAccessToken } from "@/lib/auth";
 import { FormattedQuestionText } from "@/lib/format-question";
 import { MarkdownContent } from "@/lib/render-markdown";
 
@@ -105,10 +105,8 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
     const token = getAccessToken();
     if (!token) { router.push("/login"); return; }
     try {
-      const res = await fetch(`${API}/papers/${id}/download`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.status === 401) { clearTokens(); router.replace("/login"); return; }
+      const res = await authedFetch(`${API}/papers/${id}/download`, { token: token ?? undefined });
+      if (res.status === 401) return; // authedFetch already redirected
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error((err as { error?: string }).error ?? "Download failed");
@@ -136,20 +134,14 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
     setStartError(null);
     const token = getAccessToken();
     try {
-      const res = await fetch(`${API}/papers/${id}/session/start`, {
+      const res = await authedFetch(`${API}/papers/${id}/session/start`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mode }),
+        token: token ?? undefined,
       });
       const data = await res.json();
-      if (res.status === 401) {
-        clearTokens();
-        router.replace("/login");
-        return;
-      }
+      if (res.status === 401) return; // authedFetch already redirected
       if (!res.ok) throw new Error(data.error ?? "Failed to start session");
       setSessionId(data.session?.id ?? null);
       setStarted(true);
@@ -176,20 +168,13 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
     if (mode === "GUIDE") body.userAnswer = answers[q.questionNumber] ?? "";
 
     try {
-      const res = await fetch(`${API}/papers/session/${sessionId}/answer`, {
+      const res = await authedFetch(`${API}/papers/session/${sessionId}/answer`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
+        token: token ?? undefined,
       });
-
-      if (res.status === 401) {
-        clearTokens();
-        router.replace("/login");
-        return;
-      }
+      if (res.status === 401) return; // authedFetch already redirected
       if (!res.body) return;
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -234,15 +219,10 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
   async function handleComplete() {
     if (!sessionId) return;
     const token = getAccessToken();
-    const res = await fetch(`${API}/papers/session/${sessionId}/complete`, {
+    await authedFetch(`${API}/papers/session/${sessionId}/complete`, {
       method: "POST",
-      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      token: token ?? undefined,
     }).catch(console.error);
-    if (res && res.status === 401) {
-      clearTokens();
-      router.replace("/login");
-      return;
-    }
     setSessionComplete(true);
   }
 

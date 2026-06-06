@@ -151,6 +151,35 @@ export function isTokenExpired(token: string): boolean {
   }
 }
 
+// Re-export SESSION_EXPIRED sentinel so callers can match it
+export const SESSION_EXPIRED = "SESSION_EXPIRED";
+
+/**
+ * Drop-in replacement for fetch() that handles 401 responses automatically.
+ * On 401: clears tokens and redirects to /login.
+ * Use wherever you'd call fetch() directly inside (app) pages instead of
+ * going through authedRequest(), so stale sessions are caught consistently.
+ */
+export async function authedFetch(
+  input: RequestInfo | URL,
+  init?: RequestInit & { token?: string },
+): Promise<Response> {
+  const token = init?.token ?? getAccessToken();
+  const { token: _t, ...rest } = init ?? {};
+  const res = await fetch(input, {
+    ...rest,
+    headers: {
+      ...rest.headers,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  if (res.status === 401) {
+    clearTokens();
+    if (typeof window !== "undefined") window.location.replace("/login");
+  }
+  return res;
+}
+
 export function isLoggedIn(): boolean {
   const token = getAccessToken();
   if (!token) return false;
