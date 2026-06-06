@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@pass/ui/components/button";
 import { Card, CardContent } from "@pass/ui/components/card";
 import { getAccessToken } from "@/lib/auth";
+import { UpgradeDialog } from "@/components/upgrade-dialog";
 
 const API = process.env.NEXT_PUBLIC_SERVER_URL;
 
@@ -122,6 +123,10 @@ export default function NewProjectPage() {
   const [genError, setGenError] = useState("");
   const abortRef = useRef<AbortController | null>(null);
 
+  // Upgrade dialog
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [upgradePlan, setUpgradePlan] = useState("FREE");
+
   // Pre-fill name / school / grade from the authenticated session on mount
   useEffect(() => {
     const token = getAccessToken();
@@ -188,6 +193,13 @@ export default function NewProjectPage() {
         router.push("/login?redirect=/projects/new");
         return;
       }
+      if (res.status === 402) {
+        const err = await res.json().catch(() => ({}));
+        setUpgradePlan((err as { plan?: string }).plan ?? "FREE");
+        setUpgradeOpen(true);
+        setGenerating(false);
+        return;
+      }
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error((err as { error?: string }).error ?? "Generation failed");
@@ -247,6 +259,13 @@ export default function NewProjectPage() {
 
   return (
     <div className="mx-auto max-w-2xl animate-fade-up">
+      <UpgradeDialog
+        open={upgradeOpen}
+        onClose={() => setUpgradeOpen(false)}
+        feature="projects"
+        plan={upgradePlan}
+      />
+
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <button

@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { authedFetch, getAccessToken } from "@/lib/auth";
 import { FormattedQuestionText } from "@/lib/format-question";
 import { MarkdownContent } from "@/lib/render-markdown";
+import { UpgradeDialog } from "@/components/upgrade-dialog";
 
 const API = process.env.NEXT_PUBLIC_SERVER_URL;
 
@@ -80,6 +81,15 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
+  // Upgrade dialog state — shown when a 402 is received from any quota-gated action
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [upgradeMeta, setUpgradeMeta] = useState<{ feature: "papers" | "projects" | "downloads" | "aiMessages"; plan: string }>({ feature: "papers", plan: "FREE" });
+
+  function showUpgrade(feature: typeof upgradeMeta["feature"], plan: string) {
+    setUpgradeMeta({ feature, plan: plan ?? "FREE" });
+    setUpgradeOpen(true);
+  }
+
   const pdfUrl = paper?.fileUrl ? `${API}${paper.fileUrl}` : "";
   function openPdf(page = 1) {
     setPdfPage(page);
@@ -111,6 +121,11 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
     try {
       const res = await authedFetch(`${API}/papers/${id}/download`, { token: token ?? undefined });
       if (res.status === 401) return; // authedFetch already redirected
+      if (res.status === 402) {
+        const d = await res.json().catch(() => ({}));
+        showUpgrade("downloads", (d as { plan?: string }).plan ?? "FREE");
+        return;
+      }
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error((err as { error?: string }).error ?? "Download failed");
@@ -146,6 +161,7 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
       });
       const data = await res.json();
       if (res.status === 401) return; // authedFetch already redirected
+      if (res.status === 402) { showUpgrade("papers", (data as { plan?: string }).plan ?? "FREE"); return; }
       if (!res.ok) throw new Error(data.error ?? "Failed to start session");
       setSessionId(data.session?.id ?? null);
       setStarted(true);
@@ -179,6 +195,11 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
         token: token ?? undefined,
       });
       if (res.status === 401) return; // authedFetch already redirected
+      if (res.status === 402) {
+        const d = await res.json().catch(() => ({}));
+        showUpgrade("aiMessages", (d as { plan?: string }).plan ?? "FREE");
+        return;
+      }
       if (!res.body) return;
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -295,6 +316,13 @@ export default function PaperSessionPage({ params }: { params: Promise<{ id: str
 
   return (
     <div className="mx-auto max-w-5xl space-y-5">
+      <UpgradeDialog
+        open={upgradeOpen}
+        onClose={() => setUpgradeOpen(false)}
+        feature={upgradeMeta.feature}
+        plan={upgradeMeta.plan}
+      />
+
       {/* Header */}
       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
         <Link href="/resources" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors">
