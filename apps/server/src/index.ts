@@ -4,6 +4,7 @@ import { env } from "@pass/env/server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
+import { rateLimit } from "./middleware/rateLimit";
 import aiRoutes from "./routes/ai.routes";
 import authRoutes from "./routes/auth.routes";
 import papersRoutes from "./routes/papers.routes";
@@ -46,6 +47,14 @@ app.use(
     credentials: true,
   }),
 );
+
+// ─── Rate limiting ────────────────────────────────────────────────────────────
+// Global cap blunts scraping/DoS; tighter caps protect auth (brute force) and the
+// payment webhook (forgery/replay spam). Static paper assets are cached immutably
+// by the browser, so the global window is generous enough not to disrupt study.
+app.use("/*", rateLimit({ windowMs: 60_000, max: 200 }));
+app.use("/auth/*", rateLimit({ windowMs: 15 * 60_000, max: 40, key: "auth" }));
+app.use("/payments/*", rateLimit({ windowMs: 60_000, max: 30, key: "pay" }));
 
 app.get("/", (c) => c.text("OK"));
 
