@@ -216,11 +216,8 @@ function coverParagraphs(project: Project): (Paragraph | Table)[] {
       alignment: AlignmentType.CENTER,
       spacing: { after: 240 },
     }),
-    new Paragraph({
-      children: [new TextRun({ text: project.topic || `${project.subject} Heritage Project`, bold: true, size: 48, color: PRIMARY })],
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 160 },
-    }),
+    // The long project title is intentionally omitted from the cover — only the
+    // candidate's information is shown. The title appears as the body H1.
     new Paragraph({
       children: [new TextRun({ text: `Heritage-Based Curriculum (HBC 5.0) — ${project.subject}`, size: 22, color: "555555", italics: true })],
       alignment: AlignmentType.CENTER,

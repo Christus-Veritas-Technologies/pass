@@ -231,7 +231,8 @@ export function buildProjectHtml(
       Heritage-Based Curriculum Project
     </p>
     <hr class="cover-rule"/>
-    <h1 class="cover-title" style="border:none;padding:0;margin-bottom:12px;">${esc(project.topic)}</h1>
+    <!-- The long project title is intentionally omitted from the cover — only the
+         candidate's information is shown here. The title appears as the body H1. -->
     <p class="cover-subtitle">HBC 5.0 — ${esc(project.subject)}</p>
 
     <table class="info-table">

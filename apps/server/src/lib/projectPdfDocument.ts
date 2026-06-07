@@ -309,11 +309,9 @@ function renderCoverPage(doc: PDFDoc, project: Project) {
   hRule(doc, ML, y, CW, RULE_GREY);
   y += 20;
 
-  // Title
-  const title = sanitizeMeta(project.topic || `${project.subject} Heritage Project`);
-  doc.font("Helvetica-Bold").fontSize(22).fillColor(BLACK)
-    .text(title, ML, y, { width: CW, align: "center", lineBreak: true });
-  y = (doc.y as number) + 10;
+  // Note: the long project title is intentionally NOT shown on the cover — the
+  // cover carries only the candidate's information. The title appears as the
+  // document's H1 on the first body page.
 
   // Subject + grade badge
   doc.font("Helvetica").fontSize(11).fillColor(MID_GREY)
