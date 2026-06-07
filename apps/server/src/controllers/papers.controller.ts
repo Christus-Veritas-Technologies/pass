@@ -86,15 +86,25 @@ export async function startSession(c: Context) {
     const plan = await effectivePlan(userId, user.plan);
     const limits = PLAN_LIMITS[plan as PlanKey];
     const month = currentMonthKey();
-    const usage = await prisma.monthlyUsage.findUnique({
+
+    // Atomically consume one paper if under the monthly limit, else fall back to
+    // a bonus credit (also atomic). Conditional updates prevent concurrent
+    // requests from over-spending the limit or double-spending bonus credits.
+    await prisma.monthlyUsage.upsert({
       where: { userId_month: { userId, month } },
+      create: { userId, month, papersUsed: 0, projectsUsed: 0 },
+      update: {},
     });
-    if ((usage?.papersUsed ?? 0) >= limits.papers) {
-      // Check bonus papers before rejecting
-      const userFull = await prisma.user.findUnique({ where: { id: userId }, select: { bonusPapers: true } });
-      if ((userFull?.bonusPapers ?? 0) > 0) {
-        await prisma.user.update({ where: { id: userId }, data: { bonusPapers: { decrement: 1 } } });
-      } else {
+    const consumed = await prisma.monthlyUsage.updateMany({
+      where: { userId_month: { userId, month }, papersUsed: { lt: limits.papers } },
+      data: { papersUsed: { increment: 1 } },
+    });
+    if (consumed.count === 0) {
+      const bonus = await prisma.user.updateMany({
+        where: { id: userId, bonusPapers: { gt: 0 } },
+        data: { bonusPapers: { decrement: 1 } },
+      });
+      if (bonus.count === 0) {
         return c.json({
           error: "Monthly paper limit reached for your plan",
           limitReached: true,
@@ -102,12 +112,6 @@ export async function startSession(c: Context) {
           limit: limits.papers,
         }, 402);
       }
-    } else {
-      await prisma.monthlyUsage.upsert({
-        where: { userId_month: { userId, month } },
-        create: { userId, month, papersUsed: 1, projectsUsed: 0 },
-        update: { papersUsed: { increment: 1 } },
-      });
     }
   }
 
