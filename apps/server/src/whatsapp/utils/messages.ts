@@ -369,6 +369,42 @@ Category: ${slots.category}
 🧠 _Choosing an authentic topic and writing all sections — this takes 30–60 seconds…_`;
 }
 
+/**
+ * Pre-generation confirmation card. Shown once the brief is complete so the
+ * student can review every field before committing to a (slow) generation
+ * instead of being locked in the moment the last slot is filled.
+ */
+export function projectReviewMessage(slots: {
+  studentName: string;
+  schoolName: string;
+  centreNumber: string;
+  candidateNumber: string;
+  grade: string;
+  subject: string;
+  category: string;
+  title: string;
+  outline: string;
+}): string {
+  const name = slots.studentName && slots.studentName !== "_" ? slots.studentName : "—";
+  const school = slots.schoolName && slots.schoolName !== "_" ? slots.schoolName : "—";
+  const title = slots.title?.trim() ? slots.title.trim() : "_(I'll choose a topic)_";
+  const outline = slots.outline?.trim() ? "_(your outline will be followed)_" : "_(none)_";
+  return `*Please check your project details* 📋
+
+👤 Name: *${name}*
+🏫 School: ${school}
+🔢 Centre: ${slots.centreNumber || "—"} · Candidate: ${slots.candidateNumber || "—"}
+🎓 Grade: ${slots.grade} · Subject: *${slots.subject}*
+🗂 Category: ${slots.category}
+✏️ Topic: ${title}
+📝 Outline: ${outline}`;
+}
+
+export const PROJECT_CONFIRM_PROMPT = `All correct? Reply *GENERATE* to start ✅ — it takes a short while.
+Reply *EDIT* to redo the details, or *CANCEL* to stop.`;
+
+export const PROJECT_CONFIRM_RETRY = `Sorry, I didn't catch that. Reply *GENERATE* to start, *EDIT* to change something, or *CANCEL* to stop.`;
+
 export function projectDoneMessage(subject: string, topic: string, pages: number): string {
   return `✅ *Your project is ready!*
 

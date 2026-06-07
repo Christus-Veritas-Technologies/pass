@@ -45,6 +45,7 @@ function currentFeature(mode: ConversationMode): Feature {
     case "paper_action_choice":
       return "papers";
     case "project_brief":
+    case "project_confirm":
     case "project_generating":
       return "project";
     case "signing_up":
@@ -91,6 +92,7 @@ function hardSwitchToAction(hard: HardIntentResult): NlAction | null {
 /** A switch that would just restart the flow the user is already in — ignore it. */
 function restartsSameFlow(mode: ConversationMode, action: NlAction): boolean {
   if (mode.kind === "project_brief" && action.kind === "generate_project") return true;
+  if (mode.kind === "project_confirm" && action.kind === "generate_project") return true;
   if (mode.kind === "upgrading" && action.kind === "upgrade_plan") return true;
   return false;
 }
