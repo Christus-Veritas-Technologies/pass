@@ -4,6 +4,8 @@ import { z } from "zod";
 import prisma from "@pass/db";
 import { PLAN_LIMITS, AMBASSADOR_LIMIT, type PlanKey, currentMonthKey } from "../lib/planLimits";
 import { getReferralCode } from "../lib/referrals";
+import { env } from "@pass/env/server";
+import { deleteObject } from "../lib/r2";
 
 const USER_SELECT = {
   id: true, email: true, name: true, grade: true, school: true, plan: true, avatarUrl: true, isAmbassador: true,
@@ -101,11 +103,27 @@ export async function updateMe(c: Context): Promise<Response> {
   const parsed = updateMeSchema.safeParse(body);
   if (!parsed.success) return c.json({ error: "Invalid request body" }, 400);
 
+  // If the avatar is changing, capture the previous one so we can delete it from
+  // R2 afterwards (otherwise replaced uploads accumulate forever).
+  let previousAvatar: string | null = null;
+  if (parsed.data.avatarUrl !== undefined) {
+    const prev = await prisma.user.findUnique({ where: { id: userId }, select: { avatarUrl: true } });
+    previousAvatar = prev?.avatarUrl ?? null;
+  }
+
   const user = await prisma.user.update({
     where: { id: userId },
     data: parsed.data,
     select: USER_SELECT,
   });
+
+  // Best-effort cleanup of the replaced avatar — only R2-hosted uploads (skip
+  // Google/external URLs), and only when it actually changed.
+  const base = env.R2_PUBLIC_URL?.replace(/\/$/, "");
+  if (base && previousAvatar && previousAvatar !== user.avatarUrl && previousAvatar.startsWith(base)) {
+    const key = previousAvatar.slice(base.length + 1);
+    if (key) deleteObject(key).catch((err) => console.error("[users] avatar cleanup failed:", err));
+  }
 
   return c.json({ user });
 }
