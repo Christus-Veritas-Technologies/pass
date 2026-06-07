@@ -1,6 +1,7 @@
 import prisma from "@pass/db";
 import type { Plan, SubscriptionStatus } from "@pass/db";
 import { PLAN_LIMITS } from "./planLimits";
+import { effectivePlan } from "./effectivePlan";
 import { sendNotification } from "./notifications";
 
 /**
@@ -179,7 +180,7 @@ export async function checkPlanLimit(userId: string, resource: "paper" | "projec
     where: { userId_month: { userId, month } },
   });
 
-  const planLimits = PLAN_LIMITS[user.plan];
+  const planLimits = PLAN_LIMITS[await effectivePlan(userId, user.plan)];
   const limit = resource === "paper" ? planLimits.papers : planLimits.projects;
   const used = resource === "paper" ? (usage?.papersUsed || 0) : (usage?.projectsUsed || 0);
 
@@ -213,10 +214,11 @@ export async function getPlanUsage(userId: string): Promise<{
     where: { userId_month: { userId, month } },
   });
 
-  const limits = PLAN_LIMITS[user.plan];
+  const plan = await effectivePlan(userId, user.plan);
+  const limits = PLAN_LIMITS[plan];
 
   return {
-    plan: user.plan,
+    plan,
     papersUsed: usage?.papersUsed || 0,
     papersLimit: limits.papers,
     papersRemaining: limits.papers - (usage?.papersUsed || 0),

@@ -8,6 +8,7 @@ import { explainAgent } from "../mastra/agents/explain.agent";
 import { effectiveGuide } from "../lib/grading";
 import { PLAN_LIMITS, currentMonthKey } from "../lib/planLimits";
 import { checkAndIncrementAiMessage } from "../lib/aiQuota";
+import { effectivePlan } from "../lib/effectivePlan";
 import type { PlanKey } from "../lib/planLimits";
 import { resolvePaperPath, PAPERS_DIR } from "../lib/papersDir";
 
@@ -80,7 +81,10 @@ export async function startSession(c: Context) {
   // Enforce monthly paper limit
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } });
   if (user) {
-    const limits = PLAN_LIMITS[user.plan as PlanKey];
+    // Use the effective plan so an expired subscriber falls back to FREE limits
+    // even if the daily downgrade cron hasn't run yet.
+    const plan = await effectivePlan(userId, user.plan);
+    const limits = PLAN_LIMITS[plan as PlanKey];
     const month = currentMonthKey();
     const usage = await prisma.monthlyUsage.findUnique({
       where: { userId_month: { userId, month } },
@@ -94,7 +98,7 @@ export async function startSession(c: Context) {
         return c.json({
           error: "Monthly paper limit reached for your plan",
           limitReached: true,
-          plan: user.plan,
+          plan,
           limit: limits.papers,
         }, 402);
       }
