@@ -9,12 +9,17 @@ export interface TokenPayload extends JWTPayload {
 const accessSecret = new TextEncoder().encode(env.JWT_SECRET);
 const refreshSecret = new TextEncoder().encode(env.JWT_REFRESH_SECRET);
 
+// Access tokens are stateless (not checked against the session on each request),
+// so a leaked token is usable until it expires. Keep the window short — both
+// clients transparently refresh on 401. Refresh tokens are DB-backed and bounded
+// by the session's expiresAt (7 days), so revocation (logout) takes effect within
+// the access-token lifetime.
 export function signAccessToken(userId: string, sessionId: string): Promise<string> {
   return new SignJWT({ sessionId })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(userId)
     .setIssuedAt()
-    .setExpirationTime("30d")
+    .setExpirationTime("1h")
     .sign(accessSecret);
 }
 
@@ -23,7 +28,7 @@ export function signRefreshToken(userId: string, sessionId: string): Promise<str
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(userId)
     .setIssuedAt()
-    .setExpirationTime("30d")
+    .setExpirationTime("7d")
     .sign(refreshSecret);
 }
 
