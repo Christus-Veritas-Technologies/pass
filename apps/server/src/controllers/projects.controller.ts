@@ -3,8 +3,8 @@ import { readFile } from "node:fs/promises";
 import type { Context } from "hono";
 
 import prisma from "@pass/db";
-import { projectAgent } from "../mastra/agents/project.agent";
-import { PROJECT_VOICE, PROJECT_VOICE_ALEVEL, PROJECT_PROBLEM_FOCUS } from "../mastra/projectVoice";
+import { resolveProjectContent } from "../mastra/project/pool";
+import type { ProjectInput } from "../mastra/project/spine";
 import { verifyAccessToken } from "../lib/jwt";
 import { buildProjectHtml } from "../lib/projectHtml";
 import { uploadProjectPdfBuffer } from "../whatsapp/media/renderProjectPdf";
@@ -128,140 +128,13 @@ export async function generateProject(c: Context) {
     }
   }
 
-  const year = new Date().getFullYear();
-  const displayName = studentName || "_";
-  const pronoun = isGroupProject ? "We" : "I";
-
-  // Word targets sized so per-section totals comfortably exceed the minimum (10+ pages)
-  const wordTargets = grade === "Grade 7"
-    ? {
-        total: 3000,
-        s11: "280–380", s12: "100–140", s13: "120–170",
-        stage2: "500–660", s22: "380–500", s3each: "150–210",
-        stage4: "380–510", s44: "160–240",
-        s51: "230–310", s52: "170–240", s53: "170–240",
-        refs: 7,
-      }
-    : grade === "Form 4"
-    ? {
-        total: 4500,
-        s11: "400–530", s12: "130–180", s13: "150–200",
-        stage2: "760–970", s22: "520–690", s3each: "210–290",
-        stage4: "540–700", s44: "210–290",
-        s51: "300–400", s52: "210–290", s53: "210–290",
-        refs: 8,
-      }
-    : {
-        total: 7000,
-        s11: "620–800", s12: "200–270", s13: "220–300",
-        stage2: "1100–1430", s22: "830–1070", s3each: "300–420",
-        stage4: "830–1070", s44: "290–390",
-        s51: "460–600", s52: "340–460", s53: "340–460",
-        refs: 10,
-      };
-
-  const aLevelNote = grade === "Form 6"
-    ? `\nA-LEVEL DEPTH REQUIREMENT: This is an Advanced Level project. Write with university-entrance academic depth. Include quantitative observations, cite named Zimbabwean institutions or researchers where realistic, and demonstrate analytical and evaluative thinking that goes well beyond simple description. Each section should read as the work of a student who has genuinely engaged with this topic at an advanced level.\n`
-    : "";
-
-  const specialCharRules = `
-SPECIAL CHARACTER RULES (the PDF renderer requires these — follow them exactly):
-- Chemical subscripts: CO<sub>2</sub>, H<sub>2</sub>O, NH<sub>3</sub> — use HTML sub tags
-- Ion charges / exponents: Ca<sup>2+</sup>, x<sup>2</sup>, m<sup>3</sup> — use HTML sup tags
-- NEVER use Unicode subscripts (₂ ₃) or superscripts (² ³) — use HTML tags above
-- NEVER use Unicode Greek letters (α β γ π) — spell them out: alpha, beta, gamma, pi
-- NEVER use Unicode arrows (→ ←) — use ASCII: ->, <-
-- NEVER use Unicode math symbols (≥ ≤ √ ≠) — use ASCII: >=, <=, sqrt, !=`;
-
-  const outlineSection = outline.trim()
-    ? `\n\nSTUDENT-PROVIDED OUTLINE — FOLLOW THIS STRICTLY. Your output MUST cover every point below in the same order. Do not add sections not mentioned in the outline. Do not omit any point.\n---\n${outline.trim()}\n---\n`
-    : "";
-
-  const prompt = `Generate a COMPLETE, FORMAL ZIMSEC Heritage-Based Curriculum (HBC) 5.0 project for a ${grade} student studying ${canonicalSub}.${outlineSection}
-
-STUDENT DETAILS (embed these in the document as data only):
-- Name: ${displayName}${schoolName ? `\n- School: ${schoolName}` : ""}
-- Centre Number: ${centreNumber || "_"}
-- Candidate Number: ${candidateNumber || "_"}
-- Level: ${grade}
-- Subject: ${canonicalSub}
-- Year: ${year}
-${aLevelNote}
-CRITICAL INSTRUCTIONS:
-1. Do NOT include a Cover Page or Candidate Information section — the document cover is generated separately. Start your output directly with the H1 project title.
-2. Choose a specific, descriptive project title that names a real, LOCAL community or school problem and how it is solved (e.g. "Using Moringa Leaves to Purify Borehole Water in Chivi District"). Do NOT use vague titles like "Progress", "My Project", or "${canonicalSub} Project", and do NOT pick a broad, national or futuristic theme.
-3. Write entirely in first person. Use "${pronoun}" throughout — as a Zimbabwean student who genuinely carried out this investigation.
-4. Avoid AI-sounding phrases: "It is important to note that…", "In conclusion, it can be said…", "Furthermore, it should be noted…". Write naturally with curiosity and personal observations.
-5. Every section must contain real, specific Zimbabwean content — actual provinces, real institutions, authentic cultural practices, named community members with plausible Zimbabwean names.
-6. MANDATORY MINIMUM: ${wordTargets.total} words total. Every section MUST reach its stated word count. Do NOT stop early.
-
-${PROJECT_VOICE}${grade === "Form 6" ? `\n${PROJECT_VOICE_ALEVEL}` : ""}
-
-${PROJECT_PROBLEM_FOCUS}
-
-EXACT OUTPUT STRUCTURE (follow this precisely — hit every word-count target):
-
-# [Your specific project title]
-
-## Stage 1: Problem Identification
-
-### 1.1 Description of the Problem or Need
-[Describe the heritage-based problem being investigated — what currently exists, what gap or challenge is present, and why it matters in the Zimbabwean context. Write in first person with specific local detail. ${wordTargets.s11} words.]
-
-### 1.2 Statement of Intent
-[State precisely what the project aims to achieve. Begin with "${pronoun} aim to…" or "${pronoun} set out to…" and include measurable outcomes. ${wordTargets.s12} words.]
-
-### 1.3 Specifications and Constraints
-[List ${wordTargets.refs > 8 ? "7–9" : "5–7"} numbered specifications the final outcome must meet. Write each as a full sentence covering practical constraints: materials available, community acceptance, cost limits, and alignment with heritage values. ${wordTargets.s13} words total.]
-
-## Stage 2: Investigation of Related Ideas
-
-### 2.1 Research Findings
-[Present findings from research — interviews with named community elders (give full names and roles), field visits to specific locations, library sources, and surveys. Organise under THREE clear sub-headings relevant to the topic. Each sub-section must be a full paragraph of substantive content. ${wordTargets.stage2} words total. Use at least TWO tables of comparative or historical data, each with a header row.]
-
-### 2.2 Analysis of Existing Approaches
-[Analyse THREE approaches (traditional, modern, and a hybrid or alternative) relevant to this project topic. For EACH approach write a full developed paragraph of merits (at least 3 specific advantages with Zimbabwean context) and a full paragraph of demerits (at least 3 specific disadvantages). Write in full sentences — do NOT use bullet lists. ${wordTargets.s22} words total.]
-
-## Stage 3: Generation of Possible Solutions
-
-[Propose THREE distinct possible solutions to the problem from Stage 1. For each, write a full developed paragraph describing the concept, how it addresses the specifications from Stage 1.3, why it is feasible in the Zimbabwean context, and what resources it requires. ${wordTargets.s3each} words each.]
-
-**Solution 1 — [Descriptive title]:** [Full paragraph]
-
-**Solution 2 — [Descriptive title]:** [Full paragraph]
-
-**Solution 3 — [Descriptive title]:** [Full paragraph]
-
-## Stage 4: Development and Refinement
-
-### 4.1 Selected Solution
-[State which solution ${pronoun.toLowerCase()} chose and the primary reason in 1–2 sentences.]
-
-### 4.2 Justification of Choice
-[Explain in full paragraphs why this solution was chosen over the others. Reference each specification from Stage 1.3 and compare against the approaches in Stage 2.2. ${wordTargets.stage4} words.]
-
-### 4.3 Development Process
-[Describe step-by-step how the solution was developed, refined, and implemented. Include: specific materials and quantities, named people consulted, locations visited with district and province, timeline, and modifications made along the way. Write in first person with vivid specific detail. ${wordTargets.stage4} words.]
-
-### 4.4 Challenges Encountered and How They Were Overcome
-[Describe 3–4 real, specific challenges encountered. For each: name the challenge, explain why it arose, and describe the concrete steps taken to overcome it. ${wordTargets.s44} words.]
-
-## Stage 5: Evaluation
-
-### 5.1 Assessment Against Specifications
-[Evaluate how well the completed project meets EACH specification listed in Stage 1.3 — go through them one by one in full sentences. Be honest about partial successes. ${wordTargets.s51} words.]
-
-### 5.2 Strengths and Limitations
-[Two full paragraphs — first on strengths: what worked well and why. Second on limitations: what could be improved and what ${pronoun.toLowerCase()} would do differently. ${wordTargets.s52} words.]
-
-### 5.3 Overall Conclusion
-[Tie together what was learned, the value for Zimbabwean heritage preservation, and recommendations for future work. ${wordTargets.s53} words.]
-
-FINAL CHECK — before writing References: verify your total word count has reached ${wordTargets.total} words. If not, expand Stage 2.1 (Research Findings) and Stage 4.3 (Development Process) before continuing.
-
-## References
-[List ${wordTargets.refs}–${wordTargets.refs + 3} realistic references in a consistent citation format: ZIMSEC curriculum documents (with year), named community elders (full name, village, district), school textbooks (author, title, publisher, year), government publications, and field visit locations.]
-${specialCharRules}`;
+  const input: ProjectInput = {
+    grade,
+    subject: canonicalSub,
+    title: "", // web flow does not collect a student-chosen title
+    outline,
+    isGroupProject,
+  };
 
   let projectId: string | null = null;
   let accumulatedContent = "";
@@ -288,22 +161,27 @@ ${specialCharRules}`;
 
       await stream.writeSSE({ data: projectId, event: "project_id" });
 
-      const result = await projectAgent.stream(prompt, {
-        abortSignal: AbortSignal.timeout(10 * 60 * 1000), // 10 min
+      // Either generate in parallel (streaming sections as they land) or reuse a
+      // pooled body. resolveProjectContent only calls onSection on the generate path.
+      let streamedAny = false;
+      const { topic, content, reused } = await resolveProjectContent(input, {
+        onSection: (md) => {
+          streamedAny = true;
+          void stream.writeSSE({ data: md, event: "chunk" }).catch(() => null);
+        },
       });
+      accumulatedContent = content;
 
-      for await (const chunk of result.textStream) {
-        accumulatedContent += chunk;
-        // Ignore write failures — client may have navigated away; generation continues regardless
-        await stream.writeSSE({ data: chunk, event: "chunk" }).catch(() => null);
+      // Reuse path (no streaming happened): deliver the body to the client in chunks.
+      if (reused || !streamedAny) {
+        for (let i = 0; i < content.length; i += 1500) {
+          await stream.writeSSE({ data: content.slice(i, i + 1500), event: "chunk" }).catch(() => null);
+        }
       }
-
-      const titleMatch = accumulatedContent.match(/^#\s+(.+)$/m);
-      const topic = titleMatch?.[1]?.trim() ?? `${canonicalSub} HBC Project`;
 
       await prisma.project.update({
         where: { id: projectId },
-        data: { content: accumulatedContent, topic },
+        data: { content, topic },
       });
 
       // Notify the user on all connected channels (push + WhatsApp if linked)
