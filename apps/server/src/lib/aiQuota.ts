@@ -11,6 +11,7 @@
  */
 import prisma from "@pass/db";
 import { PLAN_LIMITS, currentMonthKey, AMBASSADOR_LIMIT } from "./planLimits";
+import { effectivePlan } from "./effectivePlan";
 
 export interface AiQuotaResult {
   allowed: boolean;
@@ -27,7 +28,8 @@ export async function checkAndIncrementAiMessage(userId: string): Promise<AiQuot
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true, isAmbassador: true } });
   if (!user) throw new Error(`User ${userId} not found`);
 
-  const limit = user.isAmbassador ? AMBASSADOR_LIMIT : PLAN_LIMITS[user.plan].aiMessages;
+  const plan = user.isAmbassador ? user.plan : await effectivePlan(userId, user.plan);
+  const limit = user.isAmbassador ? AMBASSADOR_LIMIT : PLAN_LIMITS[plan].aiMessages;
 
   // Short-circuit for unlimited plans — no DB write needed
   if (limit === Infinity) {
@@ -57,7 +59,8 @@ export async function getAiMessageUsage(userId: string): Promise<AiQuotaResult> 
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true, isAmbassador: true } });
   if (!user) throw new Error(`User ${userId} not found`);
 
-  const limit = user.isAmbassador ? AMBASSADOR_LIMIT : PLAN_LIMITS[user.plan].aiMessages;
+  const plan = user.isAmbassador ? user.plan : await effectivePlan(userId, user.plan);
+  const limit = user.isAmbassador ? AMBASSADOR_LIMIT : PLAN_LIMITS[plan].aiMessages;
   const month = currentMonthKey();
 
   const usage = await prisma.monthlyUsage.findUnique({
@@ -88,7 +91,8 @@ export async function checkPapersQuota(userId: string): Promise<FeatureQuotaResu
   });
   if (!user) return { allowed: false, used: 0, limit: 0, plan: "FREE" };
 
-  const limit = user.isAmbassador ? AMBASSADOR_LIMIT : PLAN_LIMITS[user.plan as import("./planLimits").PlanKey].papers;
+  const plan = user.isAmbassador ? user.plan : await effectivePlan(userId, user.plan);
+  const limit = user.isAmbassador ? AMBASSADOR_LIMIT : PLAN_LIMITS[plan as import("./planLimits").PlanKey].papers;
   const month = currentMonthKey();
   const usage = await prisma.monthlyUsage.findUnique({ where: { userId_month: { userId, month } } });
 
@@ -98,7 +102,7 @@ export async function checkPapersQuota(userId: string): Promise<FeatureQuotaResu
     allowed: used < limit || hasBonusCredits,
     used,
     limit,
-    plan: user.plan,
+    plan,
   };
 }
 
@@ -109,7 +113,8 @@ export async function checkProjectsQuota(userId: string): Promise<FeatureQuotaRe
   });
   if (!user) return { allowed: false, used: 0, limit: 0, plan: "FREE" };
 
-  const limit = user.isAmbassador ? AMBASSADOR_LIMIT : PLAN_LIMITS[user.plan as import("./planLimits").PlanKey].projects;
+  const plan = user.isAmbassador ? user.plan : await effectivePlan(userId, user.plan);
+  const limit = user.isAmbassador ? AMBASSADOR_LIMIT : PLAN_LIMITS[plan as import("./planLimits").PlanKey].projects;
   const month = currentMonthKey();
   const usage = await prisma.monthlyUsage.findUnique({ where: { userId_month: { userId, month } } });
 
@@ -119,6 +124,6 @@ export async function checkProjectsQuota(userId: string): Promise<FeatureQuotaRe
     allowed: used < limit || hasBonusCredits,
     used,
     limit,
-    plan: user.plan,
+    plan,
   };
 }

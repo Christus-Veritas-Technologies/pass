@@ -1,8 +1,8 @@
 import type { Context } from "hono";
 import { z } from "zod";
 import prisma from "@pass/db";
-import { paynow, PLAN_PRICES, PLAN_DESCRIPTIONS } from "../lib/paynow";
-import { getSubscriptionInfo } from "../lib/subscriptions";
+import { paynow, PLAN_PRICES, PLAN_DESCRIPTIONS, verifyPaynowHash } from "../lib/paynow";
+import { getSubscriptionInfo, activatePaidTransaction } from "../lib/subscriptions";
 import { sendEmail } from "../lib/emails";
 
 const createPaymentSchema = z.object({
@@ -102,10 +102,14 @@ export async function handlePaymentWebhook(c: Context): Promise<Response> {
   try {
     const body = await c.req.text();
 
-    // TODO: Verify Paynow signature
-    // For now, parse the webhook payload
-    const params = new URLSearchParams(body);
+    // Verify the Paynow signature before trusting ANY field. Fails closed:
+    // a forged/unsigned POST can never activate a paid plan.
+    if (!verifyPaynowHash(body)) {
+      console.warn("[payments] Rejected webhook with invalid or missing Paynow hash");
+      return c.text("Invalid signature", 403);
+    }
 
+    const params = new URLSearchParams(body);
     const reference = params.get("reference");
     const status = params.get("status")?.toLowerCase();
 
@@ -122,65 +126,24 @@ export async function handlePaymentWebhook(c: Context): Promise<Response> {
       return c.json({ error: "Transaction not found" }, 404);
     }
 
-    // Update transaction status
     if (status === "paid") {
-      await prisma.paymentTransaction.update({
-        where: { id: transaction.id },
-        data: {
-          status: "paid",
-          paidAt: new Date(),
-        },
-      });
-
-      // Create subscription — expiry depends on billing cycle
-      const startDate = new Date();
-      const days = transaction.billingCycle === "ANNUAL" ? 365 : 30;
-      const expiryDate = new Date(startDate.getTime() + days * 24 * 60 * 60 * 1000);
-
-      await prisma.subscription.upsert({
-        where: { userId: transaction.userId },
-        create: {
-          userId: transaction.userId,
-          plan: transaction.plan,
-          billingCycle: transaction.billingCycle,
-          startDate,
-          expiryDate,
-          paynowRef: reference,
-          paynowStatus: "paid",
-        },
-        update: {
-          plan: transaction.plan,
-          billingCycle: transaction.billingCycle,
-          status: "ACTIVE",
-          startDate,
-          expiryDate,
-          paynowRef: reference,
-          paynowStatus: "paid",
-          renewalDue: false,
-        },
-      });
-
-      // Update user plan
-      await prisma.user.update({
-        where: { id: transaction.userId },
-        data: { plan: transaction.plan },
-      });
-
-      // Send confirmation email
-      const user = await prisma.user.findUnique({
-        where: { id: transaction.userId },
-      });
-
-      if (user) {
-        await sendEmail(user.email, "Payment Confirmed", {
-          template: "payment_confirmed",
-          plan: transaction.plan,
-          expiryDate,
-        });
+      // Atomic + idempotent: only the first successful callback activates the
+      // plan and sends the email; duplicate webhook retries are no-ops.
+      const result = await activatePaidTransaction(transaction.id);
+      if (result.activated) {
+        const user = await prisma.user.findUnique({ where: { id: result.userId } });
+        if (user) {
+          await sendEmail(user.email, "Payment Confirmed", {
+            template: "payment_confirmed",
+            plan: result.plan,
+            expiryDate: result.expiryDate,
+          }).catch((err) => console.error("[payments] confirmation email failed:", err));
+        }
       }
-    } else if (status === "failed") {
-      await prisma.paymentTransaction.update({
-        where: { id: transaction.id },
+    } else if (status === "failed" || status === "cancelled") {
+      // Only fail a still-pending transaction — never overwrite a paid one.
+      await prisma.paymentTransaction.updateMany({
+        where: { id: transaction.id, status: "pending" },
         data: { status: "failed" },
       });
     }
@@ -220,42 +183,19 @@ export async function pollTransactionStatus(c: Context): Promise<Response> {
     // Handle both paynow library versions: paid() method or status string property
     const isPaid = typeof status.paid === "function" ? status.paid() : status.status?.toLowerCase() === "paid";
 
-    // Update transaction
+    // The poll result comes straight from Paynow (we called their pollUrl), so
+    // it is trusted. Activate atomically + idempotently — shared with the webhook.
     if (isPaid) {
-      await prisma.paymentTransaction.update({
-        where: { id: transaction.id },
-        data: {
-          status: "paid",
-          paidAt: new Date(),
-        },
-      });
-
-      // Create subscription if not exists
-      const sub = await prisma.subscription.findUnique({
-        where: { userId: transaction.userId },
-      });
-
-      if (!sub) {
-        const startDate = new Date();
-        const days = transaction.billingCycle === "ANNUAL" ? 365 : 30;
-        const expiryDate = new Date(startDate.getTime() + days * 24 * 60 * 60 * 1000);
-
-        await prisma.subscription.create({
-          data: {
-            userId: transaction.userId,
-            plan: transaction.plan,
-            billingCycle: transaction.billingCycle,
-            startDate,
-            expiryDate,
-            paynowRef: transaction.paynowRef,
-            paynowStatus: "paid",
-          },
-        });
-
-        await prisma.user.update({
-          where: { id: transaction.userId },
-          data: { plan: transaction.plan },
-        });
+      const result = await activatePaidTransaction(transaction.id);
+      if (result.activated) {
+        const user = await prisma.user.findUnique({ where: { id: result.userId } });
+        if (user) {
+          await sendEmail(user.email, "Payment Confirmed", {
+            template: "payment_confirmed",
+            plan: result.plan,
+            expiryDate: result.expiryDate,
+          }).catch((err) => console.error("[payments] confirmation email failed:", err));
+        }
       }
     }
 
