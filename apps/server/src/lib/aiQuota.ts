@@ -48,8 +48,12 @@ export async function checkAndIncrementAiMessage(userId: string): Promise<AiQuot
     update: {},
   });
 
+  // updateMany takes a plain WhereInput (flat fields) — NOT the compound
+  // `userId_month` unique selector, which is only valid for single-record ops
+  // (findUnique/update/upsert). userId + month is unique so this still matches
+  // exactly the one row.
   const consumed = await prisma.monthlyUsage.updateMany({
-    where: { userId_month: { userId, month }, aiMessagesUsed: { lt: limit } },
+    where: { userId, month, aiMessagesUsed: { lt: limit } },
     data: { aiMessagesUsed: { increment: 1 } },
   });
 
