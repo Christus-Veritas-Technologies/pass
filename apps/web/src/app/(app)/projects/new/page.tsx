@@ -257,6 +257,21 @@ export default function NewProjectPage() {
   const titleMatch = streamedContent.match(/^#\s+(.+)$/m);
   const projectTitle = titleMatch ? titleMatch[1].trim() : "";
 
+  // Progress is derived from the stream: the server emits the 6 HBC stages
+  // (## headings) in order, so we can show which one is being written.
+  const TOTAL_SECTIONS = 6;
+  const sectionsWritten = (streamedContent.match(/^##\s+/gm) ?? []).length;
+  const progressPct = Math.min(100, Math.round((sectionsWritten / TOTAL_SECTIONS) * 100));
+  const progressLabel = sectionsWritten === 0
+    ? "Planning your project…"
+    : `Writing section ${Math.min(sectionsWritten, TOTAL_SECTIONS)} of ${TOTAL_SECTIONS}…`;
+
+  function cancelGeneration() {
+    abortRef.current?.abort();
+    setGenerating(false);
+    setStep(1);
+  }
+
   return (
     <div className="mx-auto max-w-2xl animate-fade-up">
       <UpgradeDialog
@@ -481,8 +496,17 @@ export default function NewProjectPage() {
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 animate-pulse">
                   <HugeiconsIcon icon={SparklesIcon} className="h-6 w-6 text-primary" />
                 </div>
-                <p className="text-sm font-medium">Generating your project…</p>
-                <p className="text-xs text-muted-foreground">This takes 1–3 minutes. You can navigate away — we'll notify you when it's ready.</p>
+                <p className="text-sm font-medium">{progressLabel}</p>
+                <div className="h-1.5 w-full max-w-xs rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all duration-500"
+                    style={{ width: `${Math.max(8, progressPct)}%` }}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">This usually takes under a minute. You can navigate away — we'll notify you when it's ready.</p>
+                <Button variant="outline" className="mt-1" onClick={cancelGeneration}>
+                  Cancel generation
+                </Button>
               </CardContent>
             </Card>
           )}

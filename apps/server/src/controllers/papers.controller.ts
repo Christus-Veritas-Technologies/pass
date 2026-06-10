@@ -6,7 +6,7 @@ import prisma from "@pass/db";
 import { feedbackAgent } from "../mastra/agents/feedback.agent";
 import { explainAgent } from "../mastra/agents/explain.agent";
 import { effectiveGuide } from "../lib/grading";
-import { PLAN_LIMITS, currentMonthKey } from "../lib/planLimits";
+import { PLAN_LIMITS, currentMonthKey, nextMonthlyResetISO } from "../lib/planLimits";
 import { checkAndIncrementAiMessage } from "../lib/aiQuota";
 import { effectivePlan } from "../lib/effectivePlan";
 import type { PlanKey } from "../lib/planLimits";
@@ -110,6 +110,7 @@ export async function startSession(c: Context) {
           limitReached: true,
           plan,
           limit: limits.papers,
+          resetsOn: nextMonthlyResetISO(),
         }, 402);
       }
     }

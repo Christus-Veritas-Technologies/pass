@@ -12,7 +12,7 @@ import { generateProjectPdfBuffer } from "../lib/projectPdfDocument";
 import { generateProjectDocxBuffer } from "../lib/projectDocxDocument";
 import { sendNotification } from "../lib/notifications";
 import { isValidSubject, canonicalSubject } from "../lib/subjects";
-import { PLAN_LIMITS, currentMonthKey, type PlanKey, AMBASSADOR_LIMIT } from "../lib/planLimits";
+import { PLAN_LIMITS, currentMonthKey, nextMonthlyResetISO, type PlanKey, AMBASSADOR_LIMIT } from "../lib/planLimits";
 import { effectivePlan } from "../lib/effectivePlan";
 
 const VALID_GRADES = ["Grade 7", "Form 4", "Form 6"] as const;
@@ -132,7 +132,7 @@ export async function generateProject(c: Context) {
               data: { bonusProjects: { decrement: 1 } },
             });
         if (bonus.count === 0) {
-          return c.json({ error: "Monthly project limit reached for your plan", limitReached: true, plan, limit: projectLimit }, 402);
+          return c.json({ error: "Monthly project limit reached for your plan", limitReached: true, plan, limit: projectLimit, resetsOn: nextMonthlyResetISO() }, 402);
         }
       }
     }

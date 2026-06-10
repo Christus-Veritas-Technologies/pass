@@ -42,6 +42,9 @@ import {
   FLOW_SWITCH_NOTE,
   STUDY_SWITCH_NOTE,
   studyEscapeMenu,
+  projectReviewMessage,
+  PROJECT_CONFIRM_PROMPT,
+  PROJECT_CONFIRM_RETRY,
 } from "../utils/messages";
 
 const RATE_WINDOW_MS   = 60_000;
@@ -375,6 +378,7 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
       m.kind === "signing_up" || m.kind === "signing_in" || m.kind === "upgrading" ||
       m.kind === "browsing_papers" || m.kind === "paper_browse_setup" ||
       m.kind === "paper_action_choice" || m.kind === "project_brief" ||
+      m.kind === "project_confirm" ||
       // While awaiting an answer the grader decides (answers can look command-ish);
       // between questions a clear switch is handled here.
       (m.kind === "paper_study" && !m.awaitingAnswer);
@@ -628,10 +632,32 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
   if (state.mode.kind === "project_brief") {
     const { state: newState, ready } = await handleProjectBriefReply(msg, text, state, true);
     if (ready) {
-      const finalState = await generateProject(client, msg, ready, userId, newState);
-      await saveState(whatsappId, finalState);
+      // Don't generate immediately — show a review card and wait for an explicit
+      // GENERATE so the student can catch a wrong grade/subject before the slow run.
+      await msg.reply(projectReviewMessage(ready));
+      await msg.reply(PROJECT_CONFIRM_PROMPT);
+      await saveState(whatsappId, { ...newState, mode: { kind: "project_confirm", slots: ready } });
     } else {
       await saveState(whatsappId, newState);
+    }
+    return;
+  }
+
+  // project_confirm: brief complete, awaiting GENERATE / EDIT / CANCEL.
+  if (state.mode.kind === "project_confirm") {
+    const t = text.trim().toLowerCase();
+    if (/^(generate|yes|y|yep|yeah|go|confirm|ok|okay|proceed|start|sure)\b/.test(t)) {
+      const finalState = await generateProject(client, msg, state.mode.slots, userId, state);
+      await saveState(whatsappId, finalState);
+    } else if (/^(edit|change|redo|back|no|wrong)\b/.test(t)) {
+      const restarted = await startProjectBrief(msg, { ...state, mode: { kind: "idle" } });
+      await saveState(whatsappId, restarted);
+    } else if (/^(cancel|exit|quit|stop|menu)\b/.test(t)) {
+      await msg.reply(CANCEL_OK);
+      await saveState(whatsappId, { ...state, mode: { kind: "idle" } });
+    } else {
+      await msg.reply(PROJECT_CONFIRM_RETRY);
+      await saveState(whatsappId, state);
     }
     return;
   }
