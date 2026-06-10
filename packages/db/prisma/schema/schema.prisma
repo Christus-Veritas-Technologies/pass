@@ -234,6 +234,36 @@ model Project {
   @@index([userId])
 }
 
+// De-identified pool of generated projects, reused across students to avoid
+// regenerating from scratch. Up to POOL_SIZE (100) rows per (grade, subject);
+// `slot` is the 0-based position used for round-robin reuse. The body in
+// `content` carries NO student identity — those details live on the Project row
+// and are painted onto the cover at render time.
+model ProjectTemplate {
+  id        String   @id @default(cuid())
+  grade     String
+  subject   String
+  topic     String
+  content   String
+  slot      Int // 0..POOL_SIZE-1 position within the (grade, subject) pool
+  createdAt DateTime @default(now())
+
+  @@unique([grade, subject, slot])
+  @@index([grade, subject])
+}
+
+// Round-robin pointer for the reuse phase. Once a (grade, subject) pool is full,
+// each reuse atomically increments `nextIndex`; the served slot is
+// (nextIndex - 1) % POOL_SIZE.
+model ProjectPoolCursor {
+  id        String @id @default(cuid())
+  grade     String
+  subject   String
+  nextIndex Int    @default(0)
+
+  @@unique([grade, subject])
+}
+
 model MonthlyUsage {
   id             String @id @default(cuid())
   userId         String
