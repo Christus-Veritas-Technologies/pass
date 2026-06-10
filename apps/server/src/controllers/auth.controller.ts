@@ -161,9 +161,28 @@ export async function refresh(c: Context) {
     return c.json({ error: "Session expired" }, 401);
   }
 
-  // Rotate: delete old session, issue new pair
-  await prisma.session.delete({ where: { id: session.id } });
-  const { accessToken, refreshToken: newRefreshToken } = await createSession(session.userId);
+  // Rotate atomically: a conditional delete (matching the presented token) wins
+  // exactly once, so two concurrent refreshes with the same token can't both
+  // succeed (no duplicate sessions, no refresh-token reuse). The new row is
+  // created in the same transaction.
+  const expiresAt = new Date(Date.now() + REFRESH_TTL_MS);
+  let newSessionId: string;
+  try {
+    newSessionId = await prisma.$transaction(async (tx) => {
+      const deleted = await tx.session.deleteMany({ where: { id: session.id, refreshToken } });
+      if (deleted.count === 0) throw new Error("rotation_conflict");
+      const created = await tx.session.create({ data: { userId: session.userId, refreshToken: "", expiresAt } });
+      return created.id;
+    });
+  } catch {
+    return c.json({ error: "Session not found or revoked" }, 401);
+  }
+
+  const [accessToken, newRefreshToken] = await Promise.all([
+    signAccessToken(session.userId, newSessionId),
+    signRefreshToken(session.userId, newSessionId),
+  ]);
+  await prisma.session.update({ where: { id: newSessionId }, data: { refreshToken: newRefreshToken } });
   return c.json({ accessToken, refreshToken: newRefreshToken });
 }
 

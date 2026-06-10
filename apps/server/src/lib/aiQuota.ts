@@ -38,21 +38,28 @@ export async function checkAndIncrementAiMessage(userId: string): Promise<AiQuot
 
   const month = currentMonthKey();
 
-  const usage = await prisma.monthlyUsage.upsert({
+  // Ensure the row exists, then consume one message ONLY if still under the
+  // limit — a single atomic conditional update. This avoids the previous
+  // increment-then-check-then-rollback race where concurrent requests at the
+  // boundary could each slip through before any rolled back.
+  await prisma.monthlyUsage.upsert({
     where: { userId_month: { userId, month } },
-    create: { userId, month, papersUsed: 0, projectsUsed: 0, aiMessagesUsed: 1 },
-    update: { aiMessagesUsed: { increment: 1 } },
+    create: { userId, month, papersUsed: 0, projectsUsed: 0, aiMessagesUsed: 0 },
+    update: {},
   });
 
-  if (usage.aiMessagesUsed > limit) {
-    await prisma.monthlyUsage.update({
-      where: { userId_month: { userId, month } },
-      data: { aiMessagesUsed: { decrement: 1 } },
-    });
-    return { allowed: false, used: limit, limit };
-  }
+  const consumed = await prisma.monthlyUsage.updateMany({
+    where: { userId_month: { userId, month }, aiMessagesUsed: { lt: limit } },
+    data: { aiMessagesUsed: { increment: 1 } },
+  });
 
-  return { allowed: true, used: usage.aiMessagesUsed, limit };
+  const usage = await prisma.monthlyUsage.findUnique({ where: { userId_month: { userId, month } } });
+  const used = usage?.aiMessagesUsed ?? 0;
+
+  if (consumed.count === 0) {
+    return { allowed: false, used, limit };
+  }
+  return { allowed: true, used, limit };
 }
 
 export async function getAiMessageUsage(userId: string): Promise<AiQuotaResult> {
