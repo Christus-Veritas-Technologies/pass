@@ -66,6 +66,22 @@ export type ConversationMode =
       paperId: string;
       paperTitle: string;
     }
+  | {
+      // Brief is complete; waiting for the user to confirm before we kick off
+      // the (slow) generation. Holds the fully-collected slots verbatim.
+      kind: "project_confirm";
+      slots: {
+        studentName: string;
+        schoolName: string;
+        centreNumber: string;
+        candidateNumber: string;
+        grade: string;
+        subject: string;
+        category: string;
+        title: string;
+        outline: string;
+      };
+    }
   | { kind: "project_generating"; projectId: string }
   | { kind: "ai_chat" }
   | {

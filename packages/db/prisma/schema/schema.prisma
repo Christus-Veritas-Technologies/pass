@@ -104,6 +104,8 @@ model User {
   webPushSubscriptions WebPushSubscription[]
   devicePushTokens     DevicePushToken[]
   notificationSettings NotificationSettings?
+
+  @@index([plan])
 }
 
 // Stores one row per active refresh token. Deleting a row = revoking that session.
@@ -115,6 +117,8 @@ model Session {
   createdAt    DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
 }
 
 model PasswordResetToken {
@@ -188,6 +192,8 @@ model PaperSession {
   user             User              @relation(fields: [userId], references: [id])
   resource         Resource          @relation(fields: [resourceId], references: [id])
   questionAttempts QuestionAttempt[]
+
+  @@index([userId])
 }
 
 model QuestionAttempt {
@@ -224,6 +230,8 @@ model Project {
   createdAt       DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
 }
 
 // De-identified pool of generated projects, reused across students to avoid

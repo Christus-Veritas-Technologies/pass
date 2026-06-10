@@ -12,7 +12,8 @@ import { generateProjectPdfBuffer } from "../lib/projectPdfDocument";
 import { generateProjectDocxBuffer } from "../lib/projectDocxDocument";
 import { sendNotification } from "../lib/notifications";
 import { isValidSubject, canonicalSubject } from "../lib/subjects";
-import { PLAN_LIMITS, currentMonthKey, type PlanKey, AMBASSADOR_LIMIT } from "../lib/planLimits";
+import { PLAN_LIMITS, currentMonthKey, nextMonthlyResetISO, type PlanKey, AMBASSADOR_LIMIT } from "../lib/planLimits";
+import { effectivePlan } from "../lib/effectivePlan";
 
 const VALID_GRADES = ["Grade 7", "Form 4", "Form 6"] as const;
 
@@ -105,25 +106,34 @@ export async function generateProject(c: Context) {
   // ── Quota enforcement ─────────────────────────────────────────────────────────
   {
     const month = currentMonthKey();
-    const [quotaUser, usage] = await Promise.all([
-      prisma.user.findUnique({ where: { id: userId }, select: { plan: true, bonusProjects: true, isAmbassador: true } }),
-      prisma.monthlyUsage.findUnique({ where: { userId_month: { userId, month } } }),
-    ]);
+    const quotaUser = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true, isAmbassador: true } });
     if (quotaUser) {
-      const projectLimit = quotaUser.isAmbassador ? AMBASSADOR_LIMIT : PLAN_LIMITS[quotaUser.plan as PlanKey].projects;
-      const projectsUsed = usage?.projectsUsed ?? 0;
-      if (projectsUsed >= projectLimit) {
-        if (!quotaUser.isAmbassador && (quotaUser.bonusProjects ?? 0) > 0) {
-          await prisma.user.update({ where: { id: userId }, data: { bonusProjects: { decrement: 1 } } });
-        } else {
-          return c.json({ error: "Monthly project limit reached for your plan", limitReached: true, plan: quotaUser.plan, limit: projectLimit }, 402);
+      // Effective plan downgrades an expired subscriber to FREE limits even if
+      // the daily expiry cron hasn't run yet.
+      const plan = quotaUser.isAmbassador ? quotaUser.plan : await effectivePlan(userId, quotaUser.plan);
+      const projectLimit = quotaUser.isAmbassador ? AMBASSADOR_LIMIT : PLAN_LIMITS[plan as PlanKey].projects;
+
+      // Atomically consume one project if under the limit, else fall back to a
+      // bonus credit (also atomic) — no read-then-act race on either counter.
+      await prisma.monthlyUsage.upsert({
+        where: { userId_month: { userId, month } },
+        create: { userId, month, papersUsed: 0, projectsUsed: 0 },
+        update: {},
+      });
+      const consumed = await prisma.monthlyUsage.updateMany({
+        where: { userId_month: { userId, month }, projectsUsed: { lt: projectLimit } },
+        data: { projectsUsed: { increment: 1 } },
+      });
+      if (consumed.count === 0) {
+        const bonus = quotaUser.isAmbassador
+          ? { count: 0 }
+          : await prisma.user.updateMany({
+              where: { id: userId, bonusProjects: { gt: 0 } },
+              data: { bonusProjects: { decrement: 1 } },
+            });
+        if (bonus.count === 0) {
+          return c.json({ error: "Monthly project limit reached for your plan", limitReached: true, plan, limit: projectLimit, resetsOn: nextMonthlyResetISO() }, 402);
         }
-      } else {
-        await prisma.monthlyUsage.upsert({
-          where: { userId_month: { userId, month } },
-          create: { userId, month, papersUsed: 0, projectsUsed: 1 },
-          update: { projectsUsed: { increment: 1 } },
-        });
       }
     }
   }

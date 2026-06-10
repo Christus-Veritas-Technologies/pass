@@ -93,6 +93,18 @@ export async function explainAnswer(c: Context) {
 
   if (!attempt) return c.json({ error: "Attempt not found" }, 404);
 
+  // Cache hit: the explanation is specific to this attempt's answer, so a stored
+  // one is exactly correct to replay. Stream it straight back — no model call.
+  if (attempt.explanation && attempt.explanation.trim()) {
+    const cached = attempt.explanation;
+    return streamSSE(c, async (s) => {
+      for (let i = 0; i < cached.length; i += 400) {
+        await s.writeSSE({ data: cached.slice(i, i + 400) });
+      }
+      await s.writeSSE({ data: "[DONE]" });
+    });
+  }
+
   // Pull the stored marking rubric so the explanation is accurate.
   const ctx = await getSessionQuestion(sessionId, userId, questionNumber);
   const guide = ctx ? effectiveGuide(ctx.question) : null;

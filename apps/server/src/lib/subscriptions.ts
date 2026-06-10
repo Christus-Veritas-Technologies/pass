@@ -1,7 +1,66 @@
 import prisma from "@pass/db";
 import type { Plan, SubscriptionStatus } from "@pass/db";
 import { PLAN_LIMITS } from "./planLimits";
+import { effectivePlan } from "./effectivePlan";
 import { sendNotification } from "./notifications";
+
+/**
+ * Atomically and idempotently activate a paid transaction: mark it paid, upsert
+ * the subscription, and bump the user's plan — all in one DB transaction.
+ *
+ * The status is claimed with a conditional update (`status != "paid"`), so
+ * concurrent or duplicate Paynow callbacks (webhook + poll, or webhook retries)
+ * only activate once. Returns `{ activated: false }` when the transaction was
+ * already paid or does not exist, so the caller skips the confirmation email.
+ */
+export async function activatePaidTransaction(transactionId: string): Promise<
+  | { activated: true; userId: string; plan: Plan; expiryDate: Date }
+  | { activated: false }
+> {
+  return prisma.$transaction(async (tx) => {
+    // Claim the transition pending → paid atomically. count === 0 means another
+    // call already paid it (idempotent no-op).
+    const claimed = await tx.paymentTransaction.updateMany({
+      where: { id: transactionId, status: { not: "paid" } },
+      data: { status: "paid", paidAt: new Date() },
+    });
+    if (claimed.count === 0) return { activated: false };
+
+    const txn = await tx.paymentTransaction.findUnique({ where: { id: transactionId } });
+    if (!txn) return { activated: false };
+
+    const startDate = new Date();
+    const days = txn.billingCycle === "ANNUAL" ? 365 : 30;
+    const expiryDate = new Date(startDate.getTime() + days * 24 * 60 * 60 * 1000);
+
+    await tx.subscription.upsert({
+      where: { userId: txn.userId },
+      create: {
+        userId: txn.userId,
+        plan: txn.plan,
+        billingCycle: txn.billingCycle,
+        startDate,
+        expiryDate,
+        paynowRef: txn.paynowRef,
+        paynowStatus: "paid",
+      },
+      update: {
+        plan: txn.plan,
+        billingCycle: txn.billingCycle,
+        status: "ACTIVE",
+        startDate,
+        expiryDate,
+        paynowRef: txn.paynowRef,
+        paynowStatus: "paid",
+        renewalDue: false,
+      },
+    });
+
+    await tx.user.update({ where: { id: txn.userId }, data: { plan: txn.plan } });
+
+    return { activated: true, userId: txn.userId, plan: txn.plan, expiryDate };
+  });
+}
 
 /**
  * Check for subscriptions that are expiring soon and mark them for renewal.
@@ -121,7 +180,7 @@ export async function checkPlanLimit(userId: string, resource: "paper" | "projec
     where: { userId_month: { userId, month } },
   });
 
-  const planLimits = PLAN_LIMITS[user.plan];
+  const planLimits = PLAN_LIMITS[await effectivePlan(userId, user.plan)];
   const limit = resource === "paper" ? planLimits.papers : planLimits.projects;
   const used = resource === "paper" ? (usage?.papersUsed || 0) : (usage?.projectsUsed || 0);
 
@@ -155,10 +214,11 @@ export async function getPlanUsage(userId: string): Promise<{
     where: { userId_month: { userId, month } },
   });
 
-  const limits = PLAN_LIMITS[user.plan];
+  const plan = await effectivePlan(userId, user.plan);
+  const limits = PLAN_LIMITS[plan];
 
   return {
-    plan: user.plan,
+    plan,
     papersUsed: usage?.papersUsed || 0,
     papersLimit: limits.papers,
     papersRemaining: limits.papers - (usage?.papersUsed || 0),
