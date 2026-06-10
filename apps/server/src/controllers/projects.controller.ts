@@ -244,7 +244,7 @@ export async function getProjectPdf(c: Context) {
     try {
       const resp = await fetch(project.pdfUrl);
       if (resp.ok) {
-        const bytes = await resp.arrayBuffer();
+        const bytes = new Uint8Array(await resp.arrayBuffer());
         return pdfResponse(c, bytes, project);
       }
     } catch {
@@ -254,13 +254,14 @@ export async function getProjectPdf(c: Context) {
   if (project.pdfUrl?.startsWith("file://")) {
     try {
       const bytes = await readFile(project.pdfUrl.replace("file://", ""));
-      return pdfResponse(c, bytes.buffer as ArrayBuffer, project);
+      // Pass Buffer directly — avoids the .buffer byteOffset pitfall
+      return pdfResponse(c, bytes, project);
     } catch {
       // Tmp file gone — fall through to regenerate
     }
   }
 
-  // Generate PDF using @react-pdf/renderer (no Puppeteer needed)
+  // Generate PDF using PDFKit
   let pdfBytes: Buffer;
   try {
     pdfBytes = await generateProjectPdfBuffer(project);
@@ -272,7 +273,7 @@ export async function getProjectPdf(c: Context) {
   // Upload same bytes to R2 for caching — skip re-rendering (non-fatal)
   uploadProjectPdfBuffer(project, pdfBytes).catch(() => null);
 
-  return pdfResponse(c, pdfBytes.buffer as ArrayBuffer, project);
+  return pdfResponse(c, pdfBytes, project);
 }
 
 /** GET /projects/:id/docx — download as Word document */
@@ -300,17 +301,16 @@ export async function getProjectDocx(c: Context) {
     : `_${project.id.slice(-6)}`;
   const filename = `HBC_${safeTitle}${suffix}.docx`;
 
-  return new Response(docxBytes.buffer as ArrayBuffer, {
+  return new Response(docxBytes, {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       "Content-Disposition": `attachment; filename="${filename}"`,
       "Cache-Control": "private, max-age=3600",
-      "Content-Length": String(docxBytes.byteLength),
     },
   });
 }
 
-function pdfResponse(_c: Context, bytes: ArrayBuffer, project: { topic: string; candidateNumber: string; id: string }) {
+function pdfResponse(_c: Context, bytes: Uint8Array | ArrayBuffer, project: { topic: string; candidateNumber: string; id: string }) {
   const safeTitle = (project.topic || "project").replace(/[^a-zA-Z0-9 _-]/g, "").trim().replace(/\s+/g, "_");
   const suffix = project.candidateNumber ? `_${project.candidateNumber}` : `_${project.id.slice(-6)}`;
   const filename = `HBC_${safeTitle}${suffix}.pdf`;
@@ -320,7 +320,6 @@ function pdfResponse(_c: Context, bytes: ArrayBuffer, project: { topic: string; 
       "Content-Type": "application/pdf",
       "Content-Disposition": `attachment; filename="${filename}"`,
       "Cache-Control": "private, max-age=3600",
-      "Content-Length": String(bytes.byteLength),
     },
   });
 }
