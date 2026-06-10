@@ -60,7 +60,7 @@ jobs:
         run: pnpm -F @pass/db db:generate
 
       - name: Push schema to the test database
-        run: pnpm -F @pass/db db:push --skip-generate
+        run: pnpm -F @pass/db db:push
 
       - name: Run tests (unit + DB integration)
         working-directory: apps/server
