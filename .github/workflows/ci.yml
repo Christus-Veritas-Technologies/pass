@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+jobs:
+  test:
+    name: bun test
+    runs-on: ubuntu-latest
+
+    # Throwaway Postgres so the guarded DB integration tests (RUN_DB_TESTS) run too.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: pass_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    # Dummy values so modules that validate env on import load cleanly.
+    # NOT secrets — CI-only throwaway config.
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pass_test
+      CORS_ORIGIN: http://localhost:3000
+      APP_URL: http://localhost:3000
+      JWT_SECRET: ci-test-jwt-secret-0123456789-abcdefghij
+      JWT_REFRESH_SECRET: ci-test-refresh-secret-0123456789-abcdefghij
+      PAYNOW_INTEGRATION_KEY: ci-test-paynow-key
+      NODE_ENV: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm -F @pass/db db:generate
+
+      - name: Push schema to the test database
+        run: pnpm -F @pass/db db:push --skip-generate
+
+      - name: Run tests (unit + DB integration)
+        working-directory: apps/server
+        env:
+          RUN_DB_TESTS: "1"
+        run: bun test
