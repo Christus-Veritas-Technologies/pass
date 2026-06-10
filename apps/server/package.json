@@ -7,7 +7,9 @@
     "check-types": "tsc -b",
     "compile": "bun build --compile --minify --sourcemap --bytecode ./src/index.ts --outfile server",
     "dev": "bun run --hot --env-file=.env src/index.ts",
-    "start": "bun run dist/index.mjs"
+    "start": "bun run dist/index.mjs",
+    "test": "bun test --env-file=.env",
+    "test:db": "RUN_DB_TESTS=1 bun test --env-file=.env"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.96.0",
