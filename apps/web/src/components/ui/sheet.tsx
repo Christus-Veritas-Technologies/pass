@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 interface SheetProps {
   open: boolean;
   onClose: () => void;
-  side?: "left" | "right";
+  side?: "left" | "right" | "bottom";
   className?: string;
   children: React.ReactNode;
 }
@@ -25,6 +25,20 @@ export function Sheet({ open, onClose, side = "left", className, children }: She
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  const panelClasses = cn(
+    "fixed z-50 flex flex-col border-border bg-background transition-transform duration-200 ease-in-out",
+    side === "bottom"
+      ? cn("inset-x-0 bottom-0 border-t rounded-t-2xl", open ? "translate-y-0" : "translate-y-full")
+      : cn(
+          "inset-y-0",
+          side === "left" ? "left-0 border-r" : "right-0 border-l",
+          side === "left"
+            ? open ? "translate-x-0" : "-translate-x-full"
+            : open ? "translate-x-0" : "translate-x-full",
+        ),
+    className,
+  );
+
   return (
     <>
       {/* Backdrop */}
@@ -37,18 +51,7 @@ export function Sheet({ open, onClose, side = "left", className, children }: She
         )}
       />
       {/* Panel */}
-      <aside
-        role="dialog"
-        aria-modal="true"
-        className={cn(
-          "fixed inset-y-0 z-50 flex flex-col border-border bg-background transition-transform duration-200 ease-in-out",
-          side === "left" ? "left-0 border-r" : "right-0 border-l",
-          side === "left"
-            ? open ? "translate-x-0" : "-translate-x-full"
-            : open ? "translate-x-0" : "translate-x-full",
-          className,
-        )}
-      >
+      <aside role="dialog" aria-modal="true" className={panelClasses}>
         {children}
       </aside>
     </>
