@@ -144,8 +144,10 @@ export default function ChatScreen() {
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
   const [inAppOpen, setInAppOpen] = useState(false);
   const [inAppTab, setInAppTab] = useState<InAppTab>("paper");
-  const [inAppItems, setInAppItems] = useState<InAppItem[]>([]);
+  const [allInAppItems, setAllInAppItems] = useState<InAppItem[]>([]);
   const [inAppLoading, setInAppLoading] = useState(false);
+  const [inAppSearch, setInAppSearch] = useState("");
+  const [inAppDisplayCount, setInAppDisplayCount] = useState(20);
 
   const [upgradeVisible, setUpgradeVisible] = useState(false);
   const [upgradeFeature, setUpgradeFeature] = useState<"aiMessages" | "attachments">("attachments");
@@ -288,19 +290,32 @@ export default function ChatScreen() {
   async function loadInApp(tab: InAppTab) {
     setInAppTab(tab);
     setInAppLoading(true);
-    setInAppItems([]);
+    setAllInAppItems([]);
+    setInAppSearch("");
+    setInAppDisplayCount(20);
     try {
       const src = IN_APP_SOURCES[tab];
       const res = await fetch(`${API}${src.endpoint}`, { headers: await authHeaders() });
       const data = await res.json();
       const rows: RawRow[] = data?.[src.key] ?? [];
-      setInAppItems(rows.filter(src.filter ?? (() => true)).map(src.map).filter((i) => i.id));
+      setAllInAppItems(rows.filter(src.filter ?? (() => true)).map(src.map).filter((i) => i.id));
     } catch {
-      setInAppItems([]);
+      setAllInAppItems([]);
     } finally {
       setInAppLoading(false);
     }
   }
+
+  // Derived search + pagination (computed inline at render time)
+  const filteredInAppItems = (() => {
+    const q = inAppSearch.trim().toLowerCase();
+    if (!q) return allInAppItems;
+    return allInAppItems.filter(
+      (i) => i.label.toLowerCase().includes(q) || (i.sub?.toLowerCase().includes(q) ?? false),
+    );
+  })();
+  const visibleInAppItems = filteredInAppItems.slice(0, inAppDisplayCount);
+  const inAppHasMore = inAppDisplayCount < filteredInAppItems.length;
 
   function addInApp(item: InAppItem) {
     setPendingUploads((prev) => [...prev, { kind: inAppTab, refId: item.id, name: item.label }]);
@@ -636,16 +651,22 @@ export default function ChatScreen() {
         </Pressable>
       </Modal>
 
-      {/* In-app attachment picker — papers / sessions / resources / projects */}
+      {/* In-app picker — bottom sheet with 2-col grid, search, pagination */}
       <Modal visible={inAppOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setInAppOpen(false)}>
         <View style={{ flex: 1, backgroundColor: colors.card }}>
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-            <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text }}>Attach from app</Text>
+          {/* Handle */}
+          <View style={{ alignItems: "center", paddingTop: 10, paddingBottom: 6 }}>
+            <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border }} />
+          </View>
+          {/* Header */}
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingBottom: 12 }}>
+            <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text }}>Attach from app</Text>
             <Pressable onPress={() => setInAppOpen(false)} style={{ padding: 6 }}>
               <X size={20} color={colors.textTertiary} />
             </Pressable>
           </View>
-          <View style={{ flexDirection: "row", gap: 8, paddingHorizontal: 16, paddingVertical: 12 }}>
+          {/* Tabs */}
+          <View style={{ flexDirection: "row", gap: 8, paddingHorizontal: 16, paddingBottom: 12 }}>
             {(Object.keys(IN_APP_SOURCES) as InAppTab[]).map((tab) => {
               const active = inAppTab === tab;
               const Icon = TAB_ICONS[tab];
@@ -661,26 +682,51 @@ export default function ChatScreen() {
               );
             })}
           </View>
+          {/* Search */}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginHorizontal: 16, marginBottom: 12, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, backgroundColor: colors.cardSubtle, borderWidth: 1, borderColor: colors.border }}>
+            <FileText size={16} color={colors.textTertiary} />
+            <TextInput
+              value={inAppSearch}
+              onChangeText={(t) => { setInAppSearch(t); setInAppDisplayCount(20); }}
+              placeholder={`Search ${IN_APP_SOURCES[inAppTab].title.toLowerCase()}…`}
+              placeholderTextColor={colors.textPlaceholder}
+              style={{ flex: 1, fontSize: 14, color: colors.text }}
+            />
+            {inAppSearch ? (
+              <Pressable onPress={() => setInAppSearch("")} hitSlop={8}>
+                <X size={16} color={colors.textTertiary} />
+              </Pressable>
+            ) : null}
+          </View>
+          {/* 2-col grid */}
           {inAppLoading ? (
             <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
               <ActivityIndicator color={colors.brand} />
             </View>
           ) : (
             <FlatList
-              data={inAppItems}
+              data={visibleInAppItems}
               keyExtractor={(i) => i.id}
-              contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}
-              ListEmptyComponent={<Text style={{ textAlign: "center", color: colors.textTertiary, fontSize: 13, marginTop: 32 }}>Nothing here yet.</Text>}
+              numColumns={2}
+              columnWrapperStyle={{ gap: 12 }}
+              contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32, gap: 12 }}
+              ListEmptyComponent={
+                <Text style={{ textAlign: "center", color: colors.textTertiary, fontSize: 13, marginTop: 40 }}>
+                  {inAppSearch ? "No results found." : "Nothing here yet."}
+                </Text>
+              }
+              onEndReached={() => { if (inAppHasMore) setInAppDisplayCount((c) => c + 20); }}
+              onEndReachedThreshold={0.3}
               renderItem={({ item }) => (
                 <Pressable
                   onPress={() => addInApp(item)}
-                  style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12, paddingHorizontal: 8, borderBottomWidth: 1, borderBottomColor: colors.borderSubtle }}
+                  style={{ flex: 1, borderRadius: 16, padding: 14, backgroundColor: colors.cardSubtle, borderWidth: 1, borderColor: colors.border }}
                 >
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 14, color: colors.text }} numberOfLines={1}>{item.label}</Text>
-                    {item.sub ? <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: 1 }} numberOfLines={1}>{item.sub}</Text> : null}
+                  <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: colors.indigoBg, alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
+                    <Folder size={18} color={colors.brand} />
                   </View>
-                  <Plus size={16} color={colors.brand} />
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text, lineHeight: 18 }} numberOfLines={2}>{item.label}</Text>
+                  {item.sub ? <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 3 }} numberOfLines={1}>{item.sub}</Text> : null}
                 </Pressable>
               )}
             />
