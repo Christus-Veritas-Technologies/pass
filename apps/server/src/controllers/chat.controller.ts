@@ -230,7 +230,10 @@ export async function sendMessage(c: Context) {
           .slice(0, -1) // drop the message we just persisted (sent as content blocks)
           .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
 
-        for await (const delta of streamChatVision({ uploads, text, history })) {
+        // Merge any in-app context into the text prompt so the vision model
+        // also sees papers/sessions/resources/projects attached to the same message.
+        const visionText = attachmentContext ? `${attachmentContext}\n\n${text}` : text;
+        for await (const delta of streamChatVision({ uploads, text: visionText, history })) {
           accumulated += delta;
           await s.writeSSE({ event: "chunk", data: JSON.stringify({ delta }) });
         }

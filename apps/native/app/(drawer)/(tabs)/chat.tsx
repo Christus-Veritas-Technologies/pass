@@ -198,6 +198,8 @@ export default function ChatScreen() {
     setPendingUploads([]);
     setInput("");
     setThreadsOpen(false);
+    setAttachMenuOpen(false);
+    setInAppOpen(false);
   }
 
   async function ensureThread(): Promise<string | null> {

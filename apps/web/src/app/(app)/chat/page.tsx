@@ -268,6 +268,7 @@ export default function ChatPage() {
     const attachments = [...pendingUploads];
     setInput("");
     setPendingUploads([]);
+    setPickerOpen(false);
     setSending(true);
 
     // Optimistic user bubble + an empty assistant bubble we stream into.
