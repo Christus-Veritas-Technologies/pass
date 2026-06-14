@@ -149,6 +149,7 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
     from.endsWith("@g.us")            || // WhatsApp groups
     from.endsWith("@broadcast")        || // Broadcast lists / status
     from.endsWith("@newsletter")       || // WhatsApp channels
+    from.endsWith("@lid")              || // Linked Device contacts (msg.getChat() is unsupported)
     from === "status@broadcast"        || // Status updates
     msg.isStatus                       || // Status flag
     msg.broadcast                         // Broadcast flag
