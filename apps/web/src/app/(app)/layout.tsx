@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { AuthGuard } from "@/components/auth-guard";
@@ -8,6 +9,16 @@ import { cn } from "@/lib/utils";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const pathname = usePathname();
+
+  // Chat manages its own full-screen layout (thread sidebar + no outer chrome)
+  if (pathname === "/chat" || pathname.startsWith("/chat/")) {
+    return (
+      <AuthGuard>
+        <div className="h-screen overflow-hidden bg-background">{children}</div>
+      </AuthGuard>
+    );
+  }
 
   return (
     <AuthGuard>

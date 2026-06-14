@@ -1,10 +1,12 @@
 import {
+  ArrowLeft,
   Books,
   CaretRight,
   ChatCircleDots,
   FilePdf,
   FileText,
   Folder,
+  House,
   Image as ImageIcon,
   Lightning,
   Paperclip,
@@ -17,6 +19,7 @@ import {
 import * as SecureStore from "expo-secure-store";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
+import { router } from "expo-router";
 import { MotiView } from "moti";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -473,16 +476,30 @@ export default function ChatScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.cardSubtle }} edges={["top"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.cardSubtle }} edges={["top", "bottom"]}>
       <UpgradeModal visible={upgradeVisible} onClose={() => setUpgradeVisible(false)} feature={upgradeFeature} plan={plan} />
 
       {/* Header */}
-      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: colors.card, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.borderSubtle }}>
-        <Pressable onPress={() => setThreadsOpen(true)} style={{ padding: 6 }}>
-          <ChatCircleDots size={22} color={colors.text} />
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: colors.card, paddingHorizontal: 12, paddingTop: 14, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.borderSubtle }}>
+        {/* Back to home */}
+        <Pressable
+          onPress={() => router.push("/(drawer)/(tabs)/home")}
+          style={{ flexDirection: "row", alignItems: "center", gap: 4, padding: 6, borderRadius: 10 }}
+          hitSlop={8}
+        >
+          <ArrowLeft size={18} color={colors.textTertiary} />
+          <House size={18} color={colors.textTertiary} />
         </Pressable>
-        <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text }}>Pass AI</Text>
-        <Pressable onPress={newChat} style={{ padding: 6 }}>
+        {/* Conversations toggle */}
+        <Pressable
+          onPress={() => setThreadsOpen(true)}
+          style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 10, backgroundColor: colors.cardSubtle }}
+        >
+          <ChatCircleDots size={17} color={colors.text} />
+          <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text }}>Pass AI</Text>
+        </Pressable>
+        {/* New chat */}
+        <Pressable onPress={newChat} style={{ padding: 6, borderRadius: 10 }} hitSlop={8}>
           <Plus size={22} color={colors.brand} />
         </Pressable>
       </View>

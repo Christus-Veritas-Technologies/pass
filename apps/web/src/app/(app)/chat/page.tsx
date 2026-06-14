@@ -3,18 +3,22 @@
 import {
   AiChat01Icon,
   Add01Icon,
+  ArrowLeft01Icon,
   Attachment01Icon,
   Cancel01Icon,
   Delete02Icon,
   Folder01Icon,
+  Menu01Icon,
   SentIcon,
   SparklesIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MarkdownContent } from "@/lib/render-markdown";
 import { getAccessToken } from "@/lib/auth";
 import { UpgradeDialog } from "@/components/upgrade-dialog";
+import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
 const API = process.env.NEXT_PUBLIC_SERVER_URL;
@@ -45,7 +49,6 @@ interface Message {
 
 const UPLOAD_ACCEPT = "image/jpeg,image/png,image/webp,image/gif,application/pdf";
 
-// ── In-app attachment sources (free context: papers, sessions, resources, projects) ──
 type InAppTab = "paper" | "session" | "resource" | "project";
 interface InAppItem { id: string; label: string; sub?: string }
 interface RawRow {
@@ -102,6 +105,93 @@ function authHeaders(): Record<string, string> {
   return { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 }
 
+// ─── Thread sidebar content (shared between desktop aside + mobile Sheet) ────
+
+interface ChatSidebarContentProps {
+  threads: Thread[];
+  activeId: string | null;
+  onNew: () => void;
+  onSelect: (id: string) => void;
+  onDelete: (id: string, e: React.MouseEvent) => void;
+  onClose?: () => void;
+}
+
+function ChatSidebarContent({ threads, activeId, onNew, onSelect, onDelete, onClose }: ChatSidebarContentProps) {
+  return (
+    <div className="flex h-full flex-col">
+      {/* Back to dashboard */}
+      <div className="px-4 pt-5 pb-4">
+        <Link
+          href="/dashboard"
+          onClick={onClose}
+          className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <HugeiconsIcon icon={ArrowLeft01Icon} className="h-4 w-4 shrink-0" />
+          Dashboard
+        </Link>
+      </div>
+
+      <div className="px-3 pb-3">
+        <button
+          onClick={() => { onNew(); onClose?.(); }}
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+        >
+          <HugeiconsIcon icon={Add01Icon} className="h-4 w-4" />
+          New chat
+        </button>
+      </div>
+
+      <div className="mx-3 border-t border-border" />
+
+      <p className="px-5 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        Conversations
+      </p>
+
+      <div className="flex-1 overflow-y-auto px-2 pb-3 space-y-0.5">
+        {threads.length === 0 && (
+          <p className="px-3 py-6 text-center text-xs text-muted-foreground">No conversations yet.</p>
+        )}
+        {threads.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => { onSelect(t.id); onClose?.(); }}
+            className={cn(
+              "group flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm transition-colors",
+              activeId === t.id
+                ? "bg-primary/10 text-primary"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+            )}
+          >
+            <HugeiconsIcon icon={AiChat01Icon} className="h-4 w-4 shrink-0 opacity-60" />
+            <span className="flex-1 truncate">{t.title}</span>
+            <span
+              onClick={(e) => { e.stopPropagation(); onDelete(t.id, e); }}
+              className="opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+              role="button"
+              aria-label="Delete chat"
+            >
+              <HugeiconsIcon icon={Delete02Icon} className="h-3.5 w-3.5" />
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Footer */}
+      <div className="border-t border-border px-4 py-4">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10">
+            <HugeiconsIcon icon={SparklesIcon} className="h-4 w-4 text-primary" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold leading-tight">Pass AI</p>
+            <p className="text-[10px] text-muted-foreground leading-tight">ZIMSEC exam tutor</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function ChatPage() {
@@ -114,23 +204,22 @@ export default function ChatPage() {
   const [remaining, setRemaining] = useState<number | null>(null);
   const [pendingUploads, setPendingUploads] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
-  // In-app attachment picker (papers / sessions / resources / projects)
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerTab, setPickerTab] = useState<InAppTab>("paper");
   const [pickerItems, setPickerItems] = useState<InAppItem[]>([]);
   const [pickerLoading, setPickerLoading] = useState(false);
 
-  // Upgrade dialog
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [upgradeFeature, setUpgradeFeature] = useState<"aiMessages" | "attachments">("attachments");
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const composerRef = useRef<HTMLDivElement>(null);
 
   const isPaid = plan !== "FREE";
 
-  // ── Initial load: plan + threads ──────────────────────────────────────────
   useEffect(() => {
     const token = getAccessToken();
     if (!token) return;
@@ -141,10 +230,21 @@ export default function ChatPage() {
     loadThreads();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Auto-scroll on new content ────────────────────────────────────────────
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
+
+  // Close picker when clicking outside the composer area
+  useEffect(() => {
+    if (!pickerOpen) return;
+    function onClickOutside(e: MouseEvent) {
+      if (composerRef.current && !composerRef.current.contains(e.target as Node)) {
+        setPickerOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, [pickerOpen]);
 
   async function loadThreads() {
     try {
@@ -170,6 +270,7 @@ export default function ChatPage() {
     setMessages([]);
     setPendingUploads([]);
     setInput("");
+    setPickerOpen(false);
   }
 
   async function ensureThread(): Promise<string | null> {
@@ -194,7 +295,6 @@ export default function ChatPage() {
     if (activeId === id) newChat();
   }
 
-  // ── File upload (paid feature) ────────────────────────────────────────────
   function onAttachClick() {
     if (!isPaid) {
       setUpgradeFeature("attachments");
@@ -217,8 +317,7 @@ export default function ChatPage() {
       });
       if (!presign.ok) throw new Error("presign failed");
       const { uploadUrl, publicUrl } = await presign.json();
-      const put = await fetch(uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
-      if (!put.ok) throw new Error("upload failed");
+      await fetch(uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
       setPendingUploads((prev) => [...prev, { kind: "upload", url: publicUrl, mime: file.type, name: file.name }]);
     } catch { /* non-fatal */ }
     finally { setUploading(false); }
@@ -228,7 +327,6 @@ export default function ChatPage() {
     setPendingUploads((prev) => prev.filter((_, i) => i !== idx));
   }
 
-  // ── In-app attachments (free for everyone) ────────────────────────────────
   function togglePicker() {
     const next = !pickerOpen;
     setPickerOpen(next);
@@ -257,7 +355,6 @@ export default function ChatPage() {
     setPickerOpen(false);
   }
 
-  // ── Send ──────────────────────────────────────────────────────────────────
   const send = useCallback(async () => {
     const text = input.trim();
     if (!text || sending) return;
@@ -271,7 +368,6 @@ export default function ChatPage() {
     setPickerOpen(false);
     setSending(true);
 
-    // Optimistic user bubble + an empty assistant bubble we stream into.
     const userMsg: Message = { id: `tmp-u-${Date.now()}`, role: "user", content: text, attachments };
     const asstMsg: Message = { id: `tmp-a-${Date.now()}`, role: "assistant", content: "", pending: true };
     setMessages((prev) => [...prev, userMsg, asstMsg]);
@@ -285,7 +381,6 @@ export default function ChatPage() {
 
       if (res.status === 402) {
         const err = await res.json().catch(() => ({}));
-        // Out of messages → inline note. Attachment gate → upgrade dialog.
         if (err.feature === "attachments") {
           setUpgradeFeature("attachments");
           setUpgradeOpen(true);
@@ -354,7 +449,6 @@ export default function ChatPage() {
         }
       }
 
-      // Refresh the sidebar so a newly auto-titled thread shows its title.
       loadThreads();
     } catch {
       setMessages((prev) =>
@@ -368,70 +462,94 @@ export default function ChatPage() {
   }, [input, sending, pendingUploads, activeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Render ────────────────────────────────────────────────────────────────
+
   return (
-    <div className="flex h-[calc(100vh-7rem)] gap-4 -m-6 p-6">
+    <div className="flex h-screen overflow-hidden bg-background">
       <UpgradeDialog open={upgradeOpen} onClose={() => setUpgradeOpen(false)} feature={upgradeFeature} plan={plan} />
 
-      {/* Thread list */}
-      <aside className="hidden md:flex w-60 shrink-0 flex-col rounded-2xl border border-border bg-card/40">
-        <button
-          onClick={newChat}
-          className="m-3 flex items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
-        >
-          <HugeiconsIcon icon={Add01Icon} className="h-4 w-4" /> New chat
-        </button>
-        <div className="flex-1 overflow-y-auto px-2 pb-3 space-y-0.5">
-          {threads.length === 0 && (
-            <p className="px-3 py-6 text-center text-xs text-muted-foreground">No conversations yet.</p>
-          )}
-          {threads.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => selectThread(t.id)}
-              className={cn(
-                "group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors",
-                activeId === t.id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground",
-              )}
-            >
-              <HugeiconsIcon icon={AiChat01Icon} className="h-4 w-4 shrink-0 opacity-60" />
-              <span className="flex-1 truncate">{t.title}</span>
-              <span
-                onClick={(e) => deleteThread(t.id, e)}
-                className="opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
-                role="button"
-                aria-label="Delete chat"
-              >
-                <HugeiconsIcon icon={Delete02Icon} className="h-3.5 w-3.5" />
-              </span>
-            </button>
-          ))}
-        </div>
+      {/* ── Desktop sidebar ───────────────────────────────────────────────── */}
+      <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-border bg-card">
+        <ChatSidebarContent
+          threads={threads}
+          activeId={activeId}
+          onNew={newChat}
+          onSelect={selectThread}
+          onDelete={deleteThread}
+        />
       </aside>
 
-      {/* Conversation */}
-      <section className="flex flex-1 flex-col rounded-2xl border border-border bg-card/40 overflow-hidden">
+      {/* ── Mobile Sheet ──────────────────────────────────────────────────── */}
+      <Sheet open={sheetOpen} onClose={() => setSheetOpen(false)} className="w-72">
+        <div className="flex items-center justify-between border-b border-border px-4 py-4">
+          <span className="text-sm font-semibold">Chats</span>
+          <button
+            onClick={() => setSheetOpen(false)}
+            className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-muted"
+            aria-label="Close"
+          >
+            <HugeiconsIcon icon={Cancel01Icon} className="h-4 w-4 text-muted-foreground" />
+          </button>
+        </div>
+        <ChatSidebarContent
+          threads={threads}
+          activeId={activeId}
+          onNew={newChat}
+          onSelect={selectThread}
+          onDelete={deleteThread}
+          onClose={() => setSheetOpen(false)}
+        />
+      </Sheet>
+
+      {/* ── Conversation area ─────────────────────────────────────────────── */}
+      <div className="flex flex-1 flex-col overflow-hidden">
+
+        {/* Mobile header */}
+        <header className="flex items-center justify-between border-b border-border bg-card/90 px-4 py-3 backdrop-blur md:hidden">
+          <button
+            onClick={() => setSheetOpen(true)}
+            className="flex h-9 w-9 items-center justify-center rounded-xl hover:bg-muted"
+            aria-label="Open chat list"
+          >
+            <HugeiconsIcon icon={Menu01Icon} className="h-5 w-5 text-foreground" />
+          </button>
+          <span className="text-sm font-semibold">Pass AI</span>
+          <button
+            onClick={newChat}
+            className="flex h-9 w-9 items-center justify-center rounded-xl hover:bg-muted"
+            aria-label="New chat"
+          >
+            <HugeiconsIcon icon={Add01Icon} className="h-5 w-5 text-primary" />
+          </button>
+        </header>
+
         {/* Messages */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-6 md:px-8">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-6 md:px-10 md:py-8">
           {messages.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center text-center animate-fade-up">
               <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
-                <HugeiconsIcon icon={AiChat01Icon} className="h-7 w-7 text-primary" />
+                <HugeiconsIcon icon={SparklesIcon} className="h-7 w-7 text-primary" />
               </div>
-              <h2 className="text-lg font-bold">Ask Pass anything</h2>
-              <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-                Get a direct answer with full working — for any ZIMSEC subject. Attach a photo or PDF of a question{isPaid ? "" : " (paid plans)"}.
+              <h2 className="text-xl font-bold">Ask Pass anything</h2>
+              <p className="mt-2 max-w-sm text-sm text-muted-foreground leading-relaxed">
+                Get a direct answer with full working — for any ZIMSEC subject.
+                {isPaid ? " Attach a photo or PDF of a question." : " Attach a paper, session, or resource for free."}
               </p>
             </div>
           ) : (
-            <div className="mx-auto max-w-3xl space-y-5">
+            <div className="mx-auto max-w-3xl space-y-6">
               {messages.map((m) => (
-                <div key={m.id} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
+                <div key={m.id} className={cn("flex gap-3", m.role === "user" ? "justify-end" : "justify-start")}>
+                  {m.role === "assistant" && (
+                    <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                      <HugeiconsIcon icon={SparklesIcon} className="h-4 w-4 text-primary" />
+                    </div>
+                  )}
                   <div
                     className={cn(
-                      "max-w-[85%] rounded-2xl px-4 py-3 text-sm",
+                      "max-w-[80%] rounded-2xl px-4 py-3 text-sm",
                       m.role === "user"
                         ? "bg-primary text-primary-foreground"
-                        : "border border-border bg-background",
+                        : "border border-border bg-card shadow-sm",
                     )}
                   >
                     {m.attachments && m.attachments.length > 0 && (
@@ -463,11 +581,11 @@ export default function ChatPage() {
         </div>
 
         {/* Composer */}
-        <div className="border-t border-border bg-background/60 p-3 md:px-8 md:py-4">
-          <div className="relative mx-auto max-w-3xl">
+        <div className="border-t border-border bg-background/80 px-4 py-4 md:px-10 md:py-5">
+          <div className="relative mx-auto max-w-3xl" ref={composerRef}>
             {/* In-app attachment picker */}
             {pickerOpen && (
-              <div className="absolute bottom-full left-0 z-20 mb-2 w-full max-w-md overflow-hidden rounded-2xl border border-border bg-card shadow-lg">
+              <div className="absolute bottom-full left-0 z-20 mb-2 w-full max-w-md overflow-hidden rounded-2xl border border-border bg-card shadow-xl">
                 <div className="flex items-center gap-1 border-b border-border p-1.5">
                   {IN_APP_TABS.map((tab) => (
                     <button
@@ -492,11 +610,11 @@ export default function ChatPage() {
                       <button
                         key={item.id}
                         onClick={() => addInApp(item)}
-                        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted"
+                        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2.5 text-left transition-colors hover:bg-muted"
                       >
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm">{item.label}</p>
-                          {item.sub && <p className="truncate text-xs text-muted-foreground">{item.sub}</p>}
+                          <p className="truncate text-sm font-medium">{item.label}</p>
+                          {item.sub && <p className="truncate text-xs text-muted-foreground mt-0.5">{item.sub}</p>}
                         </div>
                         <HugeiconsIcon icon={Add01Icon} className="h-3.5 w-3.5 shrink-0 text-primary" />
                       </button>
@@ -505,6 +623,8 @@ export default function ChatPage() {
                 </div>
               </div>
             )}
+
+            {/* Pending attachments */}
             {pendingUploads.length > 0 && (
               <div className="mb-2 flex flex-wrap gap-2">
                 {pendingUploads.map((a, i) => (
@@ -518,13 +638,15 @@ export default function ChatPage() {
                 ))}
               </div>
             )}
-            <div className="flex items-end gap-2 rounded-2xl border border-border bg-background p-2 focus-within:ring-2 focus-within:ring-primary">
+
+            {/* Input row */}
+            <div className="flex items-end gap-2 rounded-2xl border border-border bg-card p-2 shadow-sm focus-within:ring-2 focus-within:ring-primary/40 transition-shadow">
               <input ref={fileRef} type="file" accept={UPLOAD_ACCEPT} className="hidden" onChange={onFilePicked} />
               <button
                 onClick={onAttachClick}
                 disabled={uploading || sending}
                 aria-label="Upload photo or PDF"
-                title="Upload a photo or PDF"
+                title={isPaid ? "Upload a photo or PDF" : "Paid plans only"}
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
               >
                 <HugeiconsIcon icon={uploading ? SparklesIcon : Attachment01Icon} className={cn("h-5 w-5", uploading && "animate-pulse")} />
@@ -560,14 +682,14 @@ export default function ChatPage() {
                 <HugeiconsIcon icon={SentIcon} className="h-4 w-4" />
               </button>
             </div>
-            <p className="mt-1.5 px-1 text-center text-[11px] text-muted-foreground">
+            <p className="mt-2 text-center text-[11px] text-muted-foreground">
               {remaining !== null && Number.isFinite(remaining)
                 ? `${remaining} message${remaining === 1 ? "" : "s"} left this month`
                 : "Pass can make mistakes — double-check important answers."}
             </p>
           </div>
         </div>
-      </section>
+      </div>
     </div>
   );
 }
