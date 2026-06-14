@@ -1,4 +1,4 @@
-import { BookOpen, Folder, GraduationCap, House, User } from "@vuduc0801/react-native-phosphor-icons";
+import { BookOpen, ChatCircleDots, Folder, GraduationCap, House, User } from "@vuduc0801/react-native-phosphor-icons";
 import { Tabs } from "expo-router";
 import { useAppTheme } from "@/lib/theme-context";
 
@@ -23,6 +23,13 @@ export default function TabsLayout() {
         options={{
           title: "Home",
           tabBarIcon: ({ color }) => <House size={22} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="chat"
+        options={{
+          title: "Pass AI",
+          tabBarIcon: ({ color }) => <ChatCircleDots size={22} color={color} />,
         }}
       />
       <Tabs.Screen
