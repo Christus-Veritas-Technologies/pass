@@ -23,8 +23,14 @@ export interface AiQuotaResult {
  * Atomically increment the AI-message counter and check whether the user
  * is still within their plan limit.  Rolls back the increment when the
  * user has already hit the cap so we never double-count.
+ *
+ * `cost` is how many messages this request consumes (default 1). The in-app
+ * chat charges 2 when a message carries a file upload (vision is pricier);
+ * every other caller keeps the default of 1. The charge is all-or-nothing:
+ * if the full cost won't fit under the cap the counter is left untouched and
+ * `allowed` is false — we never partially charge or exceed the limit.
  */
-export async function checkAndIncrementAiMessage(userId: string): Promise<AiQuotaResult> {
+export async function checkAndIncrementAiMessage(userId: string, cost = 1): Promise<AiQuotaResult> {
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true, isAmbassador: true } });
   if (!user) throw new Error(`User ${userId} not found`);
 
@@ -38,10 +44,11 @@ export async function checkAndIncrementAiMessage(userId: string): Promise<AiQuot
 
   const month = currentMonthKey();
 
-  // Ensure the row exists, then consume one message ONLY if still under the
-  // limit — a single atomic conditional update. This avoids the previous
-  // increment-then-check-then-rollback race where concurrent requests at the
-  // boundary could each slip through before any rolled back.
+  // Ensure the row exists, then consume `cost` messages ONLY if the FULL cost
+  // still fits under the limit — a single atomic conditional update. This
+  // avoids the previous increment-then-check-then-rollback race where
+  // concurrent requests at the boundary could each slip through before any
+  // rolled back. With cost=1, `lte: limit - 1` is exactly the old `lt: limit`.
   await prisma.monthlyUsage.upsert({
     where: { userId_month: { userId, month } },
     create: { userId, month, papersUsed: 0, projectsUsed: 0, aiMessagesUsed: 0 },
@@ -53,8 +60,8 @@ export async function checkAndIncrementAiMessage(userId: string): Promise<AiQuot
   // (findUnique/update/upsert). userId + month is unique so this still matches
   // exactly the one row.
   const consumed = await prisma.monthlyUsage.updateMany({
-    where: { userId, month, aiMessagesUsed: { lt: limit } },
-    data: { aiMessagesUsed: { increment: 1 } },
+    where: { userId, month, aiMessagesUsed: { lte: limit - cost } },
+    data: { aiMessagesUsed: { increment: cost } },
   });
 
   const usage = await prisma.monthlyUsage.findUnique({ where: { userId_month: { userId, month } } });

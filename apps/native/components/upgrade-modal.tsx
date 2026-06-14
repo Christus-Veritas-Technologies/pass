@@ -13,12 +13,13 @@ const FEATURE_LABELS: Record<string, string> = {
   projects: "AI projects",
   downloads: "paper PDF downloads",
   aiMessages: "AI answers",
+  attachments: "file uploads in chat",
 };
 
 export interface UpgradeModalProps {
   visible: boolean;
   onClose: () => void;
-  feature: "papers" | "projects" | "downloads" | "aiMessages";
+  feature: "papers" | "projects" | "downloads" | "aiMessages" | "attachments";
   /** The user's current plan key, e.g. "FREE" | "STUDY" | "PASS" */
   plan: string;
 }
@@ -31,6 +32,7 @@ export function UpgradeModal({ visible, onClose, feature, plan }: UpgradeModalPr
   const rawLimit = limits?.[feature as keyof typeof limits] as number | undefined;
   const limitStr = rawLimit === undefined || rawLimit === Infinity ? "all" : `all ${rawLimit}`;
   const planLabel = plan === "FREE" ? "Free" : plan === "STUDY" ? "Study" : plan;
+  const isLockedFeature = feature === "attachments";
 
   return (
     <Modal
@@ -51,9 +53,19 @@ export function UpgradeModal({ visible, onClose, feature, plan }: UpgradeModalPr
 
           <Text style={styles.title}>Upgrade your plan</Text>
           <Text style={styles.body}>
-            You&apos;ve used {limitStr} {label} on your{" "}
-            <Text style={styles.planName}>{planLabel}</Text> plan this month.
-            Upgrade for higher limits and more features.
+            {isLockedFeature ? (
+              <>
+                {label[0].toUpperCase() + label.slice(1)} are a paid feature, not available on your{" "}
+                <Text style={styles.planName}>{planLabel}</Text> plan.
+                Upgrade to attach photos and PDFs to your questions.
+              </>
+            ) : (
+              <>
+                You&apos;ve used {limitStr} {label} on your{" "}
+                <Text style={styles.planName}>{planLabel}</Text> plan this month.
+                Upgrade for higher limits and more features.
+              </>
+            )}
           </Text>
 
           <Pressable

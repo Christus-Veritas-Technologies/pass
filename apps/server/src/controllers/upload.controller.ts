@@ -6,15 +6,19 @@ import { isR2Configured, getUploadUrl, getPublicUrl } from "../lib/r2";
 const ALLOWED_TYPES: Record<string, string[]> = {
   avatar: ["image/jpeg", "image/png", "image/webp"],
   resource: ["application/pdf"],
+  // In-app chat attachments read by the vision model. v1 = images + PDF only
+  // (Anthropic document blocks don't accept raw .docx — add conversion later).
+  chat: ["image/jpeg", "image/png", "image/webp", "image/gif", "application/pdf"],
 };
 
 const MAX_SIZES: Record<string, number> = {
-  avatar: 5 * 1024 * 1024,   // 5 MB
+  avatar: 5 * 1024 * 1024,    // 5 MB
   resource: 50 * 1024 * 1024, // 50 MB
+  chat: 20 * 1024 * 1024,     // 20 MB
 };
 
 const requestSchema = z.object({
-  type: z.enum(["avatar", "resource"]),
+  type: z.enum(["avatar", "resource", "chat"]),
   contentType: z.string().min(1),
   filename: z.string().min(1).max(200),
 });

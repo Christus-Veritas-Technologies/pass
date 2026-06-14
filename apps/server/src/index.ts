@@ -7,6 +7,7 @@ import { logger } from "hono/logger";
 import { rateLimit } from "./middleware/rateLimit";
 import aiRoutes from "./routes/ai.routes";
 import authRoutes from "./routes/auth.routes";
+import chatRoutes from "./routes/chat.routes";
 import papersRoutes from "./routes/papers.routes";
 import paymentsRoutes from "./routes/payments.routes";
 import projectsRoutes from "./routes/projects.routes";
@@ -92,6 +93,7 @@ app.get("/static/papers/*", async (c) => {
 
 app.route("/ai", aiRoutes);
 app.route("/auth", authRoutes);
+app.route("/chat", chatRoutes);
 app.route("/payments", paymentsRoutes);
 app.route("/resources", resourcesRoutes);
 app.route("/papers", papersRoutes);

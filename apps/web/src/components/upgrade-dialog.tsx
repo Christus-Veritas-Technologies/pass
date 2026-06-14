@@ -8,12 +8,13 @@ const FEATURE_LABELS: Record<string, string> = {
   projects: "AI projects",
   downloads: "paper PDF downloads",
   aiMessages: "AI answers",
+  attachments: "file uploads in chat",
 };
 
 interface Props {
   open: boolean;
   onClose: () => void;
-  feature: "papers" | "projects" | "downloads" | "aiMessages";
+  feature: "papers" | "projects" | "downloads" | "aiMessages" | "attachments";
   plan: string;
 }
 
@@ -47,8 +48,18 @@ export function UpgradeDialog({ open, onClose, feature, plan }: Props) {
 
         <h2 className="mb-2 text-lg font-semibold text-foreground">Upgrade your plan</h2>
         <p className="mb-5 text-sm text-muted-foreground leading-relaxed">
-          You&apos;ve used {limitStr} {label} on your <span className="font-medium text-foreground">{planLabel}</span> plan this month.
-          Upgrade for higher limits and more features.
+          {feature === "attachments" ? (
+            <>
+              {label[0].toUpperCase() + label.slice(1)} are a paid feature, not available on your{" "}
+              <span className="font-medium text-foreground">{planLabel}</span> plan.
+              Upgrade to attach photos and PDFs to your questions.
+            </>
+          ) : (
+            <>
+              You&apos;ve used {limitStr} {label} on your <span className="font-medium text-foreground">{planLabel}</span> plan this month.
+              Upgrade for higher limits and more features.
+            </>
+          )}
         </p>
 
         <div className="flex flex-col gap-2">
