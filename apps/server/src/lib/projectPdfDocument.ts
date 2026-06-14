@@ -13,6 +13,7 @@
 
 import PDFDocument from "pdfkit";
 import type { Project } from "@pass/db";
+import { coverFieldRows } from "./projectCover";
 
 // ── Page geometry ─────────────────────────────────────────────────────────────
 
@@ -295,80 +296,44 @@ function stampFooter(doc: PDFDoc, bodyPageNum: number, totalBodyPages: number) {
 // ── Cover page ────────────────────────────────────────────────────────────────
 
 function renderCoverPage(doc: PDFDoc, project: Project) {
-  // Navy top bar
-  fillRect(doc, 0, 0, PAGE_W, 5, ACCENT);
+  // ── Outer frame ──────────────────────────────────────────────────────────
+  // A thin black rectangle inset from the page edge, matching the reference
+  // candidate-information sheet.
+  const FRAME_INSET = 36;
+  const fx = FRAME_INSET;
+  const fy = FRAME_INSET;
+  const fw = PAGE_W - FRAME_INSET * 2;
+  const fh = PAGE_H - FRAME_INSET * 2;
+  doc.save().strokeColor(BLACK).lineWidth(1.2).rect(fx, fy, fw, fh).stroke().restore();
 
-  let y = 64;
+  // ── Field rows: "LABEL : value" ──────────────────────────────────────────
+  const rows = coverFieldRows(project);
+  const padX = 48;                 // inner left padding from the frame
+  const labelX = fx + padX;
+  const colonX = labelX + 175;     // fixed column so every colon aligns
+  const valueX = colonX + 14;
+  const valueW = fx + fw - padX - valueX;
+  const ROW_GAP = 30;              // generous leading between rows
+  const LABEL_SIZE = 12;
+  const VALUE_SIZE = 12;
 
-  // Institution
-  doc.font("Helvetica").fontSize(8.5).fillColor(MID_GREY)
-    .text("Zimbabwe School Examinations Council", ML, y, { width: CW, align: "center" })
-    .text("Heritage-Based Curriculum (HBC) 5.0 — School Based Project", ML, y + 13, { width: CW, align: "center" });
-  y += 46;
+  let y = fy + 64;
 
-  hRule(doc, ML, y, CW, RULE_GREY);
-  y += 20;
+  for (const { label, value } of rows) {
+    const safeValue = sanitizeMeta(value);
+    // Measure the wrapped value height (PROJECT TITLE may span several lines)
+    doc.font("Times-Roman").fontSize(VALUE_SIZE);
+    const valH = doc.heightOfString(safeValue, { width: valueW }) as number;
 
-  // Note: the long project title is intentionally NOT shown on the cover — the
-  // cover carries only the candidate's information. The title appears as the
-  // document's H1 on the first body page.
+    doc.font("Helvetica-Bold").fontSize(LABEL_SIZE).fillColor(BLACK)
+      .text(sanitizeMeta(label), labelX, y, { width: colonX - labelX, lineBreak: false });
+    doc.font("Helvetica").fontSize(LABEL_SIZE).fillColor(BLACK)
+      .text(":", colonX, y, { lineBreak: false });
+    doc.font("Times-Roman").fontSize(VALUE_SIZE).fillColor(BLACK)
+      .text(safeValue, valueX, y, { width: valueW });
 
-  // Subject + grade badge
-  doc.font("Helvetica").fontSize(11).fillColor(MID_GREY)
-    .text(`${sanitizeMeta(project.subject)} — ${sanitizeMeta(project.grade ?? "")}`, ML, y, { width: CW, align: "center" });
-  y = (doc.y as number) + 6;
-
-  // Stage summary bar
-  const stages = ["Problem ID", "Investigation", "Generation", "Development", "Presentation", "Evaluation"];
-  const stageW = CW / stages.length;
-  stages.forEach((s, i) => {
-    fillRect(doc, ML + i * stageW, y, stageW - 1, 18, i % 2 === 0 ? ACCENT : ACCENT_SOFT);
-    doc.font("Helvetica").fontSize(6.5).fillColor("#ffffff")
-      .text(`Stage ${i + 1}`, ML + i * stageW + 2, y + 2, { width: stageW - 4, align: "center", lineBreak: false });
-    doc.font("Helvetica").fontSize(5.5).fillColor("#ffffff")
-      .text(s, ML + i * stageW + 2, y + 10, { width: stageW - 4, align: "center", lineBreak: false });
-  });
-  y += 30;
-
-  // Student info table
-  const year = String(new Date(project.createdAt).getFullYear());
-  const rows: [string, string][] = [
-    ["Student Name",     sanitizeMeta(project.studentName    && project.studentName    !== "_" ? project.studentName    : "—")],
-    ["School",           sanitizeMeta(project.schoolName     && project.schoolName     !== "_" ? project.schoolName     : "—")],
-    ["Centre Number",    sanitizeMeta(project.centreNumber   && project.centreNumber   !== "_" ? project.centreNumber   : "—")],
-    ["Candidate Number", sanitizeMeta(project.candidateNumber && project.candidateNumber !== "_" ? project.candidateNumber : "—")],
-    ["Grade / Form",     sanitizeMeta(project.grade ?? "—")],
-    ["Subject",          sanitizeMeta(project.subject)],
-    ["Academic Year",    year],
-  ];
-
-  const LABEL_W = 150;
-  const VAL_W   = CW - LABEL_W;
-  const ROW_H   = 22;
-
-  strokeRect(doc, ML, y, CW, rows.length * ROW_H);
-
-  for (let i = 0; i < rows.length; i++) {
-    const [label, val] = rows[i]!;
-    const ry = y + i * ROW_H;
-    if (i > 0) hRule(doc, ML, ry, CW);
-    fillRect(doc, ML, ry, LABEL_W, ROW_H, BG_SUBTLE);
-    // Vertical divider
-    doc.save().strokeColor(RULE_GREY).lineWidth(0.5)
-      .moveTo(ML + LABEL_W, ry).lineTo(ML + LABEL_W, ry + ROW_H).stroke().restore();
-    doc.font("Helvetica-Bold").fontSize(9.5).fillColor(BODY_GREY)
-      .text(label, ML + 10, ry + 7, { width: LABEL_W - 18, lineBreak: false });
-    doc.font("Helvetica").fontSize(9.5).fillColor(BLACK)
-      .text(val,  ML + LABEL_W + 10, ry + 7, { width: VAL_W - 18, lineBreak: false });
+    y += Math.max(valH, LABEL_SIZE) + ROW_GAP;
   }
-
-  // Cover footer
-  const footerY = PAGE_H - 38;
-  hRule(doc, ML, footerY, CW, RULE_GREY);
-  doc.save().font("Helvetica").fontSize(8).fillColor(LIGHT_GREY)
-    .text("Generated via Pass Study Platform", ML, footerY + 9, { width: CW / 2, lineBreak: false })
-    .text("pass.ac.zw", ML, footerY + 9, { width: CW, align: "right", lineBreak: false })
-    .restore();
 }
 
 // ── Block-level rendering ─────────────────────────────────────────────────────

@@ -304,6 +304,14 @@ export const PROJECT_ASK_NAME = `Let's get your project set up! 📚
 
 export const PROJECT_ASK_SCHOOL = `What is the name of your *school*?`;
 
+export const PROJECT_ASK_DISTRICT = `Which *district* is your school in? (e.g. _Mutare_)
+
+Reply *skip* if you'd rather leave it blank.`;
+
+export const PROJECT_ASK_PROVINCE = `And which *province*? (e.g. _Manicaland_)
+
+Reply *skip* if you'd rather leave it blank.`;
+
 export const PROJECT_ASK_CENTRE_CANDIDATE = `Got it! Please send your exam centre number and candidate number.
 e.g. _Centre: 1234, Candidate: 5678_
 

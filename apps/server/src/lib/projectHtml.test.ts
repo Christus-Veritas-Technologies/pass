@@ -63,10 +63,22 @@ describe("buildProjectHtml", () => {
 
   test("includes candidate info in the output", () => {
     const html = buildProjectHtml(MOCK, "screen");
-    expect(html).toContain("Tendai Moyo");
+    // The single studentName is split on the cover: last token = surname.
+    expect(html).toContain("Moyo");   // SURNAME
+    expect(html).toContain("Tendai"); // NAME
     expect(html).toContain("Harare High School");
     expect(html).toContain("12345");
     expect(html).toContain("6789");
+  });
+
+  test("renders the bordered LABEL : value cover sheet incl. the project title", () => {
+    const html = buildProjectHtml(MOCK, "screen");
+    expect(html).toContain("cover-frame");
+    expect(html).toContain("SURNAME");
+    expect(html).toContain("LEVEL");
+    expect(html).toContain("PROJECT TITLE");
+    // The project title is now shown on the cover (not just the body H1)
+    expect(html).toContain("The Impact of Water Pollution on Aquatic Life");
   });
 
   test("includes project content keywords", () => {

@@ -12,6 +12,8 @@ import { canonicalSubject, SUBJECT_NAMES } from "../../lib/subjects";
 import {
   PROJECT_ASK_NAME,
   PROJECT_ASK_SCHOOL,
+  PROJECT_ASK_DISTRICT,
+  PROJECT_ASK_PROVINCE,
   PROJECT_ASK_CENTRE_CANDIDATE,
   PROJECT_ASK_GRADE,
   PROJECT_ASK_SUBJECT,
@@ -25,6 +27,8 @@ import {
 export type ProjectSlots = {
   studentName: string;
   schoolName: string;
+  district: string;
+  province: string;
   centreNumber: string;
   candidateNumber: string;
   grade: string;
@@ -35,7 +39,7 @@ export type ProjectSlots = {
 };
 
 type Collected = Partial<ProjectSlots>;
-type Awaiting = "name" | "school" | "centre" | "candidate" | "grade" | "subject" | "title" | "outline";
+type Awaiting = "name" | "school" | "district" | "province" | "centre" | "candidate" | "grade" | "subject" | "title" | "outline";
 
 // Category is auto-selected — never asked from the user.
 const VALID_CATEGORIES = ["Culture & History", "Indigenous Sciences", "Arts & Lifestyle"] as const;
@@ -126,6 +130,30 @@ export async function handleProjectBriefReply(
   if (awaiting === "school" && text.trim()) {
     const schoolName = isLeaveBlank(text) ? "_" : text.trim();
     const merged: Collected = { ...collected, schoolName };
+    const newState: ConversationState = {
+      ...state,
+      mode: { kind: "project_brief", awaiting: getAwaiting(merged), collected: merged },
+    };
+    if (isComplete(merged)) return { state: newState, ready: merged as ProjectSlots };
+    return { state: await promptNextSlot(msg, newState, merged) };
+  }
+
+  // District step: the whole message is the district name (skippable).
+  if (awaiting === "district" && text.trim()) {
+    const district = isLeaveBlank(text) ? "_" : text.trim();
+    const merged: Collected = { ...collected, district };
+    const newState: ConversationState = {
+      ...state,
+      mode: { kind: "project_brief", awaiting: getAwaiting(merged), collected: merged },
+    };
+    if (isComplete(merged)) return { state: newState, ready: merged as ProjectSlots };
+    return { state: await promptNextSlot(msg, newState, merged) };
+  }
+
+  // Province step: the whole message is the province name (skippable).
+  if (awaiting === "province" && text.trim()) {
+    const province = isLeaveBlank(text) ? "_" : text.trim();
+    const merged: Collected = { ...collected, province };
     const newState: ConversationState = {
       ...state,
       mode: { kind: "project_brief", awaiting: getAwaiting(merged), collected: merged },
@@ -293,7 +321,8 @@ export async function repromptProjectBrief(
 
 function isComplete(c: Collected): c is ProjectSlots {
   return !!(
-    c.studentName && c.schoolName && c.centreNumber && c.candidateNumber &&
+    c.studentName && c.schoolName && c.district && c.province &&
+    c.centreNumber && c.candidateNumber &&
     c.grade && c.subject && c.category &&
     c.title !== undefined &&  // "" is valid (AI-generated topic)
     c.outline !== undefined   // "" is valid (no outline)
@@ -302,13 +331,15 @@ function isComplete(c: Collected): c is ProjectSlots {
 
 function missingFields(c: Collected): (keyof Collected)[] {
   // category and outline are excluded from NLP extraction (category auto-assigned, outline prompted directly)
-  const all: (keyof Collected)[] = ["studentName", "schoolName", "centreNumber", "candidateNumber", "grade", "subject", "title", "outline"];
+  const all: (keyof Collected)[] = ["studentName", "schoolName", "district", "province", "centreNumber", "candidateNumber", "grade", "subject", "title", "outline"];
   return all.filter((k) => c[k] === undefined);
 }
 
 function getAwaiting(c: Collected): Awaiting {
   if (!c.studentName) return "name";
   if (!c.schoolName) return "school";
+  if (!c.district) return "district";
+  if (!c.province) return "province";
   if (!c.centreNumber && !c.candidateNumber) return "centre";
   if (!c.centreNumber) return "centre";
   if (!c.candidateNumber) return "candidate";
@@ -333,6 +364,12 @@ async function promptNextSlot(
       break;
     case "school":
       await msg.reply(PROJECT_ASK_SCHOOL);
+      break;
+    case "district":
+      await msg.reply(PROJECT_ASK_DISTRICT);
+      break;
+    case "province":
+      await msg.reply(PROJECT_ASK_PROVINCE);
       break;
     case "centre":
       if (!collected.centreNumber && !collected.candidateNumber) {

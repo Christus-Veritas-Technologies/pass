@@ -48,10 +48,12 @@ export type ConversationMode =
     }
   | {
       kind: "project_brief";
-      awaiting: "name" | "school" | "centre" | "candidate" | "grade" | "subject" | "title" | "outline";
+      awaiting: "name" | "school" | "district" | "province" | "centre" | "candidate" | "grade" | "subject" | "title" | "outline";
       collected: {
         studentName?: string;
         schoolName?: string;
+        district?: string;
+        province?: string;
         centreNumber?: string;
         candidateNumber?: string;
         grade?: string;
@@ -73,6 +75,8 @@ export type ConversationMode =
       slots: {
         studentName: string;
         schoolName: string;
+        district: string;
+        province: string;
         centreNumber: string;
         candidateNumber: string;
         grade: string;

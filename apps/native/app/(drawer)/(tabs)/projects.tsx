@@ -112,6 +112,8 @@ export default function ProjectsScreen() {
   const [step, setStep] = useState<1 | 2>(1);
   const [studentName, setStudentName] = useState("");
   const [schoolName, setSchoolName] = useState("");
+  const [district, setDistrict] = useState("");
+  const [province, setProvince] = useState("");
   const [centreNumber, setCentreNumber] = useState("");
   const [candidateNumber, setCandidateNumber] = useState("");
   const [grade, setGrade] = useState<string>(GRADES[1]);
@@ -193,6 +195,8 @@ export default function ProjectsScreen() {
     setStep(1);
     setStudentName("");
     setSchoolName("");
+    setDistrict("");
+    setProvince("");
     setCentreNumber("");
     setCandidateNumber("");
     setGrade(GRADES[1]);
@@ -233,7 +237,7 @@ export default function ProjectsScreen() {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ studentName, schoolName, centreNumber, candidateNumber, grade, subject, outline: outline.trim() || undefined }),
+        body: JSON.stringify({ studentName, schoolName, district, province, centreNumber, candidateNumber, grade, subject, outline: outline.trim() || undefined }),
         signal: abort.signal,
       });
 
@@ -573,6 +577,29 @@ export default function ProjectsScreen() {
                     onChangeText={setSchoolName}
                     style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: colors.text, marginBottom: 16, backgroundColor: colors.cardSubtle }}
                   />
+
+                  <View style={{ flexDirection: "row", gap: 12, marginBottom: 16 }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 12, fontWeight: "600", color: colors.textTertiary, marginBottom: 6 }}>DISTRICT <Text style={{ fontWeight: "400", color: colors.textTertiary }}>(optional)</Text></Text>
+                      <TextInput
+                        placeholder="e.g. Mutare"
+                        placeholderTextColor={colors.textPlaceholder}
+                        value={district}
+                        onChangeText={setDistrict}
+                        style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: colors.text, backgroundColor: colors.cardSubtle }}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 12, fontWeight: "600", color: colors.textTertiary, marginBottom: 6 }}>PROVINCE <Text style={{ fontWeight: "400", color: colors.textTertiary }}>(optional)</Text></Text>
+                      <TextInput
+                        placeholder="e.g. Manicaland"
+                        placeholderTextColor={colors.textPlaceholder}
+                        value={province}
+                        onChangeText={setProvince}
+                        style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: colors.text, backgroundColor: colors.cardSubtle }}
+                      />
+                    </View>
+                  </View>
 
                   <View style={{ flexDirection: "row", gap: 12, marginBottom: 16 }}>
                     <View style={{ flex: 1 }}>
