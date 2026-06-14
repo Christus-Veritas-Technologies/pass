@@ -107,6 +107,8 @@ export default function NewProjectPage() {
   // Step 1 form state — pre-filled from session on mount
   const [studentName, setStudentName] = useState("");
   const [schoolName, setSchoolName] = useState("");
+  const [district, setDistrict] = useState("");
+  const [province, setProvince] = useState("");
   const [centreNumber, setCentreNumber] = useState("");
   const [candidateNumber, setCandidateNumber] = useState("");
   const [grade, setGrade] = useState<string>(GRADES[1]);
@@ -185,7 +187,7 @@ export default function NewProjectPage() {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ studentName, schoolName, centreNumber, candidateNumber, grade, subject, outline: outline.trim() || undefined }),
+        body: JSON.stringify({ studentName, schoolName, district, province, centreNumber, candidateNumber, grade, subject, outline: outline.trim() || undefined }),
         signal: abort.signal,
       });
 
@@ -338,6 +340,30 @@ export default function NewProjectPage() {
               onChange={(e) => setSchoolName(e.target.value)}
               className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground/50 hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent"
             />
+          </div>
+
+          {/* District + Province */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-foreground/90">District <span className="text-muted-foreground font-normal">(optional)</span></label>
+              <input
+                type="text"
+                placeholder="e.g. Mutare"
+                value={district}
+                onChange={(e) => setDistrict(e.target.value)}
+                className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground/50 hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-foreground/90">Province <span className="text-muted-foreground font-normal">(optional)</span></label>
+              <input
+                type="text"
+                placeholder="e.g. Manicaland"
+                value={province}
+                onChange={(e) => setProvince(e.target.value)}
+                className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground/50 hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent"
+              />
+            </div>
           </div>
 
           {/* Centre + Candidate numbers */}

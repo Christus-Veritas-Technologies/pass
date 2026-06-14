@@ -40,8 +40,11 @@ curl -s "$API/projects/<ID>/pdf?token=$TOKEN" -o /tmp/p.pdf && open /tmp/p.pdf
 open "$API/projects/<ID>/html?token=$TOKEN"
 curl -s "$API/projects/<ID>/docx" -H "Authorization: Bearer $TOKEN" -o /tmp/p.docx && open /tmp/p.docx
 ```
-- [ ] Page 1 = ZIMSEC header + candidate info table, **no long project title**.
-- [ ] The title appears as the **H1 on page 2** and in the running header.
+- [ ] Page 1 = a **black-bordered candidate-information sheet** with left-aligned `LABEL : value` rows in this order: **SURNAME, NAME, SCHOOL, CENTRE NUMBER, CANDIDATE NUMBER, LEVEL, ACADEMIC YEAR, DISTRICT, PROVINCE, LEARNING AREA, PROJECT TITLE** (no ZIMSEC header/stage strip/footer).
+- [ ] **SURNAME / NAME** are split from the one name field (last word → surname); **LEVEL** is derived from grade (Form 6 → ADVANCED, Form 4 → ORDINARY, Grade 7 → JUNIOR); **ACADEMIC YEAR** is a span (e.g. `2025-2026`); **PROJECT TITLE is now shown** on the cover.
+- [ ] Blank **District/Province** (or unregistered centre/candidate) render an em dash `—`, layout intact.
+- [ ] The title still appears as the **H1 on page 2** and in the running header.
+- [ ] Identity swap (reuse pool): a second student gets their **own** District/Province/name on the cover while the body is identical.
 
 ## D. Paynow webhook security  *(PR #13)* — *logic is unit-tested; verify live wiring*
 - [ ] Forged webhook rejected: `curl -s -o /dev/null -w "%{http_code}\n" $API/payments/webhook -d 'reference=x&status=Paid&hash=NOPE'` → **403**.

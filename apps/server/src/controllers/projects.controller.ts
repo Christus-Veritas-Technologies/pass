@@ -70,6 +70,8 @@ export async function generateProject(c: Context) {
     candidateNumber = "",
     studentName = "",
     schoolName = "",
+    district = "",
+    province = "",
     grade,
     subject,
     isGroupProject = false,
@@ -79,6 +81,8 @@ export async function generateProject(c: Context) {
     candidateNumber?: string;
     studentName?: string;
     schoolName?: string;
+    district?: string;
+    province?: string;
     grade: string;
     subject: string;
     isGroupProject?: boolean;
@@ -167,6 +171,8 @@ export async function generateProject(c: Context) {
           candidateNumber,
           studentName,
           schoolName,
+          district,
+          province,
           category: "",
         },
       });

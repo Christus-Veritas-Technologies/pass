@@ -227,6 +227,8 @@ model Project {
   category        String   @default("")
   studentName     String   @default("")
   schoolName      String   @default("")
+  district        String   @default("")
+  province        String   @default("")
   createdAt       DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id])

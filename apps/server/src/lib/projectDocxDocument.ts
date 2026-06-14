@@ -23,6 +23,7 @@ import {
   ShadingType,
 } from "docx";
 import type { Project } from "@pass/db";
+import { coverFieldRows } from "./projectCover";
 
 // ── Colour palette (matches PDF theme 1 by default — not project-specific in DOCX) ──
 const PRIMARY = "1a5c2e";
@@ -204,52 +205,41 @@ function blockToParagraph(block: Block): Paragraph | Table | null {
 // ── Cover page paragraphs ─────────────────────────────────────────────────────
 
 function coverParagraphs(project: Project): (Paragraph | Table)[] {
-  const year = new Date(project.createdAt).getFullYear();
-  const name     = project.studentName  && project.studentName  !== "_" ? project.studentName  : "—";
-  const school   = project.schoolName   && project.schoolName   !== "_" ? project.schoolName   : "—";
-  const centre   = project.centreNumber && project.centreNumber !== "_" ? project.centreNumber : "—";
-  const candidate = project.candidateNumber && project.candidateNumber !== "_" ? project.candidateNumber : "—";
+  const NONE = { style: BorderStyle.NONE, size: 0, color: "FFFFFF" };
+  const FRAME = { style: BorderStyle.SINGLE, size: 6, color: "000000" };
+  const cellBorders = { top: NONE, bottom: NONE, left: NONE, right: NONE };
+
+  // Bordered candidate-information sheet: an outer frame (single border on the
+  // table, no internal grid lines) of "LABEL : value" rows — the same rows the
+  // PDF and HTML covers use.
+  const rows = coverFieldRows(project).map((row) => new TableRow({
+    children: [
+      new TableCell({
+        children: [new Paragraph({ children: [new TextRun({ text: row.label, bold: true, size: 24, color: "000000" })] })],
+        width: { size: 3000, type: WidthType.DXA },
+        margins: { top: 120, bottom: 120, left: 160, right: 80 },
+        borders: cellBorders,
+      }),
+      new TableCell({
+        children: [new Paragraph({ children: [new TextRun({ text: ":", bold: true, size: 24, color: "000000" })] })],
+        width: { size: 300, type: WidthType.DXA },
+        margins: { top: 120, bottom: 120 },
+        borders: cellBorders,
+      }),
+      new TableCell({
+        children: [new Paragraph({ children: [new TextRun({ text: row.value, size: 24, font: "Times New Roman", color: "000000" })] })],
+        width: { size: 5772, type: WidthType.DXA },
+        margins: { top: 120, bottom: 120, left: 80, right: 160 },
+        borders: cellBorders,
+      }),
+    ],
+  }));
 
   return [
-    new Paragraph({
-      children: [new TextRun({ text: "Zimbabwe School Examinations Council", bold: true, size: 22, color: PRIMARY })],
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 240 },
-    }),
-    // The long project title is intentionally omitted from the cover — only the
-    // candidate's information is shown. The title appears as the body H1.
-    new Paragraph({
-      children: [new TextRun({ text: `Heritage-Based Curriculum (HBC 5.0) — ${project.subject}`, size: 22, color: "555555", italics: true })],
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 480 },
-    }),
-    // Candidate info table
     new Table({
-      rows: [
-        ["Student Name", name],
-        ["School", school],
-        ["Centre Number", centre],
-        ["Candidate Number", candidate],
-        ["Grade / Form", project.grade],
-        ["Subject", project.subject],
-        ["Academic Year", String(year)],
-      ].map(([label, value], i) => new TableRow({
-        children: [
-          new TableCell({
-            children: [new Paragraph({ children: [new TextRun({ text: label, bold: true, size: 20, color: PRIMARY })] })],
-            shading: i % 2 === 1 ? { type: ShadingType.SOLID, color: LIGHT, fill: LIGHT } : undefined,
-            width: { size: 2500, type: WidthType.DXA },
-            margins: { top: 80, bottom: 80, left: 140, right: 140 },
-          }),
-          new TableCell({
-            children: [new Paragraph({ children: [new TextRun({ text: value, size: 20 })] })],
-            shading: i % 2 === 1 ? { type: ShadingType.SOLID, color: LIGHT, fill: LIGHT } : undefined,
-            width: { size: 6572, type: WidthType.DXA },
-            margins: { top: 80, bottom: 80, left: 140, right: 140 },
-          }),
-        ],
-      })),
+      rows,
       width: { size: 9072, type: WidthType.DXA },
+      borders: { top: FRAME, bottom: FRAME, left: FRAME, right: FRAME, insideHorizontal: NONE, insideVertical: NONE },
     }),
     // Page break after cover
     new Paragraph({ children: [new TextRun({ break: 1 })], pageBreakBefore: true }),
