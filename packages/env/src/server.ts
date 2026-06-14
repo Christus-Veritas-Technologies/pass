@@ -16,6 +16,11 @@ export const env = createEnv({
     // Anthropic — optional (AI features disabled when absent)
     ANTHROPIC_API_KEY: z.string().optional(),
 
+    // OpenRouter — optional. When set, project generation routes through
+    // OpenRouter (DeepSeek V3.2, throughput-pinned). Falls back to Anthropic
+    // Sonnet when absent. See apps/server/src/mastra/models.ts.
+    OPENROUTER_API_KEY: z.string().optional(),
+
     // Google OAuth — optional (feature disabled when absent)
     GOOGLE_CLIENT_ID: z.string().optional(),
     GOOGLE_CLIENT_SECRET: z.string().optional(),
