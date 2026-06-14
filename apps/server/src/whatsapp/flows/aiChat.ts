@@ -12,6 +12,7 @@ import type { Message } from "whatsapp-web.js";
 import type { ConversationState } from "../types";
 import { RequestContext } from "@mastra/core/di";
 import { passAgent, USER_ID_CTX_KEY } from "../../mastra";
+import { WHATSAPP_FORMAT } from "../../mastra/prompts";
 import { checkAndIncrementAiMessage } from "../../lib/aiQuota";
 import { withRetry } from "../../mastra/retry";
 import { aiQuotaMessage, aiUsageFooter, AI_ERROR } from "../utils/messages";
@@ -38,7 +39,7 @@ export async function handleAiChat(
 
   try {
     const result = await withRetry(() =>
-      passAgent.generate(question, {
+      passAgent.generate(`${WHATSAPP_FORMAT}\n\n${question}`, {
         // Per-student conversation memory (multi-turn context).
         memory: { resource: userId, thread: msg.from },
         // Trusted user id for account/usage tools — never model-supplied.

@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  AiChat01Icon,
   BookOpen01Icon,
   ComputerIcon,
   Download02Icon,
@@ -24,6 +25,7 @@ import { getAccessToken } from "@/lib/auth";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: Home01Icon },
+  { href: "/chat", label: "Pass AI", icon: AiChat01Icon },
   { href: "/study", label: "Study", icon: GraduationScrollIcon },
   { href: "/resources", label: "Resources", icon: BookOpen01Icon },
   { href: "/projects", label: "Projects", icon: Folder01Icon },

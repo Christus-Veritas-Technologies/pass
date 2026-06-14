@@ -59,6 +59,11 @@ export const WHATSAPP_FORMAT = `FORMAT (WhatsApp)
 - Use plain labels like "*Key Points:*" instead of headings.
 - Keep replies concise and mobile-friendly.`;
 
+/** In-app (web + native) formatting rules — full Markdown is rendered. */
+export const APP_FORMAT = `FORMAT (app)
+- You may use full Markdown: **bold**, _italic_, # / ## headings, bullet and numbered lists, tables, and fenced code blocks where they aid clarity.
+- Lead with the direct answer, then lay out the worked solution in clearly structured steps.`;
+
 /** Compose an agent's full instructions from the identity + a role-specific body. */
 export function withIdentity(roleSpecific: string): string {
   return `${PASS_IDENTITY}\n\n${roleSpecific}`;
