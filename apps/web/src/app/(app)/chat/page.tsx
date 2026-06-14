@@ -45,6 +45,56 @@ interface Message {
 
 const UPLOAD_ACCEPT = "image/jpeg,image/png,image/webp,image/gif,application/pdf";
 
+// ── In-app attachment sources (free context: papers, sessions, resources, projects) ──
+type InAppTab = "paper" | "session" | "resource" | "project";
+interface InAppItem { id: string; label: string; sub?: string }
+interface RawRow {
+  id?: string;
+  title?: string;
+  paperTitle?: string;
+  topic?: string;
+  subject?: string;
+  grade?: string;
+  year?: number;
+  type?: string;
+}
+interface InAppSource {
+  title: string;
+  endpoint: string;
+  key: string;
+  filter?: (r: RawRow) => boolean;
+  map: (r: RawRow) => InAppItem;
+}
+
+const IN_APP_SOURCES: Record<InAppTab, InAppSource> = {
+  paper: {
+    title: "Papers",
+    endpoint: "/papers",
+    key: "papers",
+    map: (r) => ({ id: r.id ?? "", label: r.title ?? "Untitled", sub: [r.subject, r.grade, r.year].filter(Boolean).join(" · ") }),
+  },
+  session: {
+    title: "Sessions",
+    endpoint: "/papers/sessions/recent",
+    key: "sessions",
+    map: (r) => ({ id: r.id ?? "", label: r.paperTitle ?? "Practice session", sub: [r.subject, r.grade].filter(Boolean).join(" · ") }),
+  },
+  resource: {
+    title: "Resources",
+    endpoint: "/resources",
+    key: "resources",
+    filter: (r) => r.type !== "PAST_PAPER",
+    map: (r) => ({ id: r.id ?? "", label: r.title ?? "Untitled", sub: [r.subject, r.grade].filter(Boolean).join(" · ") }),
+  },
+  project: {
+    title: "Projects",
+    endpoint: "/projects",
+    key: "projects",
+    map: (r) => ({ id: r.id ?? "", label: r.topic ?? "Project", sub: [r.subject, r.grade].filter(Boolean).join(" · ") }),
+  },
+};
+const IN_APP_TABS = Object.keys(IN_APP_SOURCES) as InAppTab[];
+
 // ─── API helpers ─────────────────────────────────────────────────────────────
 
 function authHeaders(): Record<string, string> {
@@ -64,6 +114,12 @@ export default function ChatPage() {
   const [remaining, setRemaining] = useState<number | null>(null);
   const [pendingUploads, setPendingUploads] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
+
+  // In-app attachment picker (papers / sessions / resources / projects)
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerTab, setPickerTab] = useState<InAppTab>("paper");
+  const [pickerItems, setPickerItems] = useState<InAppItem[]>([]);
+  const [pickerLoading, setPickerLoading] = useState(false);
 
   // Upgrade dialog
   const [upgradeOpen, setUpgradeOpen] = useState(false);
@@ -170,6 +226,35 @@ export default function ChatPage() {
 
   function removeUpload(idx: number) {
     setPendingUploads((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  // ── In-app attachments (free for everyone) ────────────────────────────────
+  function togglePicker() {
+    const next = !pickerOpen;
+    setPickerOpen(next);
+    if (next) loadPicker(pickerTab);
+  }
+
+  async function loadPicker(tab: InAppTab) {
+    setPickerTab(tab);
+    setPickerLoading(true);
+    setPickerItems([]);
+    try {
+      const src = IN_APP_SOURCES[tab];
+      const res = await fetch(`${API}${src.endpoint}`, { headers: authHeaders() });
+      const data = await res.json();
+      const rows: RawRow[] = data?.[src.key] ?? [];
+      setPickerItems(rows.filter(src.filter ?? (() => true)).map(src.map).filter((i) => i.id));
+    } catch {
+      setPickerItems([]);
+    } finally {
+      setPickerLoading(false);
+    }
+  }
+
+  function addInApp(item: InAppItem) {
+    setPendingUploads((prev) => [...prev, { kind: pickerTab, refId: item.id, name: item.label }]);
+    setPickerOpen(false);
   }
 
   // ── Send ──────────────────────────────────────────────────────────────────
@@ -378,7 +463,47 @@ export default function ChatPage() {
 
         {/* Composer */}
         <div className="border-t border-border bg-background/60 p-3 md:px-8 md:py-4">
-          <div className="mx-auto max-w-3xl">
+          <div className="relative mx-auto max-w-3xl">
+            {/* In-app attachment picker */}
+            {pickerOpen && (
+              <div className="absolute bottom-full left-0 z-20 mb-2 w-full max-w-md overflow-hidden rounded-2xl border border-border bg-card shadow-lg">
+                <div className="flex items-center gap-1 border-b border-border p-1.5">
+                  {IN_APP_TABS.map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => loadPicker(tab)}
+                      className={cn(
+                        "flex-1 rounded-lg px-2 py-1.5 text-xs font-medium transition-colors",
+                        pickerTab === tab ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted",
+                      )}
+                    >
+                      {IN_APP_SOURCES[tab].title}
+                    </button>
+                  ))}
+                </div>
+                <div className="max-h-64 overflow-y-auto p-1.5">
+                  {pickerLoading ? (
+                    <p className="py-6 text-center text-xs text-muted-foreground">Loading…</p>
+                  ) : pickerItems.length === 0 ? (
+                    <p className="py-6 text-center text-xs text-muted-foreground">Nothing here yet.</p>
+                  ) : (
+                    pickerItems.map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => addInApp(item)}
+                        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm">{item.label}</p>
+                          {item.sub && <p className="truncate text-xs text-muted-foreground">{item.sub}</p>}
+                        </div>
+                        <HugeiconsIcon icon={Add01Icon} className="h-3.5 w-3.5 shrink-0 text-primary" />
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
             {pendingUploads.length > 0 && (
               <div className="mb-2 flex flex-wrap gap-2">
                 {pendingUploads.map((a, i) => (
@@ -397,10 +522,23 @@ export default function ChatPage() {
               <button
                 onClick={onAttachClick}
                 disabled={uploading || sending}
-                aria-label="Attach file"
+                aria-label="Upload photo or PDF"
+                title="Upload a photo or PDF"
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
               >
                 <HugeiconsIcon icon={uploading ? SparklesIcon : Attachment01Icon} className={cn("h-5 w-5", uploading && "animate-pulse")} />
+              </button>
+              <button
+                onClick={togglePicker}
+                disabled={sending}
+                aria-label="Attach from app"
+                title="Attach a paper, session, resource or project"
+                className={cn(
+                  "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50",
+                  pickerOpen ? "bg-muted text-foreground" : "text-muted-foreground",
+                )}
+              >
+                <HugeiconsIcon icon={Folder01Icon} className="h-5 w-5" />
               </button>
               <textarea
                 value={input}

@@ -1,5 +1,11 @@
 import {
+  Books,
+  CaretRight,
   ChatCircleDots,
+  FilePdf,
+  FileText,
+  Folder,
+  Image as ImageIcon,
   Lightning,
   Paperclip,
   PaperPlaneRight,
@@ -9,6 +15,7 @@ import {
   X,
 } from "@vuduc0801/react-native-phosphor-icons";
 import * as SecureStore from "expo-secure-store";
+import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { MotiView } from "moti";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -41,6 +48,7 @@ interface Thread {
 interface Attachment {
   kind: "upload" | "paper" | "session" | "resource" | "project";
   url?: string;
+  refId?: string;
   mime?: string;
   name?: string;
 }
@@ -52,6 +60,62 @@ interface Message {
   attachments?: Attachment[];
   pending?: boolean;
 }
+
+// ── In-app attachment sources (free context: papers, sessions, resources, projects) ──
+type InAppTab = "paper" | "session" | "resource" | "project";
+interface InAppItem { id: string; label: string; sub?: string }
+interface RawRow {
+  id?: string;
+  title?: string;
+  paperTitle?: string;
+  topic?: string;
+  subject?: string;
+  grade?: string;
+  year?: number;
+  type?: string;
+}
+interface InAppSource {
+  title: string;
+  endpoint: string;
+  key: string;
+  filter?: (r: RawRow) => boolean;
+  map: (r: RawRow) => InAppItem;
+}
+
+const IN_APP_SOURCES: Record<InAppTab, InAppSource> = {
+  paper: {
+    title: "Papers",
+    endpoint: "/papers",
+    key: "papers",
+    map: (r) => ({ id: r.id ?? "", label: r.title ?? "Untitled", sub: [r.subject, r.grade, r.year].filter(Boolean).join(" · ") }),
+  },
+  session: {
+    title: "Sessions",
+    endpoint: "/papers/sessions/recent",
+    key: "sessions",
+    map: (r) => ({ id: r.id ?? "", label: r.paperTitle ?? "Practice session", sub: [r.subject, r.grade].filter(Boolean).join(" · ") }),
+  },
+  resource: {
+    title: "Resources",
+    endpoint: "/resources",
+    key: "resources",
+    filter: (r) => r.type !== "PAST_PAPER",
+    map: (r) => ({ id: r.id ?? "", label: r.title ?? "Untitled", sub: [r.subject, r.grade].filter(Boolean).join(" · ") }),
+  },
+  project: {
+    title: "Projects",
+    endpoint: "/projects",
+    key: "projects",
+    map: (r) => ({ id: r.id ?? "", label: r.topic ?? "Project", sub: [r.subject, r.grade].filter(Boolean).join(" · ") }),
+  },
+};
+
+const TAB_ICONS: Record<InAppTab, typeof Books> = {
+  paper: Books,
+  session: FileText,
+  resource: Folder,
+  project: Folder,
+};
 
 async function getToken(): Promise<string | null> {
   try { return await SecureStore.getItemAsync("pass_access_token"); } catch { return null; }
@@ -72,6 +136,13 @@ export default function ChatScreen() {
   const [pendingUploads, setPendingUploads] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
   const [threadsOpen, setThreadsOpen] = useState(false);
+
+  // Attachment menu (Photo / PDF / Attach from app) + in-app picker.
+  const [attachMenuOpen, setAttachMenuOpen] = useState(false);
+  const [inAppOpen, setInAppOpen] = useState(false);
+  const [inAppTab, setInAppTab] = useState<InAppTab>("paper");
+  const [inAppItems, setInAppItems] = useState<InAppItem[]>([]);
+  const [inAppLoading, setInAppLoading] = useState(false);
 
   const [upgradeVisible, setUpgradeVisible] = useState(false);
   const [upgradeFeature, setUpgradeFeature] = useState<"aiMessages" | "attachments">("attachments");
@@ -148,23 +219,16 @@ export default function ChatScreen() {
     if (activeId === id) newChat();
   }
 
-  // ── Image upload (paid feature) ───────────────────────────────────────────
-  async function onAttachPress() {
-    if (!isPaid) {
-      setUpgradeFeature("attachments");
-      setUpgradeVisible(true);
-      return;
-    }
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) return;
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.8,
-    });
-    if (result.canceled || !result.assets?.[0]) return;
-    const asset = result.assets[0];
-    const mime = asset.mimeType ?? "image/jpeg";
-    const name = asset.fileName ?? `photo-${Date.now()}.jpg`;
+  // ── Attachments: one paperclip → Photo / PDF (paid uploads) / Attach from app (free) ──
+  function requirePaid(): boolean {
+    if (isPaid) return true;
+    setUpgradeFeature("attachments");
+    setUpgradeVisible(true);
+    return false;
+  }
+
+  /** Presign + PUT a local file to R2, then stage it as an `upload` attachment. */
+  async function uploadToR2(uri: string, mime: string, name: string) {
     setUploading(true);
     try {
       const presign = await fetch(`${API}/upload/presign`, {
@@ -174,7 +238,7 @@ export default function ChatScreen() {
       });
       if (!presign.ok) throw new Error("presign failed");
       const { uploadUrl, publicUrl } = await presign.json();
-      const blob = await (await fetch(asset.uri)).blob();
+      const blob = await (await fetch(uri)).blob();
       const put = await fetch(uploadUrl, { method: "PUT", body: blob, headers: { "Content-Type": mime } });
       if (!put.ok) throw new Error("upload failed");
       setPendingUploads((prev) => [...prev, { kind: "upload", url: publicUrl, mime, name }]);
@@ -182,8 +246,60 @@ export default function ChatScreen() {
     finally { setUploading(false); }
   }
 
+  async function pickImage() {
+    setAttachMenuOpen(false);
+    if (!requirePaid()) return;
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
+    if (result.canceled || !result.assets?.[0]) return;
+    const asset = result.assets[0];
+    await uploadToR2(asset.uri, asset.mimeType ?? "image/jpeg", asset.fileName ?? `photo-${Date.now()}.jpg`);
+  }
+
+  async function pickPdf() {
+    setAttachMenuOpen(false);
+    if (!requirePaid()) return;
+    const result = await DocumentPicker.getDocumentAsync({ type: "application/pdf", copyToCacheDirectory: true });
+    if (result.canceled || !result.assets?.[0]) return;
+    const asset = result.assets[0];
+    await uploadToR2(asset.uri, asset.mimeType ?? "application/pdf", asset.name ?? `document-${Date.now()}.pdf`);
+  }
+
   function removeUpload(idx: number) {
     setPendingUploads((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  // ── In-app attachments (free for everyone) ────────────────────────────────
+  function openInAppPicker() {
+    setAttachMenuOpen(false);
+    setInAppOpen(true);
+    loadInApp(inAppTab);
+  }
+
+  async function loadInApp(tab: InAppTab) {
+    setInAppTab(tab);
+    setInAppLoading(true);
+    setInAppItems([]);
+    try {
+      const src = IN_APP_SOURCES[tab];
+      const res = await fetch(`${API}${src.endpoint}`, { headers: await authHeaders() });
+      const data = await res.json();
+      const rows: RawRow[] = data?.[src.key] ?? [];
+      setInAppItems(rows.filter(src.filter ?? (() => true)).map(src.map).filter((i) => i.id));
+    } catch {
+      setInAppItems([]);
+    } finally {
+      setInAppLoading(false);
+    }
+  }
+
+  function addInApp(item: InAppItem) {
+    setPendingUploads((prev) => [...prev, { kind: inAppTab, refId: item.id, name: item.label }]);
+    setInAppOpen(false);
   }
 
   // ── Send ──────────────────────────────────────────────────────────────────
@@ -411,7 +527,7 @@ export default function ChatScreen() {
             </View>
           )}
           <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8 }}>
-            <Pressable onPress={onAttachPress} disabled={uploading || sending} style={{ width: 38, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: colors.cardSubtle }}>
+            <Pressable onPress={() => setAttachMenuOpen(true)} disabled={uploading || sending} style={{ width: 38, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: colors.cardSubtle }}>
               {uploading ? <ActivityIndicator size="small" color={colors.brand} /> : <Paperclip size={20} color={colors.textTertiary} />}
             </Pressable>
             <TextInput
@@ -469,6 +585,87 @@ export default function ChatScreen() {
               </Pressable>
             )}
           />
+        </View>
+      </Modal>
+
+      {/* Attachment menu — Photo / PDF (paid uploads) + Attach from app (free) */}
+      <Modal visible={attachMenuOpen} transparent animationType="fade" onRequestClose={() => setAttachMenuOpen(false)}>
+        <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.35)", justifyContent: "flex-end" }} onPress={() => setAttachMenuOpen(false)}>
+          <Pressable style={{ backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: 8, paddingBottom: 28, paddingHorizontal: 12 }}>
+            <View style={{ alignSelf: "center", width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border, marginBottom: 12 }} />
+            {[
+              { icon: ImageIcon, label: "Photo", hint: isPaid ? "Upload an image of a question" : "Paid plans", onPress: pickImage },
+              { icon: FilePdf, label: "PDF", hint: isPaid ? "Upload a PDF document" : "Paid plans", onPress: pickPdf },
+              { icon: Folder, label: "Attach from app", hint: "Papers, sessions, resources, projects", onPress: openInAppPicker },
+            ].map((row) => (
+              <Pressable
+                key={row.label}
+                onPress={row.onPress}
+                style={{ flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 14, paddingHorizontal: 10, borderRadius: 12 }}
+              >
+                <View style={{ width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: colors.indigoBg }}>
+                  <row.icon size={20} color={colors.brand} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 15, fontWeight: "600", color: colors.text }}>{row.label}</Text>
+                  <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: 1 }}>{row.hint}</Text>
+                </View>
+                <CaretRight size={16} color={colors.textTertiary} />
+              </Pressable>
+            ))}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* In-app attachment picker — papers / sessions / resources / projects */}
+      <Modal visible={inAppOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setInAppOpen(false)}>
+        <View style={{ flex: 1, backgroundColor: colors.card }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+            <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text }}>Attach from app</Text>
+            <Pressable onPress={() => setInAppOpen(false)} style={{ padding: 6 }}>
+              <X size={20} color={colors.textTertiary} />
+            </Pressable>
+          </View>
+          <View style={{ flexDirection: "row", gap: 8, paddingHorizontal: 16, paddingVertical: 12 }}>
+            {(Object.keys(IN_APP_SOURCES) as InAppTab[]).map((tab) => {
+              const active = inAppTab === tab;
+              const Icon = TAB_ICONS[tab];
+              return (
+                <Pressable
+                  key={tab}
+                  onPress={() => loadInApp(tab)}
+                  style={{ flex: 1, alignItems: "center", gap: 4, paddingVertical: 8, borderRadius: 10, backgroundColor: active ? colors.indigoBg : colors.cardSubtle }}
+                >
+                  <Icon size={18} color={active ? colors.brand : colors.textTertiary} />
+                  <Text style={{ fontSize: 11, fontWeight: "600", color: active ? colors.brand : colors.textTertiary }}>{IN_APP_SOURCES[tab].title}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          {inAppLoading ? (
+            <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+              <ActivityIndicator color={colors.brand} />
+            </View>
+          ) : (
+            <FlatList
+              data={inAppItems}
+              keyExtractor={(i) => i.id}
+              contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}
+              ListEmptyComponent={<Text style={{ textAlign: "center", color: colors.textTertiary, fontSize: 13, marginTop: 32 }}>Nothing here yet.</Text>}
+              renderItem={({ item }) => (
+                <Pressable
+                  onPress={() => addInApp(item)}
+                  style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12, paddingHorizontal: 8, borderBottomWidth: 1, borderBottomColor: colors.borderSubtle }}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 14, color: colors.text }} numberOfLines={1}>{item.label}</Text>
+                    {item.sub ? <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: 1 }} numberOfLines={1}>{item.sub}</Text> : null}
+                  </View>
+                  <Plus size={16} color={colors.brand} />
+                </Pressable>
+              )}
+            />
+          )}
         </View>
       </Modal>
     </SafeAreaView>
