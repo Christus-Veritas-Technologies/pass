@@ -87,6 +87,8 @@ export async function generateProject(
       candidateNumber: slots.candidateNumber,
       studentName: slots.studentName,
       schoolName: slots.schoolName,
+      district: slots.district,
+      province: slots.province,
       category: slots.category,
     },
   });

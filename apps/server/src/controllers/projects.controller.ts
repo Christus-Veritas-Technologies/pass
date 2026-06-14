@@ -70,6 +70,8 @@ export async function generateProject(c: Context) {
     candidateNumber = "",
     studentName = "",
     schoolName = "",
+    district = "",
+    province = "",
     grade,
     subject,
     isGroupProject = false,
@@ -79,6 +81,8 @@ export async function generateProject(c: Context) {
     candidateNumber?: string;
     studentName?: string;
     schoolName?: string;
+    district?: string;
+    province?: string;
     grade: string;
     subject: string;
     isGroupProject?: boolean;
@@ -120,8 +124,11 @@ export async function generateProject(c: Context) {
         create: { userId, month, papersUsed: 0, projectsUsed: 0 },
         update: {},
       });
+      // updateMany takes a plain WhereInput (flat fields) — NOT the compound
+      // `userId_month` unique selector (valid only for single-record ops).
+      // userId + month is unique so this still matches exactly the one row.
       const consumed = await prisma.monthlyUsage.updateMany({
-        where: { userId_month: { userId, month }, projectsUsed: { lt: projectLimit } },
+        where: { userId, month, projectsUsed: { lt: projectLimit } },
         data: { projectsUsed: { increment: 1 } },
       });
       if (consumed.count === 0) {
@@ -164,6 +171,8 @@ export async function generateProject(c: Context) {
           candidateNumber,
           studentName,
           schoolName,
+          district,
+          province,
           category: "",
         },
       });

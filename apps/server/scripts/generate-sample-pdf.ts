@@ -87,6 +87,8 @@ const fakeProject: Project = {
   grade: "Form 6",
   studentName: "Tatenda Moyo",
   schoolName: "Goromonzi High School",
+  district: "Goromonzi",
+  province: "Mashonaland East",
   centreNumber: "4021",
   candidateNumber: "001245",
   content: SAMPLE_CONTENT,
