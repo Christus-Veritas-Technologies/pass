@@ -30,6 +30,8 @@ export default function TabsLayout() {
         options={{
           title: "Pass AI",
           tabBarIcon: ({ color }) => <ChatCircleDots size={22} color={color} />,
+          // Chat manages its own navigation — hide the tab bar when this screen is active
+          tabBarStyle: { display: "none" },
         }}
       />
       <Tabs.Screen
