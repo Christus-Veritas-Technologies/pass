@@ -306,8 +306,11 @@ export default function ChatPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
-  // Sentinel for mobile sheet infinite scroll
   const pickerSentinelRef = useRef<HTMLDivElement>(null);
+  // Ref-based mutex: set synchronously before the first await to prevent double-send.
+  const sendingRef = useRef(false);
+  // Ref that always tracks the latest activeId for stale-closure-safe checks.
+  const activeIdRef = useRef<string | null>(null);
 
   const isPaid = plan !== "FREE";
 
@@ -353,16 +356,21 @@ export default function ChatPage() {
     return () => clearTimeout(t);
   }, [sendError]);
 
+  // Keep activeIdRef in sync so stale closures (e.g. loadThreads captured in send())
+  // can still read the current value without being listed as a dependency.
+  useEffect(() => { activeIdRef.current = activeId; }, [activeId]);
+
   async function loadThreads() {
     try {
       const res = await fetch(`${API}/chat/threads`, { headers: authHeaders() });
       const data = await res.json();
       setThreads(data.threads ?? []);
-      if (!activeId && data.threads?.length) selectThread(data.threads[0].id);
+      if (!activeIdRef.current && data.threads?.length) selectThread(data.threads[0].id);
     } catch { /* ignore */ }
   }
 
   async function selectThread(id: string) {
+    activeIdRef.current = id;
     setActiveId(id);
     setMessages([]);
     try {
@@ -373,6 +381,7 @@ export default function ChatPage() {
   }
 
   function newChat() {
+    activeIdRef.current = null;
     setActiveId(null);
     setMessages([]);
     setPendingUploads([]);
@@ -381,10 +390,11 @@ export default function ChatPage() {
   }
 
   async function ensureThread(): Promise<string | null> {
-    if (activeId) return activeId;
+    if (activeIdRef.current) return activeIdRef.current;
     try {
       const res = await fetch(`${API}/chat/threads`, { method: "POST", headers: authHeaders(), body: "{}" });
       const thread = await res.json();
+      activeIdRef.current = thread.id;
       setActiveId(thread.id);
       setThreads((prev) => [thread, ...prev]);
       return thread.id;
@@ -494,11 +504,16 @@ export default function ChatPage() {
 
   const send = useCallback(async () => {
     const text = input.trim();
-    if (!text || sending) return;
+    // sendingRef is set synchronously before any await to prevent double-send.
+    if (!text || sendingRef.current) return;
+    sendingRef.current = true;
+    setSending(true);
     setSendError(null);
 
     const threadId = await ensureThread();
     if (!threadId) {
+      sendingRef.current = false;
+      setSending(false);
       setSendError("Couldn't create a conversation. Please try again.");
       return;
     }
@@ -507,7 +522,6 @@ export default function ChatPage() {
     setInput("");
     setPendingUploads([]);
     setPickerOpen(false);
-    setSending(true);
 
     const userMsg: Message = { id: `tmp-u-${Date.now()}`, role: "user", content: text, attachments };
     const asstMsg: Message = { id: `tmp-a-${Date.now()}`, role: "assistant", content: "", pending: true };
@@ -595,9 +609,10 @@ export default function ChatPage() {
       setMessages((prev) => prev.filter((m) => m.id !== asstMsg.id && m.id !== userMsg.id));
       setSendError("Something went wrong. Please try again.");
     } finally {
+      sendingRef.current = false;
       setSending(false);
     }
-  }, [input, sending, pendingUploads, activeId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [input, pendingUploads, activeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
