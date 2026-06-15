@@ -13,9 +13,11 @@ import { streamSSE } from "hono/streaming";
 import type { Context } from "hono";
 import { z } from "zod";
 import prisma from "@pass/db";
+import { Agent } from "@mastra/core/agent";
 import { RequestContext } from "@mastra/core/di";
 import { passAgent, USER_ID_CTX_KEY } from "../mastra";
 import { APP_FORMAT } from "../mastra/prompts";
+import { PASS_MODEL_HAIKU } from "../mastra/models";
 import { withRetry } from "../mastra/retry";
 import { checkAndIncrementAiMessage } from "../lib/aiQuota";
 import { nextMonthlyResetISO } from "../lib/planLimits";
@@ -54,10 +56,35 @@ async function requireOwnedThread(threadId: string, userId: string) {
   return thread && thread.userId === userId ? thread : null;
 }
 
-/** A short title derived from the first message (no extra model call). */
+/** A short title derived from the first message (fallback / instant placeholder). */
 function slugTitle(text: string): string {
   const oneLine = text.replace(/\s+/g, " ").trim();
   return oneLine.length > 60 ? `${oneLine.slice(0, 57)}…` : oneLine;
+}
+
+/** Tiny agent that generates a 3-5 word on-brand chat title. */
+const titleAgent = new Agent({
+  id: "threadTitleAgent",
+  name: "Thread Title",
+  instructions: `You generate concise 3–5 word chat titles for Pass, a ZIMSEC exam-prep app.
+Given the student's opening message, return a short descriptive title capturing the topic.
+Rules: no quotes, no trailing punctuation, title-case, max 6 words.
+Examples: "Form 4 Biology Cells", "Integration by Parts", "History Essay Help".`,
+  model: PASS_MODEL_HAIKU,
+});
+
+const titleSchema = z.object({ title: z.string().max(80) });
+
+async function generateThreadTitle(text: string): Promise<string> {
+  try {
+    const result = await titleAgent.generate(
+      `Student's opening message: "${text.slice(0, 400)}"`,
+      { structuredOutput: { schema: titleSchema } },
+    );
+    return (result.object as { title?: string })?.title?.trim() || slugTitle(text);
+  } catch {
+    return slugTitle(text);
+  }
 }
 
 // ─── Thread CRUD ─────────────────────────────────────────────────────────────
@@ -187,12 +214,14 @@ export async function sendMessage(c: Context) {
   await prisma.chatMessage.create({
     data: { threadId, role: "user", content: text, attachments, tokensCharged: cost },
   });
-  // Auto-title a still-default thread from its first message.
+  // Auto-title a still-default thread: set a fast slug placeholder immediately,
+  // then generate an AI title in parallel with the stream.
+  const isNewThread = owned.title === "New chat";
   await prisma.chatThread.update({
     where: { id: threadId },
     data: {
       updatedAt: new Date(),
-      ...(owned.title === "New chat" ? { title: slugTitle(text) } : {}),
+      ...(isNewThread ? { title: slugTitle(text) } : {}),
     },
   });
 
@@ -202,6 +231,11 @@ export async function sendMessage(c: Context) {
   // ── Stream the answer ───────────────────────────────────────────────────────
   return streamSSE(c, async (s) => {
     let accumulated = "";
+
+    // Start AI title generation in parallel with the stream for new threads.
+    const titlePromise: Promise<string | null> = isNewThread
+      ? generateThreadTitle(text).catch(() => null)
+      : Promise.resolve(null);
 
     const emitUsage = async () => {
       await s.writeSSE({
@@ -263,12 +297,20 @@ export async function sendMessage(c: Context) {
       const assistant = await prisma.chatMessage.create({
         data: { threadId, role: "assistant", content: trimmed, tokensCharged: 0 },
       });
-      await prisma.chatThread.update({ where: { id: threadId }, data: { updatedAt: new Date() } });
+
+      // Resolve AI title (was running in parallel — likely done by now).
+      const aiTitle = await titlePromise;
+      if (aiTitle && isNewThread) {
+        await prisma.chatThread.update({ where: { id: threadId }, data: { title: aiTitle, updatedAt: new Date() } }).catch(() => {});
+      } else {
+        await prisma.chatThread.update({ where: { id: threadId }, data: { updatedAt: new Date() } });
+      }
 
       await s.writeSSE({
         event: "done",
         data: JSON.stringify({
           message_id: assistant.id,
+          ...(aiTitle && isNewThread ? { title: aiTitle } : {}),
           used: quota.used,
           limit: quota.limit === Infinity ? null : quota.limit,
           remaining: remaining === Infinity ? null : remaining,
