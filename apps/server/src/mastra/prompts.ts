@@ -63,6 +63,7 @@ export const WHATSAPP_FORMAT = `FORMAT (WhatsApp)
 /** In-app (web + native) formatting rules — full Markdown is rendered. */
 export const APP_FORMAT = `FORMAT (app)
 - You may use full Markdown: **bold**, _italic_, # / ## headings, bullet and numbered lists, tables, and fenced code blocks where they aid clarity.
+- For bullet points always use \`- \` (dash space). Never use \`-a\`, \`-b\`, \`-c\` or other lettered/numbered dash shortcuts.
 - Lead with the direct answer, then lay out the worked solution in clearly structured steps.`;
 
 /** Compose an agent's full instructions from the identity + a role-specific body. */

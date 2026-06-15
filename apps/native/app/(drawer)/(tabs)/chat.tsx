@@ -158,6 +158,8 @@ export default function ChatScreen() {
   const [upgradeFeature, setUpgradeFeature] = useState<"aiMessages" | "attachments">("attachments");
 
   const listRef = useRef<FlatList<Message>>(null);
+  const sendingRef = useRef(false);
+  const activeIdRef = useRef<string | null>(null);
   const isPaid = plan !== "FREE";
 
   useEffect(() => {
@@ -193,11 +195,12 @@ export default function ChatScreen() {
       const res = await fetch(`${API}/chat/threads`, { headers: await authHeaders() });
       const data = await res.json();
       setThreads(data.threads ?? []);
-      if (!activeId && data.threads?.length) selectThread(data.threads[0].id);
+      if (!activeIdRef.current && data.threads?.length) selectThread(data.threads[0].id);
     } catch {}
   }
 
   async function selectThread(id: string) {
+    activeIdRef.current = id;
     setActiveId(id);
     setMessages([]);
     setThreadsOpen(false);
@@ -209,6 +212,7 @@ export default function ChatScreen() {
   }
 
   function newChat() {
+    activeIdRef.current = null;
     setActiveId(null);
     setMessages([]);
     setPendingUploads([]);
@@ -219,10 +223,11 @@ export default function ChatScreen() {
   }
 
   async function ensureThread(): Promise<string | null> {
-    if (activeId) return activeId;
+    if (activeIdRef.current) return activeIdRef.current;
     try {
       const res = await fetch(`${API}/chat/threads`, { method: "POST", headers: await authHeaders(), body: "{}" });
       const thread = await res.json();
+      activeIdRef.current = thread.id;
       setActiveId(thread.id);
       setThreads((prev) => [thread, ...prev]);
       return thread.id;
@@ -349,11 +354,15 @@ export default function ChatScreen() {
   // ── Send ──────────────────────────────────────────────────────────────────
   const send = useCallback(async () => {
     const text = input.trim();
-    if (!text || sending) return;
+    if (!text || sendingRef.current) return;
+    sendingRef.current = true;
+    setSending(true);
     setSendError(null);
 
     const threadId = await ensureThread();
     if (!threadId) {
+      sendingRef.current = false;
+      setSending(false);
       setSendError("Couldn't create a conversation. Please try again.");
       return;
     }
@@ -361,7 +370,6 @@ export default function ChatScreen() {
     const attachments = [...pendingUploads];
     setInput("");
     setPendingUploads([]);
-    setSending(true);
 
     const userMsg: Message = { id: `tmp-u-${Date.now()}`, role: "user", content: text, attachments };
     const asstMsg: Message = { id: `tmp-a-${Date.now()}`, role: "assistant", content: "", pending: true };
@@ -448,9 +456,10 @@ export default function ChatScreen() {
       setMessages((prev) => prev.filter((m) => m.id !== asstMsg.id && m.id !== userMsg.id));
       setSendError("Something went wrong. Please try again.");
     } finally {
+      sendingRef.current = false;
       setSending(false);
     }
-  }, [input, sending, pendingUploads, activeId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [input, pendingUploads, activeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Markdown → <Text> (mirrors projects.tsx renderContent) ────────────────
   function renderContent(content: string) {
@@ -458,7 +467,7 @@ export default function ChatScreen() {
       if (line.startsWith("# ")) return <Text key={i} style={{ fontSize: 17, fontWeight: "700", color: colors.text, marginTop: 6, marginBottom: 3 }}>{line.slice(2)}</Text>;
       if (line.startsWith("## ")) return <Text key={i} style={{ fontSize: 15, fontWeight: "600", color: colors.text, marginTop: 10, marginBottom: 3 }}>{line.slice(3)}</Text>;
       if (line.startsWith("### ")) return <Text key={i} style={{ fontSize: 14, fontWeight: "600", color: colors.textSecondary, marginTop: 8, marginBottom: 2 }}>{line.slice(4)}</Text>;
-      if (line.startsWith("- ") || line.startsWith("* ")) return <Text key={i} style={{ fontSize: 14, color: colors.text, marginLeft: 10, marginBottom: 3, lineHeight: 21 }}>{"• "}{line.slice(2)}</Text>;
+      if (/^[-*•]\s+/.test(line) || /^-[a-z]\s+/i.test(line)) return <Text key={i} style={{ fontSize: 14, color: colors.text, marginLeft: 10, marginBottom: 3, lineHeight: 21 }}>{"• "}{line.replace(/^[-*•]\s+|^-[a-z]\s+/i, "")}</Text>;
       if (line.trim() === "") return <View key={i} style={{ height: 6 }} />;
       const bold = line.replace(/\*\*([^*]+)\*\*/g, "«$1»");
       return (

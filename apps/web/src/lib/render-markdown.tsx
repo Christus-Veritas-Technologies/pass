@@ -115,10 +115,10 @@ export function MarkdownContent({
     } else if (/^(-{3,}|\*{3,}|_{3,})$/.test(line.trim())) {
       flushBullets(); flushNumbered();
       elements.push(<hr key={key++} className="border-border my-3" />);
-    // ── Bullet list ───────────────────────────────────────────────────────────
-    } else if (/^[-*•]\s+/.test(line)) {
+    // ── Bullet list (standard `- `/`* `/`• ` or model's `-a`/`-b` shorthand) ──
+    } else if (/^[-*•]\s+/.test(line) || /^-[a-z]\s+/i.test(line)) {
       flushNumbered();
-      bulletItems.push(line.replace(/^[-*•]\s+/, ""));
+      bulletItems.push(line.replace(/^[-*•]\s+|^-[a-z]\s+/i, ""));
     // ── Numbered list ─────────────────────────────────────────────────────────
     } else if (/^\d+\.\s+/.test(line)) {
       flushBullets();
