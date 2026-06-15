@@ -25,9 +25,11 @@ import { MotiView } from "moti";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Dimensions,
   FlatList,
   Image as RNImage,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -35,6 +37,8 @@ import {
   TextInput,
   View,
 } from "react-native";
+
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAppTheme } from "@/lib/theme-context";
 import { env } from "@pass/env/native";
@@ -122,6 +126,22 @@ const TAB_ICONS: Record<InAppTab, typeof Books> = {
   project: Folder,
 };
 
+// Icon per attachment kind (file/in-app chips; images render as thumbnails).
+const ATTACH_ICON: Record<Attachment["kind"], typeof Books> = {
+  upload: Paperclip,
+  paper: Books,
+  session: FileText,
+  resource: Folder,
+  project: Folder,
+};
+
+function isImageAttachment(a: Attachment): boolean {
+  return a.kind === "upload" && !!a.url && !!a.mime?.startsWith("image/");
+}
+function isPdfAttachment(a: Attachment): boolean {
+  return a.kind === "upload" && a.mime === "application/pdf";
+}
+
 async function getToken(): Promise<string | null> {
   try { return await SecureStore.getItemAsync("pass_access_token"); } catch { return null; }
 }
@@ -156,6 +176,8 @@ export default function ChatScreen() {
 
   const [upgradeVisible, setUpgradeVisible] = useState(false);
   const [upgradeFeature, setUpgradeFeature] = useState<"aiMessages" | "attachments">("attachments");
+
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   const listRef = useRef<FlatList<Message>>(null);
   const sendingRef = useRef(false);
@@ -484,32 +506,66 @@ export default function ChatScreen() {
 
   function renderMessage({ item }: { item: Message }) {
     const isUser = item.role === "user";
+    const imgAttachments = (item.attachments ?? []).filter(isImageAttachment);
+    const fileAttachments = (item.attachments ?? []).filter((a) => !isImageAttachment(a));
     return (
       <MotiView
         from={{ opacity: 0, translateY: 6 }}
         animate={{ opacity: 1, translateY: 0 }}
         transition={{ type: "timing", duration: 200 }}
-        style={{ flexDirection: "row", justifyContent: isUser ? "flex-end" : "flex-start", marginBottom: 12 }}
+        style={{ marginBottom: 12 }}
       >
         <View
-          style={{
-            maxWidth: "86%",
-            borderRadius: 16,
-            paddingHorizontal: 14,
-            paddingVertical: 10,
-            backgroundColor: isUser ? colors.brand : colors.card,
-            borderWidth: isUser ? 0 : 1,
-            borderColor: colors.borderSubtle,
-          }}
+          style={[
+            {
+              borderRadius: 16,
+              paddingHorizontal: 14,
+              paddingVertical: 10,
+              backgroundColor: isUser ? colors.brand : colors.card,
+              borderWidth: isUser ? 0 : 1,
+              borderColor: colors.borderSubtle,
+            },
+            isUser ? { alignSelf: "flex-end" as const, maxWidth: "86%" as unknown as number } : {},
+          ]}
         >
-          {item.attachments && item.attachments.length > 0 && (
+          {/* Image thumbnails */}
+          {imgAttachments.length > 0 && (
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 6 }}>
-              {item.attachments.map((a, i) => (
-                <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: isUser ? "rgba(255,255,255,0.2)" : colors.cardSubtle, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 }}>
-                  <Paperclip size={12} color={isUser ? "#FFFFFF" : colors.brand} />
-                  <Text style={{ fontSize: 11, color: isUser ? "#FFFFFF" : colors.textSecondary, maxWidth: 120 }} numberOfLines={1}>{a.name ?? a.kind}</Text>
-                </View>
+              {imgAttachments.map((a, i) => (
+                <Pressable
+                  key={i}
+                  onPress={() => a.url && setLightboxUrl(a.url)}
+                  style={{ borderRadius: 10, overflow: "hidden" }}
+                >
+                  <RNImage
+                    source={{ uri: a.url }}
+                    style={{ width: 100, height: 100 }}
+                    resizeMode="cover"
+                  />
+                </Pressable>
               ))}
+            </View>
+          )}
+          {/* File / in-app attachment chips */}
+          {fileAttachments.length > 0 && (
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 6 }}>
+              {fileAttachments.map((a, i) => {
+                const Icon = isPdfAttachment(a) ? FilePdf : ATTACH_ICON[a.kind];
+                const chipInner = (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: isUser ? "rgba(255,255,255,0.18)" : colors.cardSubtle, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 }}>
+                    <Icon size={12} color={isUser ? "#FFFFFF" : colors.brand} />
+                    <Text style={{ fontSize: 11, color: isUser ? "#FFFFFF" : colors.textSecondary, maxWidth: 140 }} numberOfLines={1}>{a.name ?? a.kind}</Text>
+                  </View>
+                );
+                if (isPdfAttachment(a) && a.url) {
+                  return (
+                    <Pressable key={i} onPress={() => a.url && Linking.openURL(a.url)}>
+                      {chipInner}
+                    </Pressable>
+                  );
+                }
+                return <View key={i}>{chipInner}</View>;
+              })}
             </View>
           )}
           {isUser ? (
@@ -587,16 +643,37 @@ export default function ChatScreen() {
         {/* Composer */}
         <View style={{ borderTopWidth: 1, borderTopColor: colors.borderSubtle, backgroundColor: colors.card, paddingHorizontal: 12, paddingTop: 8, paddingBottom: 10 }}>
           {pendingUploads.length > 0 && (
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
-              {pendingUploads.map((a, i) => (
-                <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 5, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.cardSubtle, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 5 }}>
-                  <Paperclip size={12} color={colors.brand} />
-                  <Text style={{ fontSize: 11, color: colors.textSecondary, maxWidth: 120 }} numberOfLines={1}>{a.name}</Text>
-                  <Pressable onPress={() => removeUpload(i)} hitSlop={6}>
-                    <X size={12} color={colors.textTertiary} />
-                  </Pressable>
-                </View>
-              ))}
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 8, alignItems: "flex-end" }}>
+              {pendingUploads.map((a, i) => {
+                if (isImageAttachment(a) && a.url) {
+                  return (
+                    <View key={i} style={{ position: "relative" }}>
+                      <RNImage
+                        source={{ uri: a.url }}
+                        style={{ width: 60, height: 60, borderRadius: 10 }}
+                        resizeMode="cover"
+                      />
+                      <Pressable
+                        onPress={() => removeUpload(i)}
+                        hitSlop={4}
+                        style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: 9, backgroundColor: colors.text, alignItems: "center", justifyContent: "center" }}
+                      >
+                        <X size={10} color={colors.card} />
+                      </Pressable>
+                    </View>
+                  );
+                }
+                const Icon = isPdfAttachment(a) ? FilePdf : ATTACH_ICON[a.kind];
+                return (
+                  <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 5, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.cardSubtle, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 5 }}>
+                    <Icon size={12} color={colors.brand} />
+                    <Text style={{ fontSize: 11, color: colors.textSecondary, maxWidth: 120 }} numberOfLines={1}>{a.name}</Text>
+                    <Pressable onPress={() => removeUpload(i)} hitSlop={6}>
+                      <X size={12} color={colors.textTertiary} />
+                    </Pressable>
+                  </View>
+                );
+              })}
             </View>
           )}
           <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8 }}>
@@ -713,6 +790,36 @@ export default function ChatScreen() {
             ))}
           </Pressable>
         </Pressable>
+      </Modal>
+
+      {/* Image lightbox */}
+      <Modal
+        visible={!!lightboxUrl}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setLightboxUrl(null)}
+        statusBarTranslucent
+      >
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.92)" }}>
+          <Pressable
+            style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 16 }}
+            onPress={() => setLightboxUrl(null)}
+          >
+            {lightboxUrl ? (
+              <RNImage
+                source={{ uri: lightboxUrl }}
+                style={{ width: SCREEN_W - 32, height: SCREEN_H * 0.8 }}
+                resizeMode="contain"
+              />
+            ) : null}
+          </Pressable>
+          <Pressable
+            onPress={() => setLightboxUrl(null)}
+            style={{ position: "absolute", top: 52, right: 20, width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" }}
+          >
+            <X size={20} color="#FFFFFF" />
+          </Pressable>
+        </View>
       </Modal>
 
       {/* In-app picker — bottom sheet with 2-col grid, search, pagination */}

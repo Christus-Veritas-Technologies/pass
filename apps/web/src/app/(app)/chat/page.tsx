@@ -5,13 +5,17 @@ import {
   Add01Icon,
   ArrowLeft01Icon,
   Attachment01Icon,
+  BookOpen01Icon,
   Cancel01Icon,
   Delete02Icon,
+  File01Icon,
   Folder01Icon,
   Menu01Icon,
+  Pdf01Icon,
   PencilEdit01Icon,
   SentIcon,
   SparklesIcon,
+  Task01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import Image from "next/image";
@@ -261,6 +265,79 @@ function PickerTabBar({ active, onChange }: { active: InAppTab; onChange: (t: In
   );
 }
 
+// ─── Attachment rendering ─────────────────────────────────────────────────────
+
+const KIND_ICON: Record<Attachment["kind"], typeof Folder01Icon> = {
+  upload: Attachment01Icon,
+  paper: File01Icon,
+  session: Task01Icon,
+  resource: BookOpen01Icon,
+  project: Folder01Icon,
+};
+
+function isImageAttachment(a: Attachment): boolean {
+  return a.kind === "upload" && !!a.url && !!a.mime?.startsWith("image/");
+}
+function isPdfAttachment(a: Attachment): boolean {
+  return a.kind === "upload" && a.mime === "application/pdf";
+}
+
+/** Renders a message's attachments: image thumbnails (click → lightbox) + file/in-app chips. */
+function MessageAttachments({
+  attachments,
+  onImage,
+  tone,
+}: {
+  attachments: Attachment[];
+  onImage: (url: string) => void;
+  tone: "user" | "assistant";
+}) {
+  const images = attachments.filter(isImageAttachment);
+  const files = attachments.filter((a) => !isImageAttachment(a));
+  const chip = tone === "user" ? "bg-white/15 text-primary-foreground" : "bg-muted text-foreground";
+  return (
+    <div className="mb-2 space-y-2">
+      {images.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {images.map((a, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => a.url && onImage(a.url)}
+              className="group relative h-28 w-28 overflow-hidden rounded-xl border border-border/60 bg-muted"
+              aria-label={`View ${a.name ?? "image"}`}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={a.url} alt={a.name ?? "attachment"} className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105" />
+            </button>
+          ))}
+        </div>
+      )}
+      {files.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {files.map((a, i) => {
+            const Icon = isPdfAttachment(a) ? Pdf01Icon : KIND_ICON[a.kind];
+            const inner = (
+              <>
+                <HugeiconsIcon icon={Icon} className="h-3.5 w-3.5 shrink-0" />
+                <span className="max-w-[180px] truncate">{a.name ?? a.kind}</span>
+              </>
+            );
+            const cls = cn("flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs", chip);
+            return isPdfAttachment(a) && a.url ? (
+              <a key={i} href={a.url} target="_blank" rel="noopener noreferrer" className={cn(cls, "hover:opacity-80")}>
+                {inner}
+              </a>
+            ) : (
+              <span key={i} className={cls}>{inner}</span>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ChatPage() {
@@ -302,6 +379,9 @@ export default function ChatPage() {
   // Upgrade dialog
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [upgradeFeature, setUpgradeFeature] = useState<"aiMessages" | "attachments">("attachments");
+
+  // Fullscreen image lightbox
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -359,6 +439,14 @@ export default function ChatPage() {
   // Keep activeIdRef in sync so stale closures (e.g. loadThreads captured in send())
   // can still read the current value without being listed as a dependency.
   useEffect(() => { activeIdRef.current = activeId; }, [activeId]);
+
+  // Close the image lightbox on Escape.
+  useEffect(() => {
+    if (!lightboxUrl) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setLightboxUrl(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lightboxUrl]);
 
   async function loadThreads() {
     try {
@@ -701,7 +789,7 @@ export default function ChatPage() {
               </p>
             </div>
           ) : (
-            <div className="mx-auto max-w-3xl space-y-6">
+            <div className="w-full space-y-6">
               {messages.map((m) => (
                 <div key={m.id} className={cn("flex gap-3", m.role === "user" ? "justify-end" : "justify-start")}>
                   {m.role === "assistant" && (
@@ -711,21 +799,14 @@ export default function ChatPage() {
                   )}
                   <div
                     className={cn(
-                      "max-w-[80%] rounded-2xl px-4 py-3 text-sm",
+                      "rounded-2xl px-4 py-3 text-sm",
                       m.role === "user"
-                        ? "bg-primary text-primary-foreground"
-                        : "border border-border bg-card shadow-sm",
+                        ? "max-w-[85%] bg-primary text-primary-foreground"
+                        : "min-w-0 flex-1 border border-border bg-card shadow-sm",
                     )}
                   >
                     {m.attachments && m.attachments.length > 0 && (
-                      <div className="mb-2 flex flex-wrap gap-1.5">
-                        {m.attachments.map((a, i) => (
-                          <span key={i} className="flex items-center gap-1 rounded-md bg-black/10 px-2 py-1 text-xs dark:bg-white/10">
-                            <HugeiconsIcon icon={a.kind === "project" ? Folder01Icon : Attachment01Icon} className="h-3 w-3" />
-                            {a.name ?? a.kind}
-                          </span>
-                        ))}
-                      </div>
+                      <MessageAttachments attachments={m.attachments} onImage={setLightboxUrl} tone={m.role} />
                     )}
                     {m.role === "assistant" ? (
                       m.content ? (
@@ -747,7 +828,7 @@ export default function ChatPage() {
 
         {/* Composer */}
         <div className="border-t border-border bg-background/80 px-4 py-4 md:px-10 md:py-5">
-          <div className="relative mx-auto max-w-3xl" ref={composerRef}>
+          <div className="relative w-full" ref={composerRef}>
 
             {/* ── Desktop: anchored popover with search + scroll pagination (md+) ── */}
             {!isMobile && pickerOpen && (
@@ -813,15 +894,29 @@ export default function ChatPage() {
             {/* Pending attachments */}
             {pendingUploads.length > 0 && (
               <div className="mb-2 flex flex-wrap gap-2">
-                {pendingUploads.map((a, i) => (
-                  <span key={i} className="flex items-center gap-1.5 rounded-lg border border-border bg-muted px-2.5 py-1.5 text-xs">
-                    <HugeiconsIcon icon={Attachment01Icon} className="h-3.5 w-3.5 text-primary" />
-                    <span className="max-w-[140px] truncate">{a.name}</span>
-                    <button onClick={() => removeUpload(i)} aria-label="Remove">
-                      <HugeiconsIcon icon={Cancel01Icon} className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
-                    </button>
-                  </span>
-                ))}
+                {pendingUploads.map((a, i) =>
+                  isImageAttachment(a) ? (
+                    <div key={i} className="group relative h-16 w-16 overflow-hidden rounded-lg border border-border">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={a.url} alt={a.name ?? "attachment"} className="h-full w-full object-cover" />
+                      <button
+                        onClick={() => removeUpload(i)}
+                        aria-label="Remove"
+                        className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                      >
+                        <HugeiconsIcon icon={Cancel01Icon} className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <span key={i} className="flex items-center gap-1.5 rounded-lg border border-border bg-muted px-2.5 py-1.5 text-xs">
+                      <HugeiconsIcon icon={isPdfAttachment(a) ? Pdf01Icon : KIND_ICON[a.kind]} className="h-3.5 w-3.5 text-primary" />
+                      <span className="max-w-[140px] truncate">{a.name}</span>
+                      <button onClick={() => removeUpload(i)} aria-label="Remove">
+                        <HugeiconsIcon icon={Cancel01Icon} className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+                      </button>
+                    </span>
+                  ),
+                )}
               </div>
             )}
 
@@ -950,6 +1045,31 @@ export default function ChatPage() {
           )}
         </div>
       </Sheet>
+
+      {/* Fullscreen image lightbox */}
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-4 animate-fade-up"
+          onClick={() => setLightboxUrl(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <button
+            onClick={() => setLightboxUrl(null)}
+            aria-label="Close"
+            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+          >
+            <HugeiconsIcon icon={Cancel01Icon} className="h-5 w-5" />
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={lightboxUrl}
+            alt="Attachment"
+            className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }
