@@ -11,6 +11,7 @@ import {
   Lightning,
   Paperclip,
   PaperPlaneRight,
+  PencilSimple,
   Plus,
   Sparkle,
   Trash,
@@ -25,6 +26,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Image as RNImage,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -134,11 +136,14 @@ export default function ChatScreen() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const [plan, setPlan] = useState("FREE");
   const [remaining, setRemaining] = useState<number | null>(null);
   const [pendingUploads, setPendingUploads] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
   const [threadsOpen, setThreadsOpen] = useState(false);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameText, setRenameText] = useState("");
 
   // Attachment menu (Photo / PDF / Attach from app) + in-app picker.
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
@@ -153,6 +158,8 @@ export default function ChatScreen() {
   const [upgradeFeature, setUpgradeFeature] = useState<"aiMessages" | "attachments">("attachments");
 
   const listRef = useRef<FlatList<Message>>(null);
+  const sendingRef = useRef(false);
+  const activeIdRef = useRef<string | null>(null);
   const isPaid = plan !== "FREE";
 
   useEffect(() => {
@@ -172,6 +179,12 @@ export default function ChatScreen() {
     if (messages.length) setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
   }, [messages]);
 
+  useEffect(() => {
+    if (!sendError) return;
+    const t = setTimeout(() => setSendError(null), 4000);
+    return () => clearTimeout(t);
+  }, [sendError]);
+
   async function authHeaders(): Promise<Record<string, string>> {
     const token = await getToken();
     return { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) };
@@ -182,11 +195,12 @@ export default function ChatScreen() {
       const res = await fetch(`${API}/chat/threads`, { headers: await authHeaders() });
       const data = await res.json();
       setThreads(data.threads ?? []);
-      if (!activeId && data.threads?.length) selectThread(data.threads[0].id);
+      if (!activeIdRef.current && data.threads?.length) selectThread(data.threads[0].id);
     } catch {}
   }
 
   async function selectThread(id: string) {
+    activeIdRef.current = id;
     setActiveId(id);
     setMessages([]);
     setThreadsOpen(false);
@@ -198,6 +212,7 @@ export default function ChatScreen() {
   }
 
   function newChat() {
+    activeIdRef.current = null;
     setActiveId(null);
     setMessages([]);
     setPendingUploads([]);
@@ -208,10 +223,11 @@ export default function ChatScreen() {
   }
 
   async function ensureThread(): Promise<string | null> {
-    if (activeId) return activeId;
+    if (activeIdRef.current) return activeIdRef.current;
     try {
       const res = await fetch(`${API}/chat/threads`, { method: "POST", headers: await authHeaders(), body: "{}" });
       const thread = await res.json();
+      activeIdRef.current = thread.id;
       setActiveId(thread.id);
       setThreads((prev) => [thread, ...prev]);
       return thread.id;
@@ -224,6 +240,19 @@ export default function ChatScreen() {
     try { await fetch(`${API}/chat/threads/${id}`, { method: "DELETE", headers: await authHeaders() }); } catch {}
     setThreads((prev) => prev.filter((t) => t.id !== id));
     if (activeId === id) newChat();
+  }
+
+  async function commitRename(id: string) {
+    const title = renameText.trim().slice(0, 200) || "New chat";
+    setRenamingId(null);
+    setThreads((prev) => prev.map((t) => (t.id === id ? { ...t, title } : t)));
+    try {
+      await fetch(`${API}/chat/threads/${id}`, {
+        method: "PATCH",
+        headers: await authHeaders(),
+        body: JSON.stringify({ title }),
+      });
+    } catch {}
   }
 
   // ── Attachments: one paperclip → Photo / PDF (paid uploads) / Attach from app (free) ──
@@ -325,15 +354,22 @@ export default function ChatScreen() {
   // ── Send ──────────────────────────────────────────────────────────────────
   const send = useCallback(async () => {
     const text = input.trim();
-    if (!text || sending) return;
+    if (!text || sendingRef.current) return;
+    sendingRef.current = true;
+    setSending(true);
+    setSendError(null);
 
     const threadId = await ensureThread();
-    if (!threadId) return;
+    if (!threadId) {
+      sendingRef.current = false;
+      setSending(false);
+      setSendError("Couldn't create a conversation. Please try again.");
+      return;
+    }
 
     const attachments = [...pendingUploads];
     setInput("");
     setPendingUploads([]);
-    setSending(true);
 
     const userMsg: Message = { id: `tmp-u-${Date.now()}`, role: "user", content: text, attachments };
     const asstMsg: Message = { id: `tmp-a-${Date.now()}`, role: "assistant", content: "", pending: true };
@@ -401,28 +437,29 @@ export default function ChatScreen() {
                     m.id === asstMsg.id ? { ...m, pending: false, id: String(payload.message_id ?? m.id) } : m,
                   ),
                 );
+                if (payload.title && typeof payload.title === "string") {
+                  const aiTitle = payload.title as string;
+                  setThreads((prev) =>
+                    prev.map((t) => (t.id === threadId ? { ...t, title: aiTitle } : t)),
+                  );
+                }
               }
             } else if (currentEvent === "error") {
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === asstMsg.id ? { ...m, pending: false, content: String(payload.message ?? "Something went wrong.") } : m,
-                ),
-              );
+              setMessages((prev) => prev.filter((m) => m.id !== asstMsg.id && m.id !== userMsg.id));
+              setSendError(String(payload.message ?? "Something went wrong. Please try again."));
             }
           }
         }
       }
       loadThreads();
     } catch {
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === asstMsg.id ? { ...m, pending: false, content: "Something went wrong. Please try again." } : m,
-        ),
-      );
+      setMessages((prev) => prev.filter((m) => m.id !== asstMsg.id && m.id !== userMsg.id));
+      setSendError("Something went wrong. Please try again.");
     } finally {
+      sendingRef.current = false;
       setSending(false);
     }
-  }, [input, sending, pendingUploads, activeId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [input, pendingUploads, activeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Markdown → <Text> (mirrors projects.tsx renderContent) ────────────────
   function renderContent(content: string) {
@@ -430,7 +467,7 @@ export default function ChatScreen() {
       if (line.startsWith("# ")) return <Text key={i} style={{ fontSize: 17, fontWeight: "700", color: colors.text, marginTop: 6, marginBottom: 3 }}>{line.slice(2)}</Text>;
       if (line.startsWith("## ")) return <Text key={i} style={{ fontSize: 15, fontWeight: "600", color: colors.text, marginTop: 10, marginBottom: 3 }}>{line.slice(3)}</Text>;
       if (line.startsWith("### ")) return <Text key={i} style={{ fontSize: 14, fontWeight: "600", color: colors.textSecondary, marginTop: 8, marginBottom: 2 }}>{line.slice(4)}</Text>;
-      if (line.startsWith("- ") || line.startsWith("* ")) return <Text key={i} style={{ fontSize: 14, color: colors.text, marginLeft: 10, marginBottom: 3, lineHeight: 21 }}>{"• "}{line.slice(2)}</Text>;
+      if (/^[-*•]\s+/.test(line) || /^-[a-z]\s+/i.test(line)) return <Text key={i} style={{ fontSize: 14, color: colors.text, marginLeft: 10, marginBottom: 3, lineHeight: 21 }}>{"• "}{line.replace(/^[-*•]\s+|^-[a-z]\s+/i, "")}</Text>;
       if (line.trim() === "") return <View key={i} style={{ height: 6 }} />;
       const bold = line.replace(/\*\*([^*]+)\*\*/g, "«$1»");
       return (
@@ -526,9 +563,11 @@ export default function ChatScreen() {
       >
         {messages.length === 0 ? (
           <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 32 }}>
-            <View style={{ width: 60, height: 60, borderRadius: 18, backgroundColor: colors.indigoBg, alignItems: "center", justifyContent: "center", marginBottom: 14 }}>
-              <Sparkle size={28} color={colors.brand} />
-            </View>
+            <RNImage
+              source={require("../../../assets/images/icon.png")}
+              style={{ width: 64, height: 64, borderRadius: 18, marginBottom: 14 }}
+              resizeMode="cover"
+            />
             <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text, marginBottom: 4 }}>Ask Pass anything</Text>
             <Text style={{ fontSize: 13, color: colors.textTertiary, textAlign: "center", lineHeight: 19 }}>
               Get a direct answer with full working — for any ZIMSEC subject.{isPaid ? " Attach a photo of a question." : ""}
@@ -570,16 +609,27 @@ export default function ChatScreen() {
               placeholder="Ask a study question…"
               placeholderTextColor={colors.textPlaceholder}
               multiline
-              style={{ flex: 1, maxHeight: 120, borderWidth: 1, borderColor: colors.border, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: colors.text, backgroundColor: colors.cardSubtle }}
+              editable={!sending}
+              style={{ flex: 1, maxHeight: 120, borderWidth: 1, borderColor: colors.border, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: colors.text, backgroundColor: colors.cardSubtle, opacity: sending ? 0.6 : 1 }}
             />
             <Pressable
               onPress={send}
               disabled={!input.trim() || sending}
               style={{ width: 38, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: input.trim() && !sending ? colors.brand : `${colors.brand}55` }}
             >
-              <PaperPlaneRight size={18} color="#FFFFFF" weight="fill" />
+              {sending
+                ? <ActivityIndicator size="small" color="#FFFFFF" />
+                : <PaperPlaneRight size={18} color="#FFFFFF" weight="fill" />}
             </Pressable>
           </View>
+          {sendError ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: "#FEF2F2", borderWidth: 1, borderColor: "#FCA5A5" }}>
+              <Text style={{ flex: 1, fontSize: 12, color: "#DC2626" }}>{sendError}</Text>
+              <Pressable onPress={() => setSendError(null)} hitSlop={8}>
+                <X size={14} color="#DC2626" />
+              </Pressable>
+            </View>
+          ) : null}
           <Text style={{ fontSize: 10, color: colors.textTertiary, textAlign: "center", marginTop: 6 }}>
             {remaining !== null && Number.isFinite(remaining)
               ? `${remaining} message${remaining === 1 ? "" : "s"} left this month`
@@ -608,11 +658,25 @@ export default function ChatScreen() {
             ListEmptyComponent={<Text style={{ textAlign: "center", color: colors.textTertiary, fontSize: 13, marginTop: 32 }}>No conversations yet.</Text>}
             renderItem={({ item }) => (
               <Pressable
-                onPress={() => selectThread(item.id)}
-                style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12, paddingHorizontal: 12, borderRadius: 10, backgroundColor: activeId === item.id ? colors.indigoBg : "transparent" }}
+                onPress={() => renamingId !== item.id && selectThread(item.id)}
+                style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, backgroundColor: activeId === item.id ? colors.indigoBg : "transparent" }}
               >
                 <ChatCircleDots size={18} color={activeId === item.id ? colors.brand : colors.textTertiary} />
-                <Text style={{ flex: 1, fontSize: 14, color: colors.text }} numberOfLines={1}>{item.title}</Text>
+                {renamingId === item.id ? (
+                  <TextInput
+                    autoFocus
+                    value={renameText}
+                    onChangeText={setRenameText}
+                    onBlur={() => commitRename(item.id)}
+                    onSubmitEditing={() => commitRename(item.id)}
+                    style={{ flex: 1, fontSize: 14, color: colors.text, borderBottomWidth: 1, borderBottomColor: colors.brand, paddingVertical: 0 }}
+                  />
+                ) : (
+                  <Text style={{ flex: 1, fontSize: 14, color: colors.text }} numberOfLines={1}>{item.title}</Text>
+                )}
+                <Pressable onPress={() => { setRenamingId(item.id); setRenameText(item.title); }} hitSlop={8} style={{ marginRight: 4 }}>
+                  <PencilSimple size={15} color={colors.textTertiary} />
+                </Pressable>
                 <Pressable onPress={() => deleteThread(item.id)} hitSlop={8}>
                   <Trash size={16} color={colors.textTertiary} />
                 </Pressable>

@@ -9,10 +9,12 @@ import {
   Delete02Icon,
   Folder01Icon,
   Menu01Icon,
+  PencilEdit01Icon,
   SentIcon,
   SparklesIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MarkdownContent } from "@/lib/render-markdown";
@@ -124,13 +126,22 @@ function authHeaders(): Record<string, string> {
 interface ChatSidebarContentProps {
   threads: Thread[];
   activeId: string | null;
+  renamingId: string | null;
+  renameValue: string;
   onNew: () => void;
   onSelect: (id: string) => void;
   onDelete: (id: string, e: React.MouseEvent) => void;
+  onStartRename: (id: string, title: string) => void;
+  onRenameChange: (v: string) => void;
+  onRenameCommit: () => void;
+  onRenameCancel: () => void;
   onClose?: () => void;
 }
 
-function ChatSidebarContent({ threads, activeId, onNew, onSelect, onDelete, onClose }: ChatSidebarContentProps) {
+function ChatSidebarContent({
+  threads, activeId, renamingId, renameValue,
+  onNew, onSelect, onDelete, onStartRename, onRenameChange, onRenameCommit, onRenameCancel, onClose,
+}: ChatSidebarContentProps) {
   return (
     <div className="flex h-full flex-col">
       <div className="px-4 pt-5 pb-4">
@@ -161,22 +172,49 @@ function ChatSidebarContent({ threads, activeId, onNew, onSelect, onDelete, onCl
       </p>
 
       <div className="flex-1 overflow-y-auto px-2 pb-3 space-y-0.5">
-        {threads.length === 0 && (
+        {threads.length === 0 ? (
           <p className="px-3 py-6 text-center text-xs text-muted-foreground">No conversations yet.</p>
-        )}
-        {threads.map((t) => (
-          <button
+        ) : threads.map((t) => (
+          <div
             key={t.id}
-            onClick={() => { onSelect(t.id); onClose?.(); }}
             className={cn(
-              "group flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm transition-colors",
+              "group flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm transition-colors",
               activeId === t.id
                 ? "bg-primary/10 text-primary"
                 : "text-muted-foreground hover:bg-muted hover:text-foreground",
             )}
           >
             <HugeiconsIcon icon={AiChat01Icon} className="h-4 w-4 shrink-0 opacity-60" />
-            <span className="flex-1 truncate">{t.title}</span>
+            {renamingId === t.id ? (
+              <input
+                autoFocus
+                value={renameValue}
+                onChange={(e) => onRenameChange(e.target.value)}
+                onBlur={onRenameCommit}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") { e.preventDefault(); onRenameCommit(); }
+                  if (e.key === "Escape") { e.preventDefault(); onRenameCancel(); }
+                }}
+                onClick={(e) => e.stopPropagation()}
+                className="flex-1 min-w-0 bg-transparent text-sm focus:outline-none"
+                maxLength={200}
+              />
+            ) : (
+              <button
+                className="flex-1 min-w-0 text-left truncate"
+                onClick={() => { onSelect(t.id); onClose?.(); }}
+              >
+                {t.title}
+              </button>
+            )}
+            <span
+              onClick={(e) => { e.stopPropagation(); onStartRename(t.id, t.title); }}
+              className="opacity-0 transition-opacity hover:text-primary group-hover:opacity-100"
+              role="button"
+              aria-label="Rename chat"
+            >
+              <HugeiconsIcon icon={PencilEdit01Icon} className="h-3.5 w-3.5" />
+            </span>
             <span
               onClick={(e) => { e.stopPropagation(); onDelete(t.id, e); }}
               className="opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
@@ -185,15 +223,13 @@ function ChatSidebarContent({ threads, activeId, onNew, onSelect, onDelete, onCl
             >
               <HugeiconsIcon icon={Delete02Icon} className="h-3.5 w-3.5" />
             </span>
-          </button>
+          </div>
         ))}
       </div>
 
       <div className="border-t border-border px-4 py-4">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10">
-            <HugeiconsIcon icon={SparklesIcon} className="h-4 w-4 text-primary" />
-          </div>
+          <Image src="/icon.png" alt="Pass" width={28} height={28} className="rounded-lg" />
           <div>
             <p className="text-sm font-semibold leading-tight">Pass AI</p>
             <p className="text-[10px] text-muted-foreground leading-tight">ZIMSEC exam tutor</p>
@@ -238,6 +274,9 @@ export default function ChatPage() {
   const [pendingUploads, setPendingUploads] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
 
   // In-app picker
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -267,8 +306,11 @@ export default function ChatPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
-  // Sentinel for mobile sheet infinite scroll
   const pickerSentinelRef = useRef<HTMLDivElement>(null);
+  // Ref-based mutex: set synchronously before the first await to prevent double-send.
+  const sendingRef = useRef(false);
+  // Ref that always tracks the latest activeId for stale-closure-safe checks.
+  const activeIdRef = useRef<string | null>(null);
 
   const isPaid = plan !== "FREE";
 
@@ -308,16 +350,27 @@ export default function ChatPage() {
     return () => observer.disconnect();
   }, [pickerHasMore, visiblePickerItems.length]);
 
+  useEffect(() => {
+    if (!sendError) return;
+    const t = setTimeout(() => setSendError(null), 4000);
+    return () => clearTimeout(t);
+  }, [sendError]);
+
+  // Keep activeIdRef in sync so stale closures (e.g. loadThreads captured in send())
+  // can still read the current value without being listed as a dependency.
+  useEffect(() => { activeIdRef.current = activeId; }, [activeId]);
+
   async function loadThreads() {
     try {
       const res = await fetch(`${API}/chat/threads`, { headers: authHeaders() });
       const data = await res.json();
       setThreads(data.threads ?? []);
-      if (!activeId && data.threads?.length) selectThread(data.threads[0].id);
+      if (!activeIdRef.current && data.threads?.length) selectThread(data.threads[0].id);
     } catch { /* ignore */ }
   }
 
   async function selectThread(id: string) {
+    activeIdRef.current = id;
     setActiveId(id);
     setMessages([]);
     try {
@@ -328,6 +381,7 @@ export default function ChatPage() {
   }
 
   function newChat() {
+    activeIdRef.current = null;
     setActiveId(null);
     setMessages([]);
     setPendingUploads([]);
@@ -336,10 +390,11 @@ export default function ChatPage() {
   }
 
   async function ensureThread(): Promise<string | null> {
-    if (activeId) return activeId;
+    if (activeIdRef.current) return activeIdRef.current;
     try {
       const res = await fetch(`${API}/chat/threads`, { method: "POST", headers: authHeaders(), body: "{}" });
       const thread = await res.json();
+      activeIdRef.current = thread.id;
       setActiveId(thread.id);
       setThreads((prev) => [thread, ...prev]);
       return thread.id;
@@ -355,6 +410,30 @@ export default function ChatPage() {
     } catch { /* ignore */ }
     setThreads((prev) => prev.filter((t) => t.id !== id));
     if (activeId === id) newChat();
+  }
+
+  function startRename(id: string, title: string) {
+    setRenamingId(id);
+    setRenameValue(title);
+  }
+
+  async function commitRename() {
+    if (!renamingId) return;
+    const id = renamingId;
+    const title = renameValue.trim().slice(0, 200) || "New chat";
+    setRenamingId(null);
+    setThreads((prev) => prev.map((t) => (t.id === id ? { ...t, title } : t)));
+    try {
+      await fetch(`${API}/chat/threads/${id}`, {
+        method: "PATCH",
+        headers: authHeaders(),
+        body: JSON.stringify({ title }),
+      });
+    } catch { /* optimistic update already applied */ }
+  }
+
+  function cancelRename() {
+    setRenamingId(null);
   }
 
   function onAttachClick() {
@@ -425,16 +504,24 @@ export default function ChatPage() {
 
   const send = useCallback(async () => {
     const text = input.trim();
-    if (!text || sending) return;
+    // sendingRef is set synchronously before any await to prevent double-send.
+    if (!text || sendingRef.current) return;
+    sendingRef.current = true;
+    setSending(true);
+    setSendError(null);
 
     const threadId = await ensureThread();
-    if (!threadId) return;
+    if (!threadId) {
+      sendingRef.current = false;
+      setSending(false);
+      setSendError("Couldn't create a conversation. Please try again.");
+      return;
+    }
 
     const attachments = [...pendingUploads];
     setInput("");
     setPendingUploads([]);
     setPickerOpen(false);
-    setSending(true);
 
     const userMsg: Message = { id: `tmp-u-${Date.now()}`, role: "user", content: text, attachments };
     const asstMsg: Message = { id: `tmp-a-${Date.now()}`, role: "assistant", content: "", pending: true };
@@ -502,15 +589,16 @@ export default function ChatPage() {
                     m.id === asstMsg.id ? { ...m, pending: false, id: String(payload.message_id ?? m.id) } : m,
                   ),
                 );
+                if (payload.title && typeof payload.title === "string") {
+                  const aiTitle = payload.title as string;
+                  setThreads((prev) =>
+                    prev.map((t) => (t.id === threadId ? { ...t, title: aiTitle } : t)),
+                  );
+                }
               }
             } else if (currentEvent === "error") {
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === asstMsg.id
-                    ? { ...m, pending: false, content: String(payload.message ?? "Something went wrong.") }
-                    : m,
-                ),
-              );
+              setMessages((prev) => prev.filter((m) => m.id !== asstMsg.id && m.id !== userMsg.id));
+              setSendError(String(payload.message ?? "Something went wrong. Please try again."));
             }
           }
         }
@@ -518,15 +606,13 @@ export default function ChatPage() {
 
       loadThreads();
     } catch {
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === asstMsg.id ? { ...m, pending: false, content: "Something went wrong. Please try again." } : m,
-        ),
-      );
+      setMessages((prev) => prev.filter((m) => m.id !== asstMsg.id && m.id !== userMsg.id));
+      setSendError("Something went wrong. Please try again.");
     } finally {
+      sendingRef.current = false;
       setSending(false);
     }
-  }, [input, sending, pendingUploads, activeId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [input, pendingUploads, activeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
@@ -539,9 +625,15 @@ export default function ChatPage() {
         <ChatSidebarContent
           threads={threads}
           activeId={activeId}
+          renamingId={renamingId}
+          renameValue={renameValue}
           onNew={newChat}
           onSelect={selectThread}
           onDelete={deleteThread}
+          onStartRename={startRename}
+          onRenameChange={setRenameValue}
+          onRenameCommit={commitRename}
+          onRenameCancel={cancelRename}
         />
       </aside>
 
@@ -560,9 +652,15 @@ export default function ChatPage() {
         <ChatSidebarContent
           threads={threads}
           activeId={activeId}
+          renamingId={renamingId}
+          renameValue={renameValue}
           onNew={newChat}
           onSelect={selectThread}
           onDelete={deleteThread}
+          onStartRename={startRename}
+          onRenameChange={setRenameValue}
+          onRenameCommit={commitRename}
+          onRenameCancel={cancelRename}
           onClose={() => setSheetOpen(false)}
         />
       </Sheet>
@@ -593,8 +691,8 @@ export default function ChatPage() {
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-6 md:px-10 md:py-8">
           {messages.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center text-center animate-fade-up">
-              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
-                <HugeiconsIcon icon={SparklesIcon} className="h-7 w-7 text-primary" />
+              <div className="mb-4">
+                <Image src="/icon.png" alt="Pass" width={56} height={56} className="rounded-2xl shadow-sm" />
               </div>
               <h2 className="text-xl font-bold">Ask Pass anything</h2>
               <p className="mt-2 max-w-sm text-sm text-muted-foreground leading-relaxed">
@@ -607,8 +705,8 @@ export default function ChatPage() {
               {messages.map((m) => (
                 <div key={m.id} className={cn("flex gap-3", m.role === "user" ? "justify-end" : "justify-start")}>
                   {m.role === "assistant" && (
-                    <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                      <HugeiconsIcon icon={SparklesIcon} className="h-4 w-4 text-primary" />
+                    <div className="mt-0.5 shrink-0">
+                      <Image src="/icon.png" alt="Pass" width={32} height={32} className="rounded-xl" />
                     </div>
                   )}
                   <div
@@ -758,8 +856,9 @@ export default function ChatPage() {
                   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
                 }}
                 rows={1}
+                disabled={sending}
                 placeholder="Ask a study question…"
-                className="flex-1 resize-none bg-transparent px-1 py-2 text-sm placeholder:text-muted-foreground/60 focus:outline-none max-h-40"
+                className="flex-1 resize-none bg-transparent px-1 py-2 text-sm placeholder:text-muted-foreground/60 focus:outline-none max-h-40 disabled:opacity-60"
               />
               <button
                 onClick={send}
@@ -767,9 +866,25 @@ export default function ChatPage() {
                 aria-label="Send"
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
               >
-                <HugeiconsIcon icon={SentIcon} className="h-4 w-4" />
+                {sending ? (
+                  <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                  </svg>
+                ) : (
+                  <HugeiconsIcon icon={SentIcon} className="h-4 w-4" />
+                )}
               </button>
             </div>
+            {/* Error banner */}
+            {sendError && (
+              <div className="mt-2 flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                <span className="flex-1">{sendError}</span>
+                <button onClick={() => setSendError(null)} aria-label="Dismiss" className="shrink-0 hover:opacity-70">
+                  <HugeiconsIcon icon={Cancel01Icon} className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
             <p className="mt-2 text-center text-[11px] text-muted-foreground">
               {remaining !== null && Number.isFinite(remaining)
                 ? `${remaining} message${remaining === 1 ? "" : "s"} left this month`
