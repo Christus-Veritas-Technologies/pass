@@ -66,7 +66,7 @@ async function storeTemplate(grade: string, subject: string, topic: string, cont
  */
 export async function resolveProjectContent(
   input: ProjectInput,
-  opts: { onSection?: (markdown: string) => void } = {},
+  opts: { onSection?: (markdown: string) => void | Promise<void> } = {},
 ): Promise<ResolveResult> {
   const grade = input.grade;
   const subject = input.subject;

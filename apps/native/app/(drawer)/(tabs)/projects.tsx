@@ -252,7 +252,25 @@ export default function ProjectsScreen() {
       const reader = res.body?.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
-      let currentEvent = "";
+      let eventType = "";
+      let dataLines: string[] = [];
+
+      // SSE dispatch: a blank line terminates an event. Multi-line `data:`
+      // fields are rejoined with "\n" (markdown sections carry real newlines).
+      const flush = async () => {
+        if (!eventType && dataLines.length === 0) return;
+        const data = dataLines.join("\n");
+        if (eventType === "chunk") {
+          setStreamedContent((prev) => prev + data);
+        } else if (eventType === "done") {
+          setGenDone(true);
+          await fetchProjects();
+        } else if (eventType === "error") {
+          setGenError("AI generation failed. Please try again.");
+        }
+        eventType = "";
+        dataLines = [];
+      };
 
       while (reader) {
         const { done, value } = await reader.read();
@@ -261,23 +279,18 @@ export default function ProjectsScreen() {
         const lines = buffer.split("\n");
         buffer = lines.pop() ?? "";
 
-        for (const line of lines) {
-          if (line.startsWith("event: ")) {
-            currentEvent = line.slice(7).trim();
-          } else if (line.startsWith("data: ")) {
-            const data = line.slice(6);
-            if (currentEvent === "chunk") {
-              setStreamedContent((prev) => prev + data);
-            } else if (currentEvent === "done") {
-              setGenDone(true);
-              await fetchProjects();
-              break;
-            } else if (currentEvent === "error") {
-              setGenError("AI generation failed. Please try again.");
-            }
+        for (const raw of lines) {
+          const line = raw.endsWith("\r") ? raw.slice(0, -1) : raw;
+          if (line === "") {
+            await flush();
+          } else if (line.startsWith("event:")) {
+            eventType = line.slice(6).trim();
+          } else if (line.startsWith("data:")) {
+            dataLines.push(line.startsWith("data: ") ? line.slice(6) : line.slice(5));
           }
         }
       }
+      await flush();
     } catch (err: unknown) {
       if ((err as Error).name !== "AbortError") {
         setGenError("Something went wrong. Please try again.");
