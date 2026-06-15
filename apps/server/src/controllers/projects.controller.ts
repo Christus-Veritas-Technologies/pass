@@ -157,6 +157,13 @@ export async function generateProject(c: Context) {
   let accumulatedContent = "";
 
   return streamSSE(c, async (stream) => {
+    // Bun's default idle timeout is 10 s; spine generation can take 20-30 s
+    // before any section data flows. Send periodic pings so the socket stays
+    // open. Clients ignore unknown event types.
+    const heartbeat = setInterval(() => {
+      void stream.writeSSE({ event: "ping", data: "" }).catch(() => null);
+    }, 5000);
+
     try {
       await stream.writeSSE({ data: "ok", event: "connected" }).catch(() => null);
       const project = await prisma.project.create({
@@ -184,9 +191,9 @@ export async function generateProject(c: Context) {
       // pooled body. resolveProjectContent only calls onSection on the generate path.
       let streamedAny = false;
       const { topic, content, reused } = await resolveProjectContent(input, {
-        onSection: (md) => {
+        onSection: async (md) => {
           streamedAny = true;
-          void stream.writeSSE({ data: md, event: "chunk" }).catch(() => null);
+          await stream.writeSSE({ data: md, event: "chunk" }).catch(() => null);
         },
       });
       accumulatedContent = content;
@@ -213,6 +220,8 @@ export async function generateProject(c: Context) {
         await prisma.project.delete({ where: { id: projectId } }).catch(() => null);
       }
       await stream.writeSSE({ data: "AI response unavailable.", event: "error" }).catch(() => null);
+    } finally {
+      clearInterval(heartbeat);
     }
   });
 }

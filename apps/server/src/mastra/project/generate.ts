@@ -110,7 +110,7 @@ export type GenerateResult = { title: string; content: string };
  */
 export async function generateProjectContent(
   input: ProjectInput,
-  opts: { onSection?: (markdown: string) => void } = {},
+  opts: { onSection?: (markdown: string) => void | Promise<void> } = {},
 ): Promise<GenerateResult> {
   const { spine, sections } = await withRetry(() => generateSpine(input));
   const units = sections && sections.length > 0 ? sections : buildSectionUnits(input.grade);
@@ -119,12 +119,12 @@ export async function generateProjectContent(
   const promises = runPool(units, FANOUT_CONCURRENCY, (unit) => generateSection(input, spine, unit));
 
   const header = `# ${spine.title}\n\n`;
-  opts.onSection?.(header);
+  await opts.onSection?.(header);
   const parts: string[] = [header.trim()];
 
   for (let i = 0; i < promises.length; i++) {
     const sectionText = await promises[i]!;
-    opts.onSection?.(`${sectionText}\n\n`);
+    await opts.onSection?.(`${sectionText}\n\n`);
     parts.push(sectionText);
   }
 

@@ -116,4 +116,6 @@ if (env.WHATSAPP_ENABLED === "true") {
     .catch((err) => console.error("[whatsapp] Import error:", err));
 }
 
-export default app;
+// Raise Bun's default idle timeout (10 s) so long-running SSE streams
+// (project generation: 25-45 s) are not dropped mid-response.
+export default { fetch: app.fetch.bind(app), idleTimeout: 120 };
