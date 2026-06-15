@@ -237,6 +237,7 @@ export default function ChatPage() {
   const [pendingUploads, setPendingUploads] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
 
   // In-app picker
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -306,6 +307,12 @@ export default function ChatPage() {
     observer.observe(sentinel);
     return () => observer.disconnect();
   }, [pickerHasMore, visiblePickerItems.length]);
+
+  useEffect(() => {
+    if (!sendError) return;
+    const t = setTimeout(() => setSendError(null), 4000);
+    return () => clearTimeout(t);
+  }, [sendError]);
 
   async function loadThreads() {
     try {
@@ -425,9 +432,13 @@ export default function ChatPage() {
   const send = useCallback(async () => {
     const text = input.trim();
     if (!text || sending) return;
+    setSendError(null);
 
     const threadId = await ensureThread();
-    if (!threadId) return;
+    if (!threadId) {
+      setSendError("Couldn't create a conversation. Please try again.");
+      return;
+    }
 
     const attachments = [...pendingUploads];
     setInput("");
@@ -503,13 +514,8 @@ export default function ChatPage() {
                 );
               }
             } else if (currentEvent === "error") {
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === asstMsg.id
-                    ? { ...m, pending: false, content: String(payload.message ?? "Something went wrong.") }
-                    : m,
-                ),
-              );
+              setMessages((prev) => prev.filter((m) => m.id !== asstMsg.id && m.id !== userMsg.id));
+              setSendError(String(payload.message ?? "Something went wrong. Please try again."));
             }
           }
         }
@@ -517,11 +523,8 @@ export default function ChatPage() {
 
       loadThreads();
     } catch {
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === asstMsg.id ? { ...m, pending: false, content: "Something went wrong. Please try again." } : m,
-        ),
-      );
+      setMessages((prev) => prev.filter((m) => m.id !== asstMsg.id && m.id !== userMsg.id));
+      setSendError("Something went wrong. Please try again.");
     } finally {
       setSending(false);
     }
@@ -757,8 +760,9 @@ export default function ChatPage() {
                   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
                 }}
                 rows={1}
+                disabled={sending}
                 placeholder="Ask a study question…"
-                className="flex-1 resize-none bg-transparent px-1 py-2 text-sm placeholder:text-muted-foreground/60 focus:outline-none max-h-40"
+                className="flex-1 resize-none bg-transparent px-1 py-2 text-sm placeholder:text-muted-foreground/60 focus:outline-none max-h-40 disabled:opacity-60"
               />
               <button
                 onClick={send}
@@ -766,9 +770,25 @@ export default function ChatPage() {
                 aria-label="Send"
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
               >
-                <HugeiconsIcon icon={SentIcon} className="h-4 w-4" />
+                {sending ? (
+                  <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                  </svg>
+                ) : (
+                  <HugeiconsIcon icon={SentIcon} className="h-4 w-4" />
+                )}
               </button>
             </div>
+            {/* Error banner */}
+            {sendError && (
+              <div className="mt-2 flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                <span className="flex-1">{sendError}</span>
+                <button onClick={() => setSendError(null)} aria-label="Dismiss" className="shrink-0 hover:opacity-70">
+                  <HugeiconsIcon icon={Cancel01Icon} className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
             <p className="mt-2 text-center text-[11px] text-muted-foreground">
               {remaining !== null && Number.isFinite(remaining)
                 ? `${remaining} message${remaining === 1 ? "" : "s"} left this month`
