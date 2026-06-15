@@ -161,10 +161,9 @@ function ChatSidebarContent({ threads, activeId, onNew, onSelect, onDelete, onCl
       </p>
 
       <div className="flex-1 overflow-y-auto px-2 pb-3 space-y-0.5">
-        {threads.length === 0 && (
+        {threads.length === 0 ? (
           <p className="px-3 py-6 text-center text-xs text-muted-foreground">No conversations yet.</p>
-        )}
-        {threads.map((t) => (
+        ) : threads.map((t) => (
           <button
             key={t.id}
             onClick={() => { onSelect(t.id); onClose?.(); }}
