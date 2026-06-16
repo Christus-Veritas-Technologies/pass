@@ -9,7 +9,7 @@ import { rmSync, lstatSync, readlinkSync, mkdirSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import os from "node:os";
 import type { Hono } from "hono";
-import { createClient, destroyClient } from "./client";
+import { createClient, destroyClient, setOnDisconnected } from "./client";
 import { withChatLock } from "./middleware/mutex";
 import { handleMessage } from "./router/index";
 
@@ -165,6 +165,11 @@ export async function startWhatsappBot(_app: Hono): Promise<void> {
 
     // Fresh client for this attempt — message handler re-registered each time.
     const client = createClient();
+    // Route runtime disconnects through this same clean-restart cycle instead
+    // of letting client.ts re-initialize the same (now-stale) Client instance.
+    setOnDisconnected(() => {
+      startWhatsappBot(_app).catch((e) => console.error("[whatsapp] Reconnect restart error:", e));
+    });
     client.on("message", async (msg) => {
       const chatId = msg.from;
       try {

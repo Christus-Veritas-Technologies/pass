@@ -33,6 +33,17 @@ function resolveChromePath(): string | undefined {
 
 let _client: Client | null = null;
 
+// start.ts registers a full clean-restart callback here so that a runtime
+// "disconnected" event (e.g. LOGOUT) goes through destroyClient() + a fresh
+// createClient() before re-initializing — re-using the same stale Client
+// instance crashes Puppeteer with "Failed to add page binding ... already
+// exists!" because the old page's bindings are still registered.
+let onDisconnected: (() => void) | null = null;
+
+export function setOnDisconnected(cb: (() => void) | null): void {
+  onDisconnected = cb;
+}
+
 export function getClient(): Client {
   if (!_client) throw new Error("WhatsApp client not initialised");
   return _client;
@@ -99,7 +110,13 @@ export function createClient(): Client {
     setConnected(false);
     setTimeout(() => {
       console.log("[whatsapp] Attempting to reconnect…");
-      _client?.initialize().catch((e) => console.error("[whatsapp] Reinit error:", e));
+      if (onDisconnected) {
+        onDisconnected();
+      } else {
+        // No restart callback registered (shouldn't normally happen) — fall
+        // back to re-initializing the same client rather than doing nothing.
+        _client?.initialize().catch((e) => console.error("[whatsapp] Reinit error:", e));
+      }
     }, 10_000);
   });
 
