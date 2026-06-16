@@ -9,12 +9,29 @@ import { rmSync, lstatSync, readlinkSync, mkdirSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import os from "node:os";
 import type { Hono } from "hono";
-import { createClient, destroyClient } from "./client";
+import { createClient, destroyClient, setOnDisconnected } from "./client";
 import { withChatLock } from "./middleware/mutex";
 import { handleMessage } from "./router/index";
 
 const MAX_INIT_RETRIES = 4;
 const RETRY_DELAY_MS   = 3_000;
+
+// whatsapp-web.js can silently stop emitting "message" events (a known,
+// unresolved upstream issue — the client stays "ready" while its internal
+// WhatsApp Web event hooks break, e.g. after WhatsApp ships a web-client
+// update) with no error to detect. There's no reliable way to notice this
+// from the outside, so we bound the blast radius with a periodic forced
+// restart instead of waiting for a human to notice the bot has gone silent.
+const RESTART_INTERVAL_MS = (Number(process.env.WHATSAPP_RESTART_INTERVAL_HOURS) || 12) * 60 * 60 * 1000;
+let restartTimer: ReturnType<typeof setTimeout> | null = null;
+
+function scheduleRestart(app: Hono): void {
+  if (restartTimer) clearTimeout(restartTimer);
+  restartTimer = setTimeout(() => {
+    console.log("[whatsapp] Scheduled restart — refreshing the session to recover from any silent event-capture failures.");
+    startWhatsappBot(app).catch((e) => console.error("[whatsapp] Scheduled restart error:", e));
+  }, RESTART_INTERVAL_MS);
+}
 
 /**
  * Kill every Chrome/Chromium process on this machine.
@@ -148,6 +165,11 @@ export async function startWhatsappBot(_app: Hono): Promise<void> {
 
     // Fresh client for this attempt — message handler re-registered each time.
     const client = createClient();
+    // Route runtime disconnects through this same clean-restart cycle instead
+    // of letting client.ts re-initialize the same (now-stale) Client instance.
+    setOnDisconnected(() => {
+      startWhatsappBot(_app).catch((e) => console.error("[whatsapp] Reconnect restart error:", e));
+    });
     client.on("message", async (msg) => {
       const chatId = msg.from;
       try {
@@ -160,6 +182,7 @@ export async function startWhatsappBot(_app: Hono): Promise<void> {
     try {
       console.log(`[whatsapp] Initialising… (attempt ${attempt}/${MAX_INIT_RETRIES})`);
       await client.initialize();
+      scheduleRestart(_app);
       return; // success — keep this client alive
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
