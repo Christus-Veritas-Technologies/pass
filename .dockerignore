@@ -1,0 +1,49 @@
+# ── .dockerignore (repo root) ────────────────────────────────────────────────
+# The server Dockerfile is built with the MONOREPO ROOT as build context
+# (docker build -f apps/server/Dockerfile .), because it needs the pnpm
+# workspace files (pnpm-lock.yaml, pnpm-workspace.yaml, packages/*) to install
+# "@pass/*" deps. Everything below is safe to exclude from that context.
+
+# VCS / editor
+.git
+.github
+.vscode
+.idea
+
+# Dependency trees — always reinstalled inside the image, never trusted from host
+**/node_modules
+
+# Build outputs — rebuilt inside the image
+**/dist
+**/build
+**/.next
+**/.turbo
+**/.expo
+**/*.tsbuildinfo
+
+# WhatsApp session + Chrome cache — must come from a volume, never from the
+# build context (these are machine-specific, and are usually huge/unwanted)
+**/.wwebjs_auth
+**/.wwebjs_cache
+
+# Large gitignored downloaded assets — must come from a volume (see Dockerfile)
+packages/papers/papers
+packages/papers/.ingest-cache
+
+# Env files / secrets — never bake these into an image layer
+.env
+.env.*
+!.env.example
+*.pem
+.dev.vars
+
+# Native/mobile app — not part of the server image at all
+apps/native/ios
+apps/native/android
+
+# Docs / misc — irrelevant to the image, only slow down the build context upload
+*.md
+.DS_Store
+coverage
+.nyc_output
+*.log

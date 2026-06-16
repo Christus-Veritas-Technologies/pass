@@ -1,0 +1,52 @@
+# Local/staging example wiring for the Dockerized Pass server.
+# Build context is the repo root (see apps/server/Dockerfile's header comment).
+#
+#   docker compose up --build
+#
+# Production: keep using your own orchestration (this file is a reference,
+# not a requirement) — just preserve the same two volumes and env vars.
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pass
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: pass
+    volumes:
+      - pass_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pass"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  server:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    env_file:
+      # Copy apps/server/.env.example -> apps/server/.env and fill it in.
+      # DATABASE_URL here should point at the `postgres` service, e.g.:
+      #   postgresql://pass:pass@postgres:5432/pass
+      - apps/server/.env
+    volumes:
+      # WhatsApp session — without this, every container recreation needs a
+      # fresh QR scan (see apps/server/src/whatsapp/client.ts's LocalAuth).
+      - pass_wwebjs_auth:/data/wwebjs_auth
+      # Past-paper PDFs — gitignored/downloaded out-of-band, not baked into
+      # the image. Point this at wherever `packages/papers/papers` was
+      # populated (e.g. `bun run download` from packages/papers), or set
+      # PAPERS_LOCAL_DIR instead to use an arbitrary host path.
+      - pass_papers:/app/packages/papers/papers
+
+volumes:
+  pass_postgres_data:
+  pass_wwebjs_auth:
+  pass_papers:
