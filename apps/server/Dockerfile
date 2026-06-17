@@ -131,19 +131,18 @@ RUN rm -rf apps/web apps/native packages/papers/node_modules
 # Mount points for state that must outlive/precede any single container.
 # /app is already pass-owned (COPY --chown above), so only chown the freshly
 # created dirs here — NOT a second recursive chown over all of /app.
-RUN mkdir -p /data/wwebjs_auth /app/packages/papers/papers \
-    && chown -R pass:pass /data /app/packages/papers/papers
+RUN mkdir -p /app/packages/papers/papers \
+    && chown -R pass:pass /app/packages/papers/papers
 
 ENV NODE_ENV=production \
     PORT=5006 \
     CHROME_PATH=/usr/bin/chromium \
-    WHATSAPP_SESSION_DIR=/data/wwebjs_auth \
     PUPPETEER_SKIP_DOWNLOAD=true \
     PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
 # A brand-new named volume mounted here on first run inherits the (correctly
 # owned, empty) directories baked in above, instead of a root-owned empty dir.
-VOLUME ["/data/wwebjs_auth", "/app/packages/papers/papers"]
+VOLUME ["/app/packages/papers/papers"]
 
 RUN chmod +x apps/server/docker-entrypoint.sh
 
