@@ -63,7 +63,12 @@ COPY . .
 
 # `--frozen-lockfile`: refuse to install (and silently mutate the lockfile)
 # if package.json and pnpm-lock.yaml have drifted apart — fail loudly.
-RUN pnpm install --frozen-lockfile
+# `--prod=false`: force devDependencies to install even when NODE_ENV=production
+# is present in the build environment (Coolify injects it as a build-time var).
+# The build NEEDS devDeps — tsdown/typescript to bundle, and `prisma` (a devDep
+# of @pass/db) for the postinstall's `prisma generate`. Without this, pnpm skips
+# them and the @pass/db postinstall fails ("Cannot find module 'prisma/config'").
+RUN pnpm install --frozen-lockfile --prod=false
 
 # Explicit Prisma client generation. The install hook above already runs it,
 # but doing it here too makes the dependency visible in build logs and is a
