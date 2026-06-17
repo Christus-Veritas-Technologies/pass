@@ -120,12 +120,19 @@ WORKDIR /app
 # the workspace graph — the server never imports them, so drop them to keep
 # the final image leaner. Safe: pnpm's real package contents live in the root
 # node_modules/.pnpm store, still referenced by the remaining packages.
-COPY --from=build /app /app
+#
+# `--chown=pass:pass` sets ownership DURING the copy. Doing it in a separate
+# `RUN chown -R /app` instead forces overlayfs to copy the entire (multi-GB)
+# node_modules tree into a new layer — doubling build-host disk usage and
+# overflowing it (the build was killed with no error at exactly that step).
+COPY --from=build --chown=pass:pass /app /app
 RUN rm -rf apps/web apps/native packages/papers/node_modules
 
 # Mount points for state that must outlive/precede any single container.
+# /app is already pass-owned (COPY --chown above), so only chown the freshly
+# created dirs here — NOT a second recursive chown over all of /app.
 RUN mkdir -p /data/wwebjs_auth /app/packages/papers/papers \
-    && chown -R pass:pass /data /app
+    && chown -R pass:pass /data /app/packages/papers/papers
 
 ENV NODE_ENV=production \
     PORT=3000 \
