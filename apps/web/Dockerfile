@@ -25,36 +25,21 @@
 ARG NODE_VERSION=22
 
 # ──────────────────────────────────────────────────────────────────────────
-# Stage 1/3 — deps: install the full pnpm workspace.
+# Stage 1/2 — build: install the full workspace and run `next build`.
 # ──────────────────────────────────────────────────────────────────────────
-FROM node:${NODE_VERSION}-slim AS deps
+FROM node:${NODE_VERSION}-slim AS build
 WORKDIR /app
 
 # pnpm via corepack (ships with Node, no extra install step / version drift
 # from package.json's "packageManager" field).
 RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY apps/web/package.json apps/web/package.json
-COPY apps/server/package.json apps/server/package.json
-COPY apps/native/package.json apps/native/package.json
-COPY packages/db/package.json packages/db/package.json
-COPY packages/env/package.json packages/env/package.json
-COPY packages/pricing/package.json packages/pricing/package.json
-COPY packages/ui/package.json packages/ui/package.json
-COPY packages/config/package.json packages/config/package.json
-COPY packages/papers/package.json packages/papers/package.json
+# Copy the WHOLE repo before installing: workspace packages have postinstall
+# hooks that need their own source present (packages/db runs `prisma generate`
+# via scripts/postinstall.mjs). A manifest-only copy would break that hook.
+COPY . .
 
 RUN pnpm install --frozen-lockfile
-
-# ──────────────────────────────────────────────────────────────────────────
-# Stage 2/3 — build.
-# ──────────────────────────────────────────────────────────────────────────
-FROM deps AS build
-WORKDIR /app
-RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
-
-COPY . .
 
 # Build-time-only public config — see the warning at the top of this file.
 ARG NEXT_PUBLIC_SERVER_URL
@@ -66,13 +51,14 @@ ENV NEXT_PUBLIC_SERVER_URL=${NEXT_PUBLIC_SERVER_URL} \
 RUN pnpm --filter web run build
 
 # ──────────────────────────────────────────────────────────────────────────
-# Stage 3/3 — runtime: just the standalone server + static assets.
+# Stage 2/2 — runtime: just the standalone server + static assets.
 #
-# `output: "standalone"` reproduces this app's path *within the monorepo*
-# under .next/standalone (i.e. .next/standalone/apps/web/server.js) — it
-# does NOT flatten to repo root. .next/static and public/ are deliberately
-# excluded from the standalone trace (Next docs) and must be copied in
-# manually, landing next to server.js at the matching nested path.
+# `next build` runs with its cwd at apps/web, so .next lives at
+# apps/web/.next. `output: "standalone"` reproduces this app's path *within
+# the monorepo* under apps/web/.next/standalone (i.e. the server entrypoint
+# is apps/web/.next/standalone/apps/web/server.js). .next/static and public/
+# are deliberately excluded from the standalone trace (Next docs) and must be
+# copied in manually, landing next to server.js at the matching nested path.
 # ──────────────────────────────────────────────────────────────────────────
 FROM node:${NODE_VERSION}-slim AS runtime
 WORKDIR /app
@@ -80,7 +66,9 @@ WORKDIR /app
 RUN groupadd --gid 10001 web \
     && useradd --uid 10001 --gid web --shell /bin/bash --create-home web
 
-COPY --from=build /app/.next/standalone ./
+# Standalone tree → /app (gives /app/apps/web/server.js + /app/node_modules).
+COPY --from=build /app/apps/web/.next/standalone ./
+# Static assets + public/ are not in the trace — copy them to the nested path.
 COPY --from=build /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=build /app/apps/web/public ./apps/web/public
 
@@ -94,7 +82,8 @@ ENV NODE_ENV=production \
 EXPOSE 3000
 
 # "/" is the public marketing landing page (apps/web/src/app/(marketing)/page.tsx)
-# — no auth required, cheap to poll for liveness.
+# — no auth required, cheap to poll for liveness. No curl in this slim image,
+# so use Node's global fetch (Node 22).
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD node -e "fetch('http://localhost:'+process.env.PORT+'/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
