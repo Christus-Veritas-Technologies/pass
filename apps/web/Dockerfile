@@ -39,7 +39,12 @@ RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 # via scripts/postinstall.mjs). A manifest-only copy would break that hook.
 COPY . .
 
-RUN pnpm install --frozen-lockfile
+# `--prod=false`: force devDependencies to install even when NODE_ENV=production
+# is present in the build environment (Coolify injects it as a build-time var).
+# The build NEEDS devDeps — next/typescript/tailwind to compile, and `prisma`
+# (a devDep of @pass/db) for that package's postinstall. Without this, pnpm skips
+# them and the @pass/db postinstall fails ("Cannot find module 'prisma/config'").
+RUN pnpm install --frozen-lockfile --prod=false
 
 # Build-time-only public config — see the warning at the top of this file.
 ARG NEXT_PUBLIC_SERVER_URL
