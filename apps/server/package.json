@@ -23,7 +23,6 @@
     "@pass/pricing": "workspace:*",
     "@react-pdf/renderer": "^4.5.1",
     "@types/react": "^19.2.15",
-    "pdfkit": "^0.15.1",
     "@types/web-push": "^3.6.4",
     "docx": "^9.7.1",
     "dotenv": "^17.2.2",
@@ -33,18 +32,19 @@
     "nanoid": "^5.1.11",
     "nodemailer": "^6.10.1",
     "paynow": "^2.2.2",
+    "pdfkit": "^0.15.1",
     "qrcode-terminal": "^0.12.0",
     "react": "^19.2.6",
     "web-push": "^3.6.7",
-    "whatsapp-web.js": "^1.27.0",
+    "whatsapp-web.js": "^1.34.7",
     "zod": "^4.1.13"
   },
   "devDependencies": {
     "@pass/config": "workspace:*",
     "@types/bun": "^1.3.4",
     "@types/nodemailer": "^6.4.17",
-    "@types/qrcode-terminal": "^0.12.2",
     "@types/pdfkit": "^0.13.9",
+    "@types/qrcode-terminal": "^0.12.2",
     "tsdown": "^0.21.9",
     "typescript": "^6"
   }
