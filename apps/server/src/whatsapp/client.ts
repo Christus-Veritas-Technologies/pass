@@ -62,14 +62,16 @@ export function createClient(): Client {
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
         "--disable-gpu",
-        // Headless VPS: prevent the zygote helper that holds singleton locks
-        "--no-zygote",
         // No first-run setup wizard that can interfere with startup
         "--no-first-run",
         // Disable crash reporter (reduces file/socket noise)
         "--disable-breakpad",
         // Disable extensions to reduce startup surface
         "--disable-extensions",
+        // Keep the audio service in-process so Chrome doesn't try to fork an
+        // audio daemon (which fails on a headless server with no sound card and
+        // can stall page initialisation waiting for the daemon to respond).
+        "--disable-features=AudioServiceOutOfProcess",
       ],
     },
   });
