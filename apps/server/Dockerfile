@@ -135,7 +135,7 @@ RUN mkdir -p /data/wwebjs_auth /app/packages/papers/papers \
     && chown -R pass:pass /data /app/packages/papers/papers
 
 ENV NODE_ENV=production \
-    PORT=3000 \
+    PORT=5006 \
     CHROME_PATH=/usr/bin/chromium \
     WHATSAPP_SESSION_DIR=/data/wwebjs_auth \
     PUPPETEER_SKIP_DOWNLOAD=true \
@@ -149,7 +149,7 @@ RUN chmod +x apps/server/docker-entrypoint.sh
 
 USER pass
 
-EXPOSE 3000
+EXPOSE 5006
 
 # GET / returns a plain "OK" (apps/server/src/index.ts) — cheap liveness check.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \

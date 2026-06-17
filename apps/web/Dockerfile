@@ -81,10 +81,10 @@ RUN chown -R web:web /app
 USER web
 
 ENV NODE_ENV=production \
-    PORT=3000 \
+    PORT=5005 \
     HOSTNAME=0.0.0.0
 
-EXPOSE 3000
+EXPOSE 5005
 
 # "/" is the public marketing landing page (apps/web/src/app/(marketing)/page.tsx)
 # — no auth required, cheap to poll for liveness. No curl in this slim image,
