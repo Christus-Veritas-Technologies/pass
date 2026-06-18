@@ -142,6 +142,7 @@ async function dispatchNlAction(
 }
 
 export async function handleMessage(client: Client, msg: Message): Promise<void> {
+  console.log("[WhatsApp]: Handling message...")
   // Only process direct 1-on-1 chat messages.
   // Silently drop everything else: groups, broadcasts, status updates, channels.
   const from = msg.from ?? "";
@@ -281,6 +282,7 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
     // for it specifically, rather than showing the generic welcome every time.
     const featureHint = detectUnlinkedFeatureHint(text);
     if (featureHint) {
+      console.log("[whatsapp]: Sendigng reply..")
       await msg.reply(unlinkedFeatureNudge(featureHint));
     } else {
       await sendWelcomeUnlinked(msg);

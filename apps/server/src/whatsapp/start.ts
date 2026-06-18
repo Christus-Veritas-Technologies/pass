@@ -139,6 +139,8 @@ function sleep(ms: number) {
 }
 
 export async function startWhatsappBot(_app: Hono): Promise<void> {
+  console.log("[whatsapp] Starting bot…");
+
   // Mirror the dataPath resolution used in client.ts
   const rawSessionDir = process.env.WHATSAPP_SESSION_DIR ?? "./.wwebjs_auth";
   const sessionDir = isAbsolute(rawSessionDir)
@@ -172,6 +174,7 @@ export async function startWhatsappBot(_app: Hono): Promise<void> {
     });
     client.on("message", async (msg) => {
       const chatId = msg.from;
+      console.log("Message received", msg.body);
       try {
         await withChatLock(chatId, () => handleMessage(client, msg));
       } catch (err) {
