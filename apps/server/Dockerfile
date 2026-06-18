@@ -53,8 +53,15 @@ RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 # whatsapp-web.js depends on `puppeteer`, which tries to download its own
 # Chromium on install. We use the distro Chromium from the runtime stage
 # instead, so skip that download.
+#
+# puppeteer 23+ added a second download target (chrome-headless-shell) with
+# its own skip flag — set both, plus the legacy CHROMIUM name for older
+# versions. PUPPETEER_CACHE_DIR keeps any cache writes inside /tmp instead of
+# trying to create ~/.cache/puppeteer inside a non-home-dir container user.
 ENV PUPPETEER_SKIP_DOWNLOAD=true \
-    PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+    PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_SKIP_CHROME_HEADLESS_SHELL_DOWNLOAD=true \
+    PUPPETEER_CACHE_DIR=/tmp/.cache/puppeteer
 
 # Copy the WHOLE repo before installing: workspace packages have postinstall
 # hooks that need their own source present (packages/db runs `prisma generate`
@@ -87,6 +94,10 @@ FROM oven/bun:${BUN_VERSION}-slim AS runtime
 
 # - chromium:        the actual browser whatsapp-web.js drives via Puppeteer.
 #                     Debian's package pulls in every shared lib it needs.
+# - libgbm1:         GPU buffer manager — Chrome 112+ requires this for the
+#                     headless rendering path even when --disable-gpu is set.
+#                     The Debian chromium package doesn't always declare it as
+#                     a hard dep on slim images; install it explicitly.
 # - fonts-*:         headless Chromium needs fonts to render emoji / non-Latin
 #                     glyphs that WhatsApp messages routinely contain.
 # - procps:          provides `pgrep`/`pkill` (NOT in base coreutils) used by
@@ -97,6 +108,7 @@ FROM oven/bun:${BUN_VERSION}-slim AS runtime
 # - curl:            used by the HEALTHCHECK below.
 RUN apt-get update && apt-get install -y \
       chromium \
+      libgbm1 \
       fonts-liberation \
       fonts-noto-color-emoji \
     && apt-get install -y --no-install-recommends \
@@ -138,7 +150,10 @@ ENV NODE_ENV=production \
     PORT=5006 \
     CHROME_PATH=/usr/bin/chromium \
     PUPPETEER_SKIP_DOWNLOAD=true \
-    PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+    PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_SKIP_CHROME_HEADLESS_SHELL_DOWNLOAD=true \
+    PUPPETEER_CACHE_DIR=/tmp/.cache/puppeteer \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 # A brand-new named volume mounted here on first run inherits the (correctly
 # owned, empty) directories baked in above, instead of a root-owned empty dir.
