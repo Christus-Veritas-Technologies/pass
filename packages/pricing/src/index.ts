@@ -11,11 +11,11 @@ export const PLANS = {
     prices: { MONTHLY: 0, ANNUAL: 0 },
     annualMonthlyEquiv: null as string | null,
     period: { MONTHLY: "forever", ANNUAL: "forever" },
-    limits: { papers: 5, projects: 2, downloads: 10 },
+    limits: { papers: 2, projects: 1, downloads: 3 },
     features: [
-      "5 past papers per month",
-      "2 AI projects per month",
-      "10 paper PDF downloads / month",
+      "2 past papers per month",
+      "1 AI project per month",
+      "3 paper PDF downloads / month",
       "Basic marking guidance",
     ] as string[],
     missing: [
@@ -24,9 +24,9 @@ export const PLANS = {
       "Progress tracking",
     ] as string[],
     highlights: [
-      "5 past papers / month",
-      "2 AI projects / month",
-      "10 PDF downloads / month",
+      "2 past papers / month",
+      "1 AI project / month",
+      "3 PDF downloads / month",
     ] as string[],
     description: "Get started at no cost",
     payable: false as const,
@@ -100,7 +100,7 @@ export const PLAN_PRICES: Record<PayablePlanKey, Record<BillingCycle, number>> =
 
 // Quota limits used by the server to gate paper/project/AI-message/download usage
 export const PLAN_LIMITS: Record<PlanKey, { papers: number; projects: number; aiMessages: number; downloads: number }> = {
-  FREE:  { ...PLANS.FREE.limits,  aiMessages: 100,      downloads: 10       },
+  FREE:  { ...PLANS.FREE.limits,  aiMessages: 20,       downloads: 3        },
   STUDY: { ...PLANS.STUDY.limits, aiMessages: 500,      downloads: 50       },
   PASS:  { ...PLANS.PASS.limits,  aiMessages: Infinity, downloads: Infinity },
 };
@@ -118,10 +118,10 @@ export const COMPARISON_ROWS: Array<{
   study: string;
   pass: string;
 }> = [
-  { label: "Past papers / month",  free: "5",         study: "12",       pass: "20" },
-  { label: "AI projects / month",  free: "2",         study: "7",        pass: "12" },
+  { label: "Past papers / month",  free: "2",         study: "12",       pass: "20" },
+  { label: "AI projects / month",  free: "1",         study: "7",        pass: "12" },
   { label: "AI answer marking",    free: "Basic",     study: "Detailed", pass: "Full worked solutions" },
-  { label: "Paper PDF downloads",   free: "10 / month", study: "50 / month", pass: "Unlimited" },
+  { label: "Paper PDF downloads",   free: "3 / month", study: "50 / month", pass: "Unlimited" },
   { label: "Progress tracking",    free: "—",         study: "Included", pass: "Full analytics" },
   { label: "Support",              free: "Community", study: "Email",    pass: "Priority" },
 ];
