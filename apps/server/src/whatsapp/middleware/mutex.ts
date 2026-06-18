@@ -12,6 +12,12 @@
 
 const locks = new Map<string, Promise<void>>();
 
+/** Drop all pending locks. Call this when the client is destroyed so stale
+ *  promise chains from the dead client don't block the next client's messages. */
+export function clearAllLocks(): void {
+  locks.clear();
+}
+
 export function withChatLock<T>(chatId: string, fn: () => Promise<T>): Promise<T> {
   const prev = locks.get(chatId) ?? Promise.resolve();
 

@@ -10,11 +10,18 @@ import { isAbsolute, join } from "node:path";
 import os from "node:os";
 import type { Hono } from "hono";
 import { createClient, destroyClient, setOnDisconnected } from "./client";
-import { withChatLock } from "./middleware/mutex";
+import { withChatLock, clearAllLocks } from "./middleware/mutex";
 import { handleMessage } from "./router/index";
 
 const MAX_INIT_RETRIES = 4;
 const RETRY_DELAY_MS   = 3_000;
+
+// Guards against overlapping startWhatsappBot calls.
+// The 60-second retry timer and the onDisconnected callback can both fire
+// while a concurrent attempt is already running — without this guard they
+// would race, each calling killAllChrome and destroying each other's Chrome.
+let _botStarting = false;
+let _retryTimer: ReturnType<typeof setTimeout> | null = null;
 
 // whatsapp-web.js can silently stop emitting "message" events (a known,
 // unresolved upstream issue — the client stays "ready" while its internal
@@ -139,6 +146,18 @@ function sleep(ms: number) {
 }
 
 export async function startWhatsappBot(_app: Hono): Promise<void> {
+  // Cancel any queued 60s retry — this call supersedes it.
+  if (_retryTimer) { clearTimeout(_retryTimer); _retryTimer = null; }
+
+  // Skip if a startup sequence is already in progress.  The 60s retry timer
+  // and the onDisconnected callback can both fire while a concurrent attempt
+  // is running; the second call would killAllChrome on a live session.
+  if (_botStarting) {
+    console.log("[whatsapp] Startup already in progress — ignoring overlapping call");
+    return;
+  }
+  _botStarting = true;
+
   console.log("[whatsapp] Starting bot…");
 
   // Mirror the dataPath resolution used in client.ts
@@ -163,7 +182,10 @@ export async function startWhatsappBot(_app: Hono): Promise<void> {
   for (let attempt = 1; attempt <= MAX_INIT_RETRIES; attempt++) {
     // Destroy any stale client from a previous attempt so Puppeteer's
     // internal state (browser process handle, event listeners) is fully reset.
+    // Clear locks too: any mutex chain from the dead client will never settle,
+    // permanently blocking future messages for those chatIds if left in place.
     await destroyClient();
+    clearAllLocks();
 
     // Fresh client for this attempt — message handler re-registered each time.
     const client = createClient();
@@ -185,6 +207,7 @@ export async function startWhatsappBot(_app: Hono): Promise<void> {
     try {
       console.log(`[whatsapp] Initialising… (attempt ${attempt}/${MAX_INIT_RETRIES})`);
       await client.initialize();
+      _botStarting = false; // release guard before returning
       scheduleRestart(_app);
       return; // success — keep this client alive
     } catch (err: unknown) {
@@ -220,7 +243,9 @@ export async function startWhatsappBot(_app: Hono): Promise<void> {
       // restart loop (7000+ restarts!) where new instances race against each
       // other's Chrome processes and perpetuate the lock.
       console.error(`[whatsapp] All ${MAX_INIT_RETRIES} attempts failed. Retrying in 60s…`, err);
-      setTimeout(() => {
+      _botStarting = false; // release guard so the retry can enter
+      _retryTimer = setTimeout(() => {
+        _retryTimer = null;
         startWhatsappBot(_app).catch((e) => console.error("[whatsapp] Scheduled retry error:", e));
       }, 60_000);
       return; // ← don't throw: server stays up, PM2 stops restarting
