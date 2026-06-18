@@ -62,14 +62,6 @@ export function createClient(): Client {
 
   _client = new Client({
     authStrategy: new LocalAuth({ dataPath }),
-    // If WhatsApp Web thinks this session is "open on another window" (a stale
-    // orphaned session, or a previous container that didn't shut down cleanly),
-    // the page sits forever on the conflict screen and "ready" never fires.
-    // Forcibly take over so post-auth sync can proceed to the MAIN state.
-    takeoverOnConflict: true,
-    takeoverTimeoutMs: 10_000,
-    // Give the post-authentication sync more headroom before wwebjs gives up.
-    authTimeoutMs: 120_000,
     puppeteer: {
       headless: true,
       executablePath: resolveChromePath(),
@@ -81,16 +73,14 @@ export function createClient(): Client {
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
         "--disable-gpu",
+        // Headless VPS: prevent the zygote helper that holds singleton locks
+        "--no-zygote",
         // No first-run setup wizard that can interfere with startup
         "--no-first-run",
         // Disable crash reporter (reduces file/socket noise)
         "--disable-breakpad",
         // Disable extensions to reduce startup surface
         "--disable-extensions",
-        // Keep the audio service in-process so Chrome doesn't try to fork an
-        // audio daemon (which fails on a headless server with no sound card and
-        // can stall page initialisation waiting for the daemon to respond).
-        "--disable-features=AudioServiceOutOfProcess",
       ],
     },
   });
@@ -104,18 +94,6 @@ export function createClient(): Client {
 
   _client.on("authenticated", () => {
     console.log("[whatsapp] Authenticated ✓");
-  });
-
-  // Post-auth sync visibility. If the bot authenticates but never goes "ready",
-  // these tell us exactly where it stalls: loading_screen reports the sync
-  // percentage, change_state reports WhatsApp's connection state machine
-  // (e.g. CONFLICT / UNPAIRED / OPENING / PAIRING / CONNECTED).
-  _client.on("loading_screen", (percent, message) => {
-    console.log(`[whatsapp] Loading: ${percent}% — ${message}`);
-  });
-
-  _client.on("change_state", (state) => {
-    console.log(`[whatsapp] State: ${state}`);
   });
 
   _client.on("ready", () => {
