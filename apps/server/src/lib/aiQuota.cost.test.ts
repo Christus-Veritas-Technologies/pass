@@ -10,7 +10,7 @@ import { test, expect, describe, beforeEach, mock } from "bun:test";
 
 let plan = "FREE";
 let used = 0;
-const LIMIT = 100; // PLAN_LIMITS.FREE.aiMessages
+const LIMIT = 20; // PLAN_LIMITS.FREE.aiMessages
 
 const userFindUnique = mock(async () => ({ plan, isAmbassador: false }));
 const subFindUnique = mock(async () => null); // no subscription → effectivePlan trusts plan
