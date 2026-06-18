@@ -62,11 +62,15 @@ export function createClient(): Client {
 
   _client = new Client({
     authStrategy: new LocalAuth({ dataPath }),
+    // Always fetch the live WhatsApp Web version rather than using a local
+    // cache. A stale cached version (left over from a previous wwebjs install)
+    // is the most common cause of "authenticated ✓ but ready never fires":
+    // the old web bundle loads, auth succeeds, but the page never reaches the
+    // MAIN state that wwebjs needs to emit "ready".
+    webVersionCache: { type: "none" },
     puppeteer: {
       headless: true,
       executablePath: resolveChromePath(),
-      // Dump Chrome stdout/stderr so we can see exactly what it prints
-      // before Puppeteer parses the logs (helps diagnose singleton errors).
       dumpio: true,
       args: [
         "--no-sandbox",
@@ -75,16 +79,13 @@ export function createClient(): Client {
         "--disable-gpu",
         // Headless VPS: prevent the zygote helper that holds singleton locks
         "--no-zygote",
-        // No first-run setup wizard that can interfere with startup
         "--no-first-run",
-        // Disable crash reporter (reduces file/socket noise)
         "--disable-breakpad",
-        // Disable extensions to reduce startup surface
         "--disable-extensions",
-        // Keep audio in-process — on a headless Linux server with no sound card,
-        // Chrome forks an out-of-process audio daemon that blocks on ALSA device
-        // discovery, stalling WhatsApp Web's post-auth page load and preventing
-        // the "ready" event from ever firing.
+        // Use a fake audio device instead of probing ALSA. On a headless server
+        // with no sound card, Chrome's real audio init blocks on ALSA discovery
+        // and stalls the post-auth page load. A fake device resolves instantly.
+        "--use-fake-audio-for-tests",
         "--disable-features=AudioServiceOutOfProcess",
       ],
     },
