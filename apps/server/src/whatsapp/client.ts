@@ -96,6 +96,19 @@ export function createClient(): Client {
     console.log("[whatsapp] Authenticated ✓");
   });
 
+  // Fired when the stored session is rejected by WhatsApp (e.g. the user
+  // logged out from their phone, or the session format changed after a
+  // wwebjs upgrade). Without this handler the failure is silent — no QR
+  // re-appears and the client hangs. Destroy and let start.ts restart so
+  // a fresh QR is shown.
+  _client.on("auth_failure", (msg) => {
+    console.error("[whatsapp] Auth failure:", msg);
+    setConnected(false);
+    destroyClient().then(() => {
+      if (onDisconnected) onDisconnected();
+    });
+  });
+
   _client.on("ready", () => {
     console.log("[whatsapp] Ready ✓");
     setConnected(true);
