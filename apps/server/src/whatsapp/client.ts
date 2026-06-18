@@ -81,6 +81,11 @@ export function createClient(): Client {
         "--disable-breakpad",
         // Disable extensions to reduce startup surface
         "--disable-extensions",
+        // Keep audio in-process — on a headless Linux server with no sound card,
+        // Chrome forks an out-of-process audio daemon that blocks on ALSA device
+        // discovery, stalling WhatsApp Web's post-auth page load and preventing
+        // the "ready" event from ever firing.
+        "--disable-features=AudioServiceOutOfProcess",
       ],
     },
   });
