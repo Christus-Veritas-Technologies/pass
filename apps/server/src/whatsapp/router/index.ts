@@ -96,6 +96,7 @@ async function dispatchNlAction(
   action: NlAction,
   state: ConversationState,
 ): Promise<ConversationState> {
+  dbg("dispatchNlAction", action.kind);
   switch (action.kind) {
     case "study_paper": {
       // If the NL router extracted subject + grade, go straight to the list.
@@ -141,8 +142,12 @@ async function dispatchNlAction(
   }
 }
 
+const DEV = process.env.NODE_ENV === "development";
+const dbg = (...args: unknown[]) => { if (DEV) console.log("[wa:dbg]", ...args); };
+
 export async function handleMessage(client: Client, msg: Message): Promise<void> {
-  console.log("[WhatsApp]: Handling message...")
+  console.log("[whatsapp] Handling message...");
+
   // Only process direct 1-on-1 chat messages.
   // Silently drop everything else: groups, broadcasts, status updates, channels.
   const from = msg.from ?? "";
@@ -154,17 +159,16 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
     from === "status@broadcast"        || // Status updates
     msg.isStatus                       || // Status flag
     msg.broadcast                         // Broadcast flag
-  ) return;
+  ) { dbg("dropped — not a 1-on-1 message", { from, isStatus: msg.isStatus }); return; }
 
   const whatsappId = msg.from;
-  // When media is present the body is the caption (may be empty).
-  // We still need the text for hard-intent matching on text-only messages.
   const text = (msg.body ?? "").trim();
 
-  // Drop truly empty messages that have no media and no text
-  if (!msg.hasMedia && !text) return;
+  if (!msg.hasMedia && !text) { dbg("dropped — empty body, no media"); return; }
 
+  dbg("loadState start", whatsappId);
   let state = await loadState(whatsappId);
+  dbg("loadState done", { mode: state.mode.kind });
 
   // Rate limiting (per-minute)
   const now = Date.now();
@@ -175,18 +179,19 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
     state.messageCountThisMinute = 1;
   }
   if (state.messageCountThisMinute > RATE_MAX_PER_MIN) {
+    dbg("rate limit hit", state.messageCountThisMinute);
     await msg.reply(RATE_LIMIT);
     await saveState(whatsappId, state);
     return;
   }
 
   const hard = matchHardIntent(text, state.mode);
+  dbg("hardIntent", hard.kind, { text });
 
   // ── Global hard intents (always free, no AI, no quota check) ─────────────
 
   if (hard.kind === "help") {
-    // Reset mode so numbered menu selections work after "help" regardless of
-    // what flow the user was in (the most common hallucination trigger).
+    dbg("→ help");
     state = { ...state, mode: { kind: "idle" } };
     await sendHelp(msg);
     await saveState(whatsappId, state);
@@ -194,9 +199,8 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
   }
 
   if (hard.kind === "cancel") {
+    dbg("→ cancel");
     state = { ...state, mode: { kind: "idle" } };
-    // Show the menu immediately so the user knows what they can do next
-    // without having to type "help".
     await msg.reply(CANCEL_OK);
     await saveState(whatsappId, state);
     return;
@@ -204,6 +208,7 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
 
   // ── Logout: unlink account then show welcome ───────────────────────────────
   if (hard.kind === "logout") {
+    dbg("→ logout");
     await unlinkUser(whatsappId);
     await msg.reply(LOGOUT_OK);
     await msg.reply(WELCOME_UNLINKED);
@@ -211,11 +216,9 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
   }
 
   // ── Sample project: works for everyone (no account / no AI / no quota) ──────
-  // A sample is a past project with the student's identity stripped — a good
-  // way to show value, even before signup. It never counts as a generation.
   if (hard.kind === "sample") {
+    dbg("→ sample");
     if (state.mode.kind === "project_brief") {
-      // Mid-brief: match the subject/grade collected so far, then resume the brief.
       const { subject, grade } = state.mode.collected;
       const sent = await sendSampleProject(client, whatsappId, { subject, grade });
       if (!sent) await msg.reply(PROJECT_NO_SAMPLE);
@@ -231,11 +234,16 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
 
   // ── Unlinked path ─────────────────────────────────────────────────────────
 
+  dbg("getLinkedUser start", whatsappId);
   const userId = await getLinkedUser(whatsappId);
+  dbg("getLinkedUser done", { userId: userId ?? "null (unlinked)" });
 
   if (!userId) {
+    dbg("unlinked path", { hardKind: hard.kind, modeKind: state.mode.kind });
+
     // WhatsApp-native signup flow
     if (hard.kind === "signup" || state.mode.kind === "signing_up") {
+      dbg("→ signup");
       state = state.mode.kind === "signing_up"
         ? await handleSignupReply(msg, text, whatsappId, state)
         : await startSignup(msg, state);
@@ -245,6 +253,7 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
 
     // WhatsApp-native signin flow
     if (hard.kind === "signin" || state.mode.kind === "signing_in") {
+      dbg("→ signin");
       state = state.mode.kind === "signing_in"
         ? await handleSigninReply(msg, text, whatsappId, state)
         : await startSignin(msg, state);
@@ -253,12 +262,14 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
     }
 
     if (hard.kind === "link_code" && hard.code) {
+      dbg("→ link_code");
       const { newState } = await tryConsumeCode(msg, hard.code, whatsappId, state);
       await saveState(whatsappId, newState);
       return;
     }
 
     if (hard.kind === "link" || state.mode.kind === "linking") {
+      dbg("→ link");
       if (state.mode.kind === "linking" && hard.kind === "link_code" && hard.code) {
         const { newState } = await tryConsumeCode(msg, hard.code, whatsappId, state);
         await saveState(whatsappId, newState);
@@ -270,19 +281,18 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
     }
 
     // Greetings from new users: immediately begin signup.
-    // If they already have an account the email step in handleSignupReply will
-    // detect it and prompt them to sign in instead.
     if (hard.kind === "greeting") {
+      dbg("→ startSignup (greeting, unlinked)");
       state = await startSignup(msg, state);
+      dbg("startSignup done");
       await saveState(whatsappId, state);
       return;
     }
 
-    // Context-aware nudge: detect what feature they want and tell them to sign up
-    // for it specifically, rather than showing the generic welcome every time.
+    // Context-aware nudge
     const featureHint = detectUnlinkedFeatureHint(text);
+    dbg("featureHint", featureHint);
     if (featureHint) {
-      console.log("[whatsapp]: Sendigng reply..")
       await msg.reply(unlinkedFeatureNudge(featureHint));
     } else {
       await sendWelcomeUnlinked(msg);
@@ -291,9 +301,13 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
     return;
   }
 
+  dbg("linked path", { userId, modeKind: state.mode.kind, hardKind: hard.kind });
+
   // ── Media messages (images / PDFs) — handle before text routing ─────────────
   if (msg.hasMedia) {
+    dbg("→ handleMediaMessage");
     state = await handleMediaMessage(msg, userId, state);
+    dbg("handleMediaMessage done");
     state.lastMessageAt = new Date().toISOString();
     await saveState(whatsappId, state);
     return;
@@ -303,6 +317,7 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
   // dispatchNlAction and gradeStudentAnswer) — there is no blanket wall here.
 
   if (hard.kind === "greeting") {
+    dbg("→ sendHelp (greeting, linked)");
     state = { ...state, mode: { kind: "idle" } };
     await sendHelp(msg);
     await saveState(whatsappId, state);
@@ -310,24 +325,28 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
   }
 
   if (hard.kind === "usage") {
+    dbg("→ sendUsageCard");
     await sendUsageCard(msg, userId);
     await saveState(whatsappId, state);
     return;
   }
 
   if (hard.kind === "link") {
+    dbg("→ already linked reply");
     await msg.reply("Your account is already linked 👍\nReply *usage* to see your plan, or just ask me anything.");
     await saveState(whatsappId, state);
     return;
   }
 
   if (hard.kind === "upgrade") {
+    dbg("→ startUpgrade");
     state = await startUpgrade(msg, state);
     await saveState(whatsappId, state);
     return;
   }
 
   if (hard.kind === "project") {
+    dbg("→ startProjectBrief (hard)");
     state = await startProjectBrief(msg, state);
     await saveState(whatsappId, state);
     return;
@@ -370,7 +389,8 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
     return;
   }
 
-  // ── Global mid-flow interrupt ─────────────────────────────────────────────
+  // ── Global mid-flow interrupt ──────────────────────────────────────────────
+  dbg("interrupt check", { modeKind: state.mode.kind });
   // If the user clearly wants a different feature partway through a flow, cancel
   // the flow and switch — no need to type "cancel". paper_study is handled in its
   // own block below (the grader decides whether a message is an answer). Raw-data
@@ -711,12 +731,10 @@ export async function handleMessage(client: Client, msg: Message): Promise<void>
   }
 
   // ── Natural-language AI routing (idle / browsing fallthrough) ─────────────
-  // Each branch enforces its own quota. There is no global gate here — a user
-  // exhausted on AI messages can still browse papers; a user out of project
-  // credits can still ask questions. The individual feature quota messages tell
-  // them exactly which resource is exhausted and how to unblock it.
-
+  dbg("→ routeWithNL", { text });
   const action = await routeWithNL(text);
+  dbg("routeWithNL done", { actionKind: action.kind });
   state = await dispatchNlAction(client, msg, whatsappId, userId, action, state);
+  dbg("dispatchNlAction done");
   await saveState(whatsappId, state);
 }
