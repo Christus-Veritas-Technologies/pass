@@ -148,18 +148,17 @@ const dbg = (...args: unknown[]) => { if (DEV) console.log("[wa:dbg]", ...args);
 export async function handleMessage(client: Client, msg: Message): Promise<void> {
   console.log("[whatsapp] Handling message...");
 
-  // Only process direct 1-on-1 chat messages.
-  // Silently drop everything else: groups, broadcasts, status updates, channels.
+  // Drop status updates and channel broadcasts — these are never user messages.
+  // Group and linked-device (@lid) filtering is intentionally removed: groups
+  // are blocked at the WhatsApp account level, and @lid is wwebjs 1.34.x's new
+  // Linked Device ID format for ordinary direct messages.
   const from = msg.from ?? "";
   if (
-    from.endsWith("@g.us")            || // WhatsApp groups
-    from.endsWith("@broadcast")        || // Broadcast lists / status
-    from.endsWith("@newsletter")       || // WhatsApp channels
-    from.endsWith("@lid")              || // Linked Device contacts (msg.getChat() is unsupported)
-    from === "status@broadcast"        || // Status updates
-    msg.isStatus                       || // Status flag
-    msg.broadcast                         // Broadcast flag
-  ) { dbg("dropped — not a 1-on-1 message", { from, isStatus: msg.isStatus }); return; }
+    from.endsWith("@newsletter")  || // WhatsApp channels
+    from === "status@broadcast"   || // Status updates
+    msg.isStatus                  || // Status flag
+    msg.broadcast                    // Broadcast lists
+  ) { dbg("dropped — status/channel", { from, isStatus: msg.isStatus }); return; }
 
   const whatsappId = msg.from;
   const text = (msg.body ?? "").trim();
