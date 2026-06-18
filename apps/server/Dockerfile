@@ -92,31 +92,35 @@ RUN pnpm --filter server run build
 # ──────────────────────────────────────────────────────────────────────────
 FROM oven/bun:${BUN_VERSION}-slim AS runtime
 
-# - chromium:        the actual browser whatsapp-web.js drives via Puppeteer.
-#                     Debian's package pulls in every shared lib it needs.
-# - libgbm1:         GPU buffer manager — Chrome 112+ requires this for the
-#                     headless rendering path even when --disable-gpu is set.
-#                     The Debian chromium package doesn't always declare it as
-#                     a hard dep on slim images; install it explicitly.
-# - fonts-*:         headless Chromium needs fonts to render emoji / non-Latin
+# - google-chrome-stable: the browser puppeteer 24.x is built and tested
+#                     against. Debian's `chromium` package is too old: the CDP
+#                     protocol version in puppeteer 24.38 requires Chrome 126+,
+#                     but Debian bookworm ships Chrome 128 *packaged* as chromium
+#                     and there is a known CDP regression in that build that
+#                     causes wwebjs to stall after "authenticated" and never
+#                     emit "ready". Google Chrome stable is downloaded directly
+#                     from Google; it also pulls in libgbm1 as a hard dep.
+# - fonts-*:         headless Chrome needs fonts to render emoji / non-Latin
 #                     glyphs that WhatsApp messages routinely contain.
 # - procps:          provides `pgrep`/`pkill` (NOT in base coreutils) used by
 #                     start.ts's killAllChrome() to reap orphaned Chrome.
 # - ca-certificates / openssl: TLS for outbound HTTPS and Prisma.
-# - dumb-init:       a real PID 1 to reap Chromium's zygote/helper zombies and
+# - dumb-init:       a real PID 1 to reap Chrome's helper zombies and
 #                     forward SIGTERM from `docker stop`.
 # - curl:            used by the HEALTHCHECK below.
-RUN apt-get update && apt-get install -y \
-      chromium \
-      libgbm1 \
-      fonts-liberation \
-      fonts-noto-color-emoji \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates wget \
+    && wget -q "https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb" \
+         -O /tmp/google-chrome.deb \
+    && apt-get install -y /tmp/google-chrome.deb \
+    && rm /tmp/google-chrome.deb \
     && apt-get install -y --no-install-recommends \
-      procps \
-      ca-certificates \
-      openssl \
-      dumb-init \
-      curl \
+         fonts-liberation \
+         fonts-noto-color-emoji \
+         procps \
+         openssl \
+         dumb-init \
+         curl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -148,12 +152,12 @@ RUN mkdir -p /app/packages/papers/papers \
 
 ENV NODE_ENV=production \
     PORT=5006 \
-    CHROME_PATH=/usr/bin/chromium \
+    CHROME_PATH=/usr/bin/google-chrome-stable \
     PUPPETEER_SKIP_DOWNLOAD=true \
     PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     PUPPETEER_SKIP_CHROME_HEADLESS_SHELL_DOWNLOAD=true \
     PUPPETEER_CACHE_DIR=/tmp/.cache/puppeteer \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
 
 # A brand-new named volume mounted here on first run inherits the (correctly
 # owned, empty) directories baked in above, instead of a root-owned empty dir.
